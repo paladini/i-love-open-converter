@@ -1,20 +1,26 @@
 const messages = {
   "pt-BR": {
     localBadge: "100% local", languageLabel: "Idioma", brandHome: "I Love Open Converter — início",
-    removeFile: "Remover arquivo", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
+    removeFile: "Remover arquivos", moveUp: "Mover para cima", moveDown: "Mover para baixo", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
     heroTitle: 'Converta do seu jeito.<br><span>Fica tudo com você.</span>',
     heroDescription: "Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.",
     metaOpen: "Open-source", metaPrivate: "Arquivos permanecem locais", metaFree: "Gratuito para self-host",
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
-    imageGroup: "Imagens", imageCount: "01 disponível", pdfGroup: "PDF", pdfCount: "Em preparação",
+    imageGroup: "Imagens", imageCount: "04 disponíveis", pdfGroup: "PDF", pdfCount: "06 disponíveis",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
-    splitTitle: "Dividir PDF", rotatePdfTitle: "Girar PDF", compressPdfTitle: "Comprimir PDF",
+    splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
+    compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
+    pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "Imagens para PDF",
+    imageToPdfHint: "Página A4 para cada imagem", rangesLabel: "Intervalos (ex.: 1-3,5)",
+    imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
+    pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
     widthLabel: "Largura (px)", heightLabel: "Altura (px)", qualityLabel: "Qualidade", degreesLabel: "Rotação",
     dropTitle: "Solte sua imagem aqui", dropOr: "ou", browse: "escolha um arquivo",
     fileTypes: "JPG, PNG, WEBP, BMP, TIFF · até {maxFileMb} MB", outputLabel: "Converter para",
+    pdfFileTypes: "PDF · até {maxFileMb} MB",
     resultFormat: "Formato de saída", localNote: "Seu arquivo é processado no servidor que você controla.",
     convertButton: "Converter imagem", downloadButton: "Baixar arquivo", startAgain: "Converter outro arquivo",
     trustLocalTitle: "Hospedado por você", trustLocalBody: "Seus arquivos ficam no seu HomeLab",
@@ -22,9 +28,10 @@ const messages = {
     trustOpenTitle: "Feito para ser aberto", trustOpenBody: "Código aberto, gratuito e seu",
     footerText: "Seu espaço. Seus arquivos. Sem complicação.",
     queued: "Na fila. Vamos começar assim que o worker estiver disponível.",
-    processing: "Convertendo sua imagem...", succeeded: "Sua imagem está pronta.",
+    processing: "Processando seus arquivos...", succeeded: "Seus arquivos estão prontos.",
     selectFile: "Escolha uma imagem antes de converter.", uploadError: "Não foi possível enviar o arquivo. Tente novamente.",
-    invalidFile: "O arquivo não é uma imagem válida.", unsupportedFormat: "Formato não suportado. Use JPG, PNG, WebP, BMP ou TIFF.",
+    invalidFile: "O arquivo não é válido ou está protegido por senha.", unsupportedFormat: "Formato não suportado. Use os formatos indicados pela ferramenta.",
+    sizeComparison: "Original: {before} · Resultado: {after}",
     fileTooLarge: "O arquivo excede o limite configurado.", requestTooLarge: "O envio excede o limite total.",
     processingFailed: "Não foi possível processar este arquivo.", genericError: "Algo deu errado. Tente novamente.",
     tooManyFiles: "A quantidade de arquivos excede o limite.", invalidOptions: "As opções selecionadas não são válidas.",
@@ -32,20 +39,26 @@ const messages = {
   },
   en: {
     localBadge: "100% local", languageLabel: "Language", brandHome: "I Love Open Converter — home",
-    removeFile: "Remove file", heroEyebrow: "YOUR FILES, YOUR RULES",
+    removeFile: "Remove files", moveUp: "Move up", moveDown: "Move down", heroEyebrow: "YOUR FILES, YOUR RULES",
     heroTitle: 'Convert your way.<br><span>It all stays with you.</span>',
     heroDescription: "Practical tools for your files, running on your own server. No ads. No sending documents to the cloud.",
     metaOpen: "Open source", metaPrivate: "Files stay on your server", metaFree: "Free to self-host",
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
-    imageGroup: "Images", imageCount: "01 available", pdfGroup: "PDF", pdfCount: "Coming together",
+    imageGroup: "Images", imageCount: "04 available", pdfGroup: "PDF", pdfCount: "06 available",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
-    splitTitle: "Split PDF", rotatePdfTitle: "Rotate PDF", compressPdfTitle: "Compress PDF",
+    splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
+    compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
+    pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "Images to PDF",
+    imageToPdfHint: "One A4 page per image", rangesLabel: "Page ranges (e.g. 1-3,5)",
+    imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
+    pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
     widthLabel: "Width (px)", heightLabel: "Height (px)", qualityLabel: "Quality", degreesLabel: "Rotation",
     dropTitle: "Drop your image here", dropOr: "or", browse: "choose a file",
     fileTypes: "JPG, PNG, WEBP, BMP, TIFF · up to {maxFileMb} MB", outputLabel: "Convert to",
+    pdfFileTypes: "PDF · up to {maxFileMb} MB",
     resultFormat: "Output format", localNote: "Your file is processed on the server you control.",
     convertButton: "Convert image", downloadButton: "Download file", startAgain: "Convert another file",
     trustLocalTitle: "Hosted by you", trustLocalBody: "Your files stay on your HomeLab",
@@ -53,9 +66,10 @@ const messages = {
     trustOpenTitle: "Made to stay open", trustOpenBody: "Open source, free, and yours",
     footerText: "Your space. Your files. No fuss.",
     queued: "Queued. We’ll start as soon as the worker is available.",
-    processing: "Converting your image...", succeeded: "Your image is ready.",
+    processing: "Processing your files...", succeeded: "Your files are ready.",
     selectFile: "Choose an image before converting.", uploadError: "The file could not be uploaded. Try again.",
-    invalidFile: "This file is not a valid image.", unsupportedFormat: "Unsupported format. Use JPG, PNG, WebP, BMP, or TIFF.",
+    invalidFile: "This file is invalid or protected by a password.", unsupportedFormat: "Unsupported format. Use a format listed for this tool.",
+    sizeComparison: "Original: {before} · Result: {after}",
     fileTooLarge: "The file is over the configured size limit.", requestTooLarge: "The upload is over the total size limit.",
     processingFailed: "This file could not be processed.", genericError: "Something went wrong. Try again.",
     tooManyFiles: "The number of files is over the limit.", invalidOptions: "The selected options are not valid.",
@@ -87,6 +101,9 @@ let currentFiles = [];
 let currentOperation = "image.convert";
 let currentLanguage = localStorage.getItem("i-love-open-converter-language") || "pt-BR";
 let pollTimer = null;
+let currentStatusKey = null;
+let currentErrorKey = null;
+let currentResultPayload = null;
 
 function t(key) { return messages[currentLanguage][key] || messages["pt-BR"][key] || key; }
 
@@ -105,10 +122,20 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAria));
   });
+  const isPdf = currentOperation.startsWith("pdf.");
+  document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
+  const fileTypes = document.querySelector("#file-types");
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
+  fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
+  if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
+  else if (currentStatusKey) jobStatusText.textContent = t(currentStatusKey);
+  if (currentResultPayload && !jobResult.hidden) renderResult(currentResultPayload);
   if (operationTitles[currentOperation]) {
     const title = t(operationTitles[currentOperation]);
     document.querySelector("#converter-title").textContent = title;
-    submitButton.querySelector("[data-i18n]").textContent = title;
+    submitButton.querySelector("[data-i18n]").textContent = t(
+      currentOperation.startsWith("pdf.") ? "pdfConvertButton" : currentOperation === "image.to_pdf" ? "imageToPdfButton" : operationTitles[currentOperation],
+    );
   }
   updateFormatTarget();
 }
@@ -124,9 +151,21 @@ const operationTitles = {
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
+  "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
+  "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
 
 function selectTool(operation) {
+  if (currentOperation !== operation) {
+    clearInterval(pollTimer);
+    jobStatus.hidden = true;
+    jobResult.hidden = true;
+    resetButton.hidden = true;
+    submitButton.disabled = false;
+    currentStatusKey = null;
+    currentErrorKey = null;
+    currentResultPayload = null;
+  }
   currentOperation = operation;
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -135,12 +174,22 @@ function selectTool(operation) {
   });
   const title = t(operationTitles[operation]);
   document.querySelector("#converter-title").textContent = title;
-  submitButton.querySelector("[data-i18n]").textContent = title;
+  const submitKey = operation.startsWith("pdf.") ? "pdfConvertButton" : operation === "image.to_pdf" ? "imageToPdfButton" : operationTitles[operation];
+  submitButton.querySelector("[data-i18n]").textContent = t(submitKey);
   document.querySelector('[data-option="width"]').hidden = operation !== "image.resize";
   document.querySelector('[data-option="height"]').hidden = operation !== "image.resize";
   document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress";
-  document.querySelector('[data-option="degrees"]').hidden = operation !== "image.rotate";
-  formatRow.hidden = operation === "image.rotate";
+  document.querySelector('[data-option="degrees"]').hidden = !["image.rotate", "pdf.rotate"].includes(operation);
+  document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
+  formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
+  const isPdf = operation.startsWith("pdf.");
+  fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || operation.startsWith("image.");
+  document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
+  const fileTypes = document.querySelector("#file-types");
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
+  fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
+  document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
   showFiles([]);
 }
@@ -155,7 +204,29 @@ function showFiles(files) {
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
   if (currentFiles.length) {
-    selectedName.textContent = currentFiles.map((file) => file.name).join(", ");
+    selectedName.replaceChildren();
+    currentFiles.forEach((file, index) => {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = file.name;
+      item.append(name);
+      if (currentOperation === "pdf.merge") {
+        for (const [direction, key, delta] of [["up", "moveUp", -1], ["down", "moveDown", 1]]) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = direction === "up" ? "↑" : "↓";
+          button.setAttribute("aria-label", t(key));
+          button.disabled = index + delta < 0 || index + delta >= currentFiles.length;
+          button.addEventListener("click", () => {
+            const next = [...currentFiles];
+            [next[index], next[index + delta]] = [next[index + delta], next[index]];
+            showFiles(next);
+          });
+          item.append(button);
+        }
+      }
+      selectedName.append(item);
+    });
     const totalSize = currentFiles.reduce((sum, file) => sum + file.size, 0);
     selectedSize.textContent = `${currentFiles.length} · ${formatBytes(totalSize)}`;
   }
@@ -167,24 +238,37 @@ function clearError() {
   formError.textContent = "";
 }
 
-function showError(message) {
+function showError(key) {
+  currentErrorKey = key;
+  currentStatusKey = null;
   clearInterval(pollTimer);
   jobSpinner.hidden = true;
   jobStatus.hidden = false;
-  jobStatusText.textContent = message;
+  jobStatusText.textContent = t(key);
   jobResult.hidden = true;
   resetButton.hidden = false;
   formError.hidden = true;
   submitButton.disabled = false;
 }
 
-function apiErrorMessage(code) {
+function apiErrorKey(code) {
   const codes = {
     invalid_file: "invalidFile", unsupported_format: "unsupportedFormat", file_too_large: "fileTooLarge",
     request_too_large: "requestTooLarge", processing_failed: "processingFailed", invalid_options: "invalidOptions",
     too_many_files: "tooManyFiles",
   };
-  return t(codes[code] || "genericError");
+  return codes[code] || "genericError";
+}
+
+function renderResult(payload) {
+  const file = payload.files?.[0];
+  resultName.textContent = file?.name || "";
+  if (["image.compress", "pdf.compress"].includes(currentOperation)) {
+    resultName.textContent += ` — ${t("sizeComparison")
+      .replace("{before}", formatBytes(payload.input_size_bytes))
+      .replace("{after}", formatBytes(file?.size_bytes || 0))}`;
+  }
+  downloadButton.href = payload.download_url;
 }
 
 async function pollJob(statusUrl) {
@@ -193,30 +277,35 @@ async function pollJob(statusUrl) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error?.code || "genericError");
     if (payload.state === "queued") {
+      currentStatusKey = "queued";
+      currentErrorKey = null;
       jobStatusText.textContent = t("queued");
       return;
     }
     if (payload.state === "processing") {
+      currentStatusKey = "processing";
+      currentErrorKey = null;
       jobStatusText.textContent = t("processing");
       return;
     }
     if (payload.state === "failed") {
-      showError(apiErrorMessage(payload.error?.code));
+      showError(apiErrorKey(payload.error?.code));
       return;
     }
     if (payload.state === "succeeded") {
+      currentStatusKey = "succeeded";
+      currentErrorKey = null;
+      currentResultPayload = payload;
       clearInterval(pollTimer);
       jobSpinner.hidden = true;
       jobStatusText.textContent = t("succeeded");
-      const file = payload.files?.[0];
-      resultName.textContent = file?.name || "";
-      downloadButton.href = payload.download_url;
+      renderResult(payload);
       jobResult.hidden = false;
       resetButton.hidden = false;
       submitButton.disabled = false;
     }
   } catch (error) {
-    showError(error.message === "job_not_found" ? t("genericError") : t("conversionFailed"));
+    showError(error.message === "job_not_found" ? "genericError" : "conversionFailed");
   }
 }
 
@@ -261,6 +350,9 @@ form.addEventListener("submit", async (event) => {
   jobStatus.hidden = false;
   jobSpinner.hidden = false;
   jobStatusText.textContent = t("queued");
+  currentStatusKey = "queued";
+  currentErrorKey = null;
+  currentResultPayload = null;
   submitButton.disabled = true;
   const body = new FormData();
   const options = { format: outputFormat.value };
@@ -270,6 +362,8 @@ form.addEventListener("submit", async (event) => {
   }
   if (currentOperation === "image.compress") options.quality = document.querySelector("#quality").value;
   if (currentOperation === "image.rotate") options.degrees = document.querySelector("#degrees").value;
+  if (currentOperation === "pdf.rotate") options.degrees = document.querySelector("#degrees").value;
+  if (currentOperation === "pdf.split") options.ranges = document.querySelector("#ranges").value;
   body.append("operation", currentOperation);
   body.append("options", JSON.stringify(options));
   currentFiles.forEach((file) => body.append("files", file, file.name));
@@ -283,7 +377,7 @@ form.addEventListener("submit", async (event) => {
     pollTimer = setInterval(() => pollJob(payload.status_url), 1000);
     await pollJob(payload.status_url);
   } catch (error) {
-    showError(apiErrorMessage(error.message));
+    showError(apiErrorKey(error.message));
   }
 });
 
@@ -293,6 +387,9 @@ resetButton.addEventListener("click", () => {
   fileInput.value = "";
   showFiles([]);
   jobStatus.hidden = true;
+  currentStatusKey = null;
+  currentErrorKey = null;
+  currentResultPayload = null;
   jobResult.hidden = true;
   resetButton.hidden = true;
   jobSpinner.hidden = false;

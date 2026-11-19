@@ -143,8 +143,14 @@ def claim_next_job(database_path: Path) -> dict[str, Any] | None:
     return get_job(database_path, job["id"])
 
 
-def mark_succeeded(database_path: Path, job_id: str, artifacts: list[dict[str, Any]]) -> None:
+def mark_succeeded(
+    database_path: Path,
+    job_id: str,
+    artifacts: list[dict[str, Any]],
+    retention_hours: int,
+) -> None:
     now = _timestamp(utc_now())
+    expires = _timestamp(utc_now() + timedelta(hours=retention_hours))
     with closing(connect(database_path)) as connection:
         connection.execute("BEGIN IMMEDIATE")
         try:
@@ -164,8 +170,9 @@ def mark_succeeded(database_path: Path, job_id: str, artifacts: list[dict[str, A
                 ],
             )
             connection.execute(
-                "UPDATE conversion_jobs SET state = 'succeeded', updated_at = ? WHERE id = ?",
-                (now, job_id),
+                "UPDATE conversion_jobs SET state = 'succeeded', updated_at = ?, expires_at = ? "
+                "WHERE id = ?",
+                (now, expires, job_id),
             )
             connection.commit()
         except Exception:
@@ -173,31 +180,49 @@ def mark_succeeded(database_path: Path, job_id: str, artifacts: list[dict[str, A
             raise
 
 
-def mark_failed(database_path: Path, job_id: str, code: str, message: str) -> None:
+def mark_failed(
+    database_path: Path,
+    job_id: str,
+    code: str,
+    message: str,
+    retention_hours: int,
+) -> None:
+    updated_at = utc_now()
+    now = _timestamp(updated_at)
+    expires = _timestamp(updated_at + timedelta(hours=retention_hours))
     with closing(connect(database_path)) as connection:
         connection.execute(
             """UPDATE conversion_jobs
-               SET state = 'failed', error_code = ?, error_message = ?, updated_at = ?
+               SET state = 'failed', error_code = ?, error_message = ?, updated_at = ?,
+                   expires_at = ?
                WHERE id = ?""",
-            (code, message, _timestamp(utc_now()), job_id),
+            (code, message, now, expires, job_id),
         )
 
 
-def delete_expired_jobs(database_path: Path) -> list[str]:
-    """Delete expired terminal jobs transactionally and return their identifiers."""
+def find_expired_jobs(database_path: Path) -> list[str]:
+    """Return expired jobs that are not actively being processed."""
     now = _timestamp(utc_now())
     with closing(connect(database_path)) as connection:
-        connection.execute("BEGIN IMMEDIATE")
-        job_ids = [
+        return [
             row["id"]
             for row in connection.execute(
                 "SELECT id FROM conversion_jobs WHERE expires_at <= ? "
-                "AND state IN ('succeeded', 'failed')",
+                "AND state IN ('queued', 'succeeded', 'failed')",
                 (now,),
             ).fetchall()
         ]
-        connection.executemany(
-            "DELETE FROM conversion_jobs WHERE id = ?", [(job_id,) for job_id in job_ids]
+
+
+def delete_expired_jobs(database_path: Path, job_ids: list[str]) -> int:
+    """Delete rows only after the worker has removed their local files."""
+    now = _timestamp(utc_now())
+    with closing(connect(database_path)) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        cursor = connection.executemany(
+            "DELETE FROM conversion_jobs WHERE id = ? AND expires_at <= ? "
+            "AND state IN ('queued', 'succeeded', 'failed')",
+            [(job_id, now) for job_id in job_ids],
         )
         connection.commit()
-    return job_ids
+    return cursor.rowcount

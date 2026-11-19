@@ -7,9 +7,17 @@ import time
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .config import Settings, get_settings
-from .database import claim_next_job, delete_expired_jobs, initialize, mark_failed, mark_succeeded
+from .database import (
+    claim_next_job,
+    delete_expired_jobs,
+    find_expired_jobs,
+    initialize,
+    mark_failed,
+    mark_succeeded,
+)
 from .files import safe_stem
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
+from .pdf_ops import InvalidPdfError, process_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -22,45 +30,75 @@ def process_one_job(settings: Settings) -> bool:
     job_id = job["id"]
     job_dir = settings.jobs_dir / job_id
     try:
-        if job["operation"] not in {
+        if job["operation"] in {
             "image.convert",
             "image.resize",
             "image.compress",
             "image.rotate",
         }:
-            raise UnsupportedImageError
-        input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
-        if not input_artifacts:
-            raise InvalidImageError
-        output_dir = job_dir / "output"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_format = str(job["options"].get("format", "PNG")).upper()
-        extension = "jpg" if output_format in {"JPEG", "JPG"} else output_format.lower()
-        generated: list[tuple[str, str, int]] = []
-        for index, source_artifact in enumerate(input_artifacts, start=1):
-            source = (settings.data_dir / source_artifact["relative_path"]).resolve()
-            if not source.is_relative_to(settings.data_dir.resolve()):
+            input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
+            if not input_artifacts:
                 raise InvalidImageError
-            stem = safe_stem(source_artifact["name"])
-            if any(name.rsplit(".", 1)[0] == stem for name, _, _ in generated):
-                stem = f"{stem}-{index}"
-            output_name = f"{stem}.{extension}"
-            destination = output_dir / output_name
-            content_type, size_bytes = process_image(
-                source, destination, job["operation"], job["options"]
-            )
-            generated.append((output_name, content_type, size_bytes))
-        if len(generated) == 1:
-            output_name, content_type, size_bytes = generated[0]
-        else:
-            output_name = "converted-images.zip"
-            destination = output_dir / output_name
-            with ZipFile(destination, "w", ZIP_DEFLATED) as archive:
-                for name, _, _ in generated:
-                    archive.write(output_dir / name, arcname=name)
-                    (output_dir / name).unlink()
-            content_type = "application/zip"
+            output_dir = job_dir / "output"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_format = str(job["options"].get("format", "PNG")).upper()
+            extension = "jpg" if output_format in {"JPEG", "JPG"} else output_format.lower()
+            generated: list[tuple[str, str, int]] = []
+            for index, source_artifact in enumerate(input_artifacts, start=1):
+                source = (settings.data_dir / source_artifact["relative_path"]).resolve()
+                if not source.is_relative_to(settings.data_dir.resolve()):
+                    raise InvalidImageError
+                stem = safe_stem(source_artifact["name"])
+                if any(name.rsplit(".", 1)[0] == stem for name, _, _ in generated):
+                    stem = f"{stem}-{index}"
+                output_name = f"{stem}.{extension}"
+                destination = output_dir / output_name
+                content_type, size_bytes = process_image(
+                    source, destination, job["operation"], job["options"]
+                )
+                generated.append((output_name, content_type, size_bytes))
+            if len(generated) == 1:
+                output_name, content_type, size_bytes = generated[0]
+            else:
+                output_name = "converted-images.zip"
+                destination = output_dir / output_name
+                with ZipFile(destination, "w", ZIP_DEFLATED) as archive:
+                    for name, _, _ in generated:
+                        archive.write(output_dir / name, arcname=name)
+                        (output_dir / name).unlink()
+                content_type = "application/zip"
+                size_bytes = destination.stat().st_size
+        elif job["operation"] in {
+            "pdf.merge",
+            "pdf.split",
+            "pdf.rotate",
+            "pdf.compress",
+            "pdf.to_image",
+            "image.to_pdf",
+        }:
+            input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
+            sources = []
+            for artifact in input_artifacts:
+                source = (settings.data_dir / artifact["relative_path"]).resolve()
+                if not source.is_relative_to(settings.data_dir.resolve()):
+                    raise InvalidPdfError
+                sources.append((source, artifact["name"]))
+            output_dir = job_dir / "output"
+            paths, content_type = process_pdf(job["operation"], sources, job["options"], output_dir)
+            if len(paths) > 1 or job["operation"] in {"pdf.split", "pdf.to_image"}:
+                output_name = "converted-files.zip"
+                destination = output_dir / output_name
+                with ZipFile(destination, "w", ZIP_DEFLATED) as archive:
+                    for path in paths:
+                        archive.write(path, arcname=path.name)
+                        path.unlink()
+                content_type = "application/zip"
+            else:
+                destination = paths[0]
+                output_name = destination.name
             size_bytes = destination.stat().st_size
+        else:
+            raise UnsupportedImageError
         mark_succeeded(
             settings.database_path,
             job_id,
@@ -72,15 +110,33 @@ def process_one_job(settings: Settings) -> bool:
                     "size_bytes": size_bytes,
                 }
             ],
+            settings.job_retention_hours,
         )
     except UnsupportedImageError:
         mark_failed(
-            settings.database_path, job_id, "unsupported_format", "Formato de imagem não suportado."
+            settings.database_path,
+            job_id,
+            "unsupported_format",
+            "Formato de imagem não suportado.",
+            settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except InvalidImageError:
         mark_failed(
-            settings.database_path, job_id, "invalid_file", "O arquivo não é uma imagem válida."
+            settings.database_path,
+            job_id,
+            "invalid_file",
+            "O arquivo não é uma imagem válida.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except InvalidPdfError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "invalid_file",
+            "O arquivo PDF está inválido ou protegido por senha.",
+            settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except Exception:
@@ -90,20 +146,29 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "processing_failed",
             "Não foi possível processar este arquivo.",
+            settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     return True
 
 
 def cleanup_expired_jobs(settings: Settings) -> int:
-    removed = 0
     jobs_root = settings.jobs_dir.resolve()
-    for job_id in delete_expired_jobs(settings.database_path):
+    expired = find_expired_jobs(settings.database_path)
+    deleted: list[str] = []
+    for job_id in expired:
         job_dir = (jobs_root / job_id).resolve()
-        if job_dir.is_relative_to(jobs_root):
-            shutil.rmtree(job_dir, ignore_errors=True)
-            removed += 1
-    return removed
+        if job_dir == jobs_root or not job_dir.is_relative_to(jobs_root):
+            continue
+        try:
+            shutil.rmtree(job_dir, ignore_errors=False)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            logger.exception("Could not remove expired job files for %s", job_id)
+            continue
+        deleted.append(job_id)
+    return delete_expired_jobs(settings.database_path, deleted)
 
 
 def main() -> None:

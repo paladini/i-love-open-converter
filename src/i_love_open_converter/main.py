@@ -19,6 +19,7 @@ from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
 from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
+from .pdf_ops import InvalidPdfError, inspect_pdf, validate_page_ranges
 
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
@@ -91,6 +92,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.to_pdf",
+            "pdf.merge",
+            "pdf.split",
+            "pdf.rotate",
+            "pdf.compress",
+            "pdf.to_image",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -148,17 +155,45 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "As opções não são válidas."}
                 },
             )
-        output_format = str(parsed_options.get("format", "PNG")).upper()
-        if output_format not in {"JPEG", "JPG", "PNG", "WEBP"}:
+        image_operations = {"image.convert", "image.resize", "image.compress", "image.rotate"}
+        if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
                 status_code=422,
                 detail={
-                    "error": {"code": "invalid_options", "message": "Formato de saída inválido."}
+                    "error": {"code": "invalid_options", "message": "Selecione de 2 a 10 PDFs."}
                 },
             )
-        validated_options: dict[str, Any] = {
-            "format": "JPEG" if output_format == "JPG" else output_format
-        }
+        single_pdf_operations = {"pdf.split", "pdf.rotate", "pdf.compress", "pdf.to_image"}
+        if operation in single_pdf_operations and len(files) != 1:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
+            )
+        if operation == "image.to_pdf" and len(files) > settings.max_files_per_job:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "too_many_files",
+                        "message": "A quantidade de arquivos excede o limite.",
+                    }
+                },
+            )
+        validated_options: dict[str, Any] = {}
+        output_format = "PNG"
+        if operation in image_operations:
+            output_format = str(parsed_options.get("format", "PNG")).upper()
+            if output_format not in {"JPEG", "JPG", "PNG", "WEBP"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Formato de saída inválido.",
+                        }
+                    },
+                )
+            validated_options["format"] = "JPEG" if output_format == "JPG" else output_format
         if operation == "image.resize":
             for dimension in ("width", "height"):
                 raw = parsed_options.get(dimension)
@@ -190,7 +225,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     detail={"error": {"code": "invalid_options", "message": "Ângulo inválido."}},
                 )
             validated_options["degrees"] = int(degrees)
-        if operation == "image.compress" or output_format in {"JPEG", "JPG", "WEBP"}:
+        if operation == "pdf.rotate":
+            degrees = parsed_options.get("degrees")
+            if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Ângulo inválido."}},
+                )
+            validated_options["degrees"] = int(degrees)
+        if operation == "pdf.split":
+            ranges = parsed_options.get("ranges")
+            if not isinstance(ranges, str) or not ranges.strip():
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Informe intervalos de páginas.",
+                        }
+                    },
+                )
+            validated_options["ranges"] = ranges
+        if operation == "image.compress" or (
+            operation in image_operations and output_format in {"JPEG", "JPG", "WEBP"}
+        ):
             quality = parsed_options.get("quality", 85)
             if (
                 isinstance(quality, bool)
@@ -224,7 +282,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 original_name = safe_filename(upload.filename or "imagem")
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
-                if extension not in accepted_extensions:
+                is_pdf_operation = operation.startswith("pdf.")
+                if is_pdf_operation and extension != ".pdf":
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Envie um arquivo PDF.",
+                            }
+                        },
+                    )
+                if (
+                    not is_pdf_operation
+                    and operation != "image.to_pdf"
+                    and extension not in accepted_extensions
+                ):
                     raise HTTPException(
                         status_code=415,
                         detail={
@@ -261,38 +334,66 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 },
                             )
                         target.write(chunk)
-                try:
-                    image_format, content_type = inspect_image(destination)
-                except UnsupportedImageError as exc:
-                    raise HTTPException(
-                        status_code=415,
-                        detail={
-                            "error": {
-                                "code": "unsupported_format",
-                                "message": "Formato de imagem não suportado.",
-                            }
-                        },
-                    ) from exc
-                except InvalidImageError as exc:
-                    raise HTTPException(
-                        status_code=422,
-                        detail={
-                            "error": {
-                                "code": "invalid_file",
-                                "message": "O arquivo não é uma imagem válida.",
-                            }
-                        },
-                    ) from exc
-                if image_format not in INPUT_FORMATS:
-                    raise HTTPException(
-                        status_code=415,
-                        detail={
-                            "error": {
-                                "code": "unsupported_format",
-                                "message": "Formato de imagem não suportado.",
-                            }
-                        },
-                    )
+                if is_pdf_operation:
+                    try:
+                        page_count = inspect_pdf(destination)
+                        content_type = "application/pdf"
+                    except InvalidPdfError as exc:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "invalid_file",
+                                    "message": "O PDF é inválido ou protegido por senha.",
+                                }
+                            },
+                        ) from exc
+                    if operation == "pdf.split":
+                        try:
+                            validate_page_ranges(validated_options["ranges"], page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Intervalos de páginas inválidos para este PDF.",
+                                    }
+                                },
+                            ) from exc
+                else:
+                    try:
+                        image_format, content_type = inspect_image(destination)
+                    except UnsupportedImageError as exc:
+                        raise HTTPException(
+                            status_code=415,
+                            detail={
+                                "error": {
+                                    "code": "unsupported_format",
+                                    "message": "Formato de imagem não suportado.",
+                                }
+                            },
+                        ) from exc
+                    except InvalidImageError as exc:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "invalid_file",
+                                    "message": "O arquivo não é uma imagem válida.",
+                                }
+                            },
+                        ) from exc
+                    if image_format not in INPUT_FORMATS:
+                        raise HTTPException(
+                            status_code=415,
+                            detail={
+                                "error": {
+                                    "code": "unsupported_format",
+                                    "message": "Formato de imagem não suportado.",
+                                }
+                            },
+                        )
                 stored.append(
                     {
                         "name": original_name,
@@ -338,7 +439,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             response["error"] = {"code": job["error_code"], "message": job["error_message"]}
         if job["state"] == "succeeded":
             outputs = [item for item in job["artifacts"] if item["role"] == "output"]
+            inputs = [item for item in job["artifacts"] if item["role"] == "input"]
             response["download_url"] = f"/api/jobs/{normalized_id}/download"
+            response["input_size_bytes"] = sum(item["size_bytes"] for item in inputs)
             response["files"] = [
                 {"name": item["name"], "size_bytes": item["size_bytes"]} for item in outputs
             ]

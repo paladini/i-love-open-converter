@@ -2,7 +2,7 @@
 
 Uma caixa de ferramentas gratuita e self-hosted para conversões comuns de imagens e PDFs. Envie arquivos pelo navegador, processe tudo no seu próprio servidor e baixe o resultado. Os arquivos ficam no seu HomeLab; o aplicativo não tem anúncios, contas, armazenamento em nuvem nem telemetria externa.
 
-O projeto está em desenvolvimento ativo. A fatia atual inclui operações comuns em imagens estáticas; as ferramentas essenciais para PDF serão a próxima etapa.
+O projeto está em desenvolvimento ativo. A primeira versão foca em operações comuns com imagens estáticas e ferramentas essenciais para PDF.
 
 ## Início rápido
 
@@ -27,6 +27,7 @@ O banco e os arquivos ficam em `./data`. Faça backup desse diretório se quiser
 ## Recursos disponíveis
 
 - Converter, redimensionar, comprimir e girar imagens estáticas JPEG, PNG, WebP, BMP ou TIFF; processe até 10 arquivos por job e baixe lotes em ZIP.
+- Mesclar, dividir por intervalos de páginas, girar e otimizar PDFs sem senha; renderizar páginas de PDF para JPG ou transformar imagens em PDFs A4.
 - Interface em português do Brasil e inglês.
 - Processamento local por serviço web, fila SQLite e worker.
 

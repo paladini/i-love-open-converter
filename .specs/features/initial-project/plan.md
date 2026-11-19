@@ -50,7 +50,7 @@ sequenceDiagram
 | --- | --- |
 | domain | `ConversionJob` é um job de conversão assíncrono com estado `queued`, `processing`, `succeeded` ou `failed`; nenhum domínio existente para preservar. |
 | stored data | Novo SQLite local; sem migração de dados preexistentes. O volume mantém banco e arquivos juntos. |
-| readers | `FastAPI` lê estado e metadados para status/download; `Worker` reivindica jobs e limpa itens expirados. Ambos recebem os mesmos caminhos e configurações pelo Docker Compose. |
+| readers | `FastAPI` lê estado e metadados para status/download; `Worker` reivindica jobs e limpa itens expirados. Ambos recebem os mesmos caminhos e configurações pelo Docker Compose (AD-003, AD-004). |
 
 ```mermaid
 erDiagram
@@ -66,7 +66,6 @@ stateDiagram-v2
     processing --> succeeded : conversão termina
     processing --> failed : entrada ou processamento falha
     queued --> deleted : TTL expirou
-    processing --> deleted : TTL expirou
     succeeded --> deleted : TTL expirou
     failed --> deleted : TTL expirou
     deleted --> [*] : arquivos e registro removidos
@@ -175,7 +174,7 @@ O operador configura e inicia os dois serviços sem cadastro, dependência exter
 | Operações iniciais | Converter/redimensionar/comprimir/girar imagens; mesclar/dividir/girar/comprimir PDF; PDF para JPG e imagens para PDF | O usuário respondeu “Escolha você conforme viabilidade”; conjunto cobre os fluxos frequentes com dependências open-source locais. | y - user delegated |
 | Formatos iniciais de imagem | Entrada JPEG, PNG, WebP, BMP, TIFF estáticos; saída JPEG, PNG, WebP | Suporte comum do Pillow; evita instalar codecs especializados e documenta claramente o limite. | y - user delegated |
 | Configuração operacional | `.env` interpolado pelo Compose; `.env.example` documenta portas, limites e retenção; arquivo `.env` fica fora do Git | O usuário delegou o mecanismo de configuração ao agente. | y - user delegated |
-| Retenção inicial | 24 horas após a criação do job, configuráveis em `JOB_RETENTION_HOURS` | Valor padrão dá tempo para o download e limita acúmulo; usuário pediu retenção configurável e delegou a forma de configuração. | y - user delegated |
+| Retenção inicial | 24 horas após a conclusão do job, configuráveis em `JOB_RETENTION_HOURS`; jobs ainda na fila expiram após o mesmo prazo desde a criação | O usuário tem um dia para baixar os resultados sem manter arquivos em processamento além do TTL; configurações são locais e delegadas pelo usuário. | y - user delegated |
 | Limites de lote | 10 arquivos e 500 MB por job, ambos configuráveis; teto por arquivo é 100 MB configurável | Valores limitam uso inesperado de disco/RAM; limite de 100 MB por arquivo foi escolhido explicitamente pelo usuário. | y - 100 MB; 10 arquivos/500 MB user delegated |
 | Conversão de imagem para PDF | Página A4, orientação acompanhando a imagem, margem branca de 10 mm | Decisão simples para resultado imprimível sem adicionar editor de layout na primeira versão. | y - user delegated |
 | Idiomas de documentação | README em inglês e README.pt-BR em português do Brasil | Projeto comunitário open-source e interface bilíngue servem ambos os públicos sem duplicar idioma em um único arquivo. | y - user delegated |

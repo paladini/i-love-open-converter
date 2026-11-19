@@ -2,7 +2,7 @@
 
 A free, self-hosted toolkit for common image and PDF conversions. Upload files in a browser, run a conversion on your own server, and download the result. Files stay on your HomeLab; the application has no ads, accounts, cloud storage, or external telemetry.
 
-The project is under active development. The current slice includes common static image operations; essential PDF tools are next.
+The project is under active development. The initial release focuses on common static image operations and essential PDF tools.
 
 ## Quick start
 
@@ -27,6 +27,7 @@ Your database and files live in `./data`. Back up that directory if you need to 
 ## Current capabilities
 
 - Convert, resize, compress, and rotate static JPEG, PNG, WebP, BMP, or TIFF images; process up to 10 files in one job and download batches as ZIP.
+- Merge, split by page ranges, rotate, and optimize unencrypted PDFs; render PDF pages to JPG or turn images into A4 PDFs.
 - Use the interface in Brazilian Portuguese or English.
 - Process conversions through a local web service, SQLite queue, and worker.
 

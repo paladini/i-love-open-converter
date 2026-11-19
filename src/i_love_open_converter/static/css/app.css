@@ -118,7 +118,11 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.045em; font-weight: 720; }
 .selected-file[hidden] { display: none; }
 .selected-file-icon { display: grid; place-items: center; width: 34px; height: 34px; color: #6a5bdc; border-radius: 10px; background: #efedff; }
 .selected-file-icon svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.selected-file-name { min-width: 0; overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.selected-file-list { min-width: 0; max-height: 116px; flex: 1; overflow: auto; margin: 0; padding: 0 0 0 20px; font-size: 10px; font-weight: 700; }
+.selected-file-list li { padding: 3px 2px; }
+.selected-file-list li span { overflow-wrap: anywhere; }
+.selected-file-list button { width: 22px; height: 22px; margin-left: 4px; color: #6a5bdc; border: 1px solid #e5e2fb; border-radius: 6px; background: white; cursor: pointer; }
+.selected-file-list button:disabled { opacity: .3; cursor: default; }
 .selected-file-size { margin-left: auto; color: #8f929d; font-size: 10px; white-space: nowrap; }
 .remove-file { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; color: #8b8d97; border: 0; border-radius: 8px; background: transparent; font-size: 20px; cursor: pointer; }
 .remove-file:hover { color: #ba4350; background: #fff0f1; }

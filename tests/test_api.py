@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from zipfile import ZipFile
 
+import pymupdf
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -117,7 +118,7 @@ def test_unknown_jobs_return_404(settings):
     assert response.json()["error"]["code"] == "job_not_found"
 
 
-def test_unsupported_operation_is_rejected(settings, jpeg_bytes):
+def test_pdf_merge_requires_multiple_files(settings, jpeg_bytes):
     with TestClient(create_app(settings)) as client:
         response = client.post(
             "/api/jobs",
@@ -126,7 +127,7 @@ def test_unsupported_operation_is_rejected(settings, jpeg_bytes):
         )
 
     assert response.status_code == 422
-    assert response.json()["error"]["code"] == "unsupported_operation"
+    assert response.json()["error"]["code"] == "invalid_options"
 
 
 def test_expired_terminal_job_is_removed_with_its_files(settings, jpeg_bytes):
@@ -196,3 +197,109 @@ def test_image_rotate_is_clockwise_and_invalid_dimensions_are_rejected(settings,
 
     with Image.open(BytesIO(result.content)) as rotated:
         assert rotated.size == (12, 16)
+
+
+def test_pdf_merge_and_page_range_split(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        merged = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.merge", "options": "{}"},
+            files=[
+                ("files", ("one.pdf", pdf_bytes, "application/pdf")),
+                ("files", ("two.pdf", pdf_bytes, "application/pdf")),
+            ],
+        )
+        assert merged.status_code == 202
+        assert process_one_job(settings)
+        merged_pdf = client.get(f"/api/jobs/{merged.json()['job_id']}/download")
+        with pymupdf.open(stream=merged_pdf.content, filetype="pdf") as document:
+            assert document.page_count == 4
+
+        split = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.split", "options": '{"ranges":"2,1"}'},
+            files={"files": ("two.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert split.status_code == 202
+        assert process_one_job(settings)
+        split_zip = client.get(f"/api/jobs/{split.json()['job_id']}/download")
+        assert split_zip.headers["content-type"] == "application/zip"
+        with ZipFile(BytesIO(split_zip.content)) as archive:
+            assert archive.namelist() == ["two-part-1.pdf", "two-part-2.pdf"]
+            for filename in archive.namelist():
+                with pymupdf.open(stream=archive.read(filename), filetype="pdf") as document:
+                    assert document.page_count == 1
+
+
+def test_pdf_range_validation_rotation_and_pdf_to_jpg(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.split", "options": '{"ranges":"1-3"}'},
+            files={"files": ("two.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "invalid_options"
+
+        rotated = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.rotate", "options": '{"degrees":90}'},
+            files={"files": ("two.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert rotated.status_code == 202
+        assert process_one_job(settings)
+        rotated_pdf = client.get(f"/api/jobs/{rotated.json()['job_id']}/download")
+        with pymupdf.open(stream=rotated_pdf.content, filetype="pdf") as document:
+            assert [page.rotation for page in document] == [90, 90]
+
+        rendered = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.to_image", "options": "{}"},
+            files={"files": ("two.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert rendered.status_code == 202
+        assert process_one_job(settings)
+        images = client.get(f"/api/jobs/{rendered.json()['job_id']}/download")
+        with ZipFile(BytesIO(images.content)) as archive:
+            assert archive.namelist() == ["two-page-1.jpg", "two-page-2.jpg"]
+            with Image.open(BytesIO(archive.read(archive.namelist()[0]))) as page_image:
+                assert page_image.format == "JPEG"
+
+        compressed = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compress", "options": "{}"},
+            files={"files": ("two.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert compressed.status_code == 202
+        assert process_one_job(settings)
+        compressed_status = client.get(f"/api/jobs/{compressed.json()['job_id']}").json()
+        assert compressed_status["input_size_bytes"] == len(pdf_bytes)
+        compressed_pdf = client.get(compressed_status["download_url"])
+        with pymupdf.open(stream=compressed_pdf.content, filetype="pdf") as document:
+            assert document.page_count == 2
+
+
+def test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        created = client.post(
+            "/api/jobs",
+            data={"operation": "image.to_pdf", "options": "{}"},
+            files=[
+                ("files", ("photo.jpg", jpeg_bytes, "image/jpeg")),
+                ("files", ("second.jpg", jpeg_bytes, "image/jpeg")),
+            ],
+        )
+        assert created.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(f"/api/jobs/{created.json()['job_id']}/download")
+        with pymupdf.open(stream=output.content, filetype="pdf") as document:
+            assert document.page_count == 2
+            assert document[0].rect.width == 842
+
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.rotate", "options": '{"degrees":90}'},
+            files={"files": ("broken.pdf", b"not a pdf", "application/pdf")},
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "invalid_file"
