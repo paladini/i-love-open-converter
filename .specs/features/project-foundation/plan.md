@@ -1,9 +1,9 @@
 # PDF watermarks and page numbers
 
-**Approved**: 2026-11-19 - user: "sim porra, só vai. Não fica perguntandpo toda hora, eu só quero que vc faça uma cópia do ILovePDF e ILoveIMG Caralho"
+**Approved**: 2026-11-19 - user authorized implementing the complete converter project in stages, using ILovePDF and ILoveIMG as product references.
 **Settled mid-build:** user delegated sequencing and scope coverage: "Você decide; cubra o objetivo completo por etapas".
 **Review:** sent at 761e1d3
-**Fix pass:** done - restored the full 31-PDF/13-image catalog with future tools marked “Em breve”, added workflow/image category filters, centered the home hero, matched the captured PDF tool headings, made “Remover arquivo” clear selections, and expanded PDF output and option-validation tests.
+**Fix pass:** done - restored the full 31-PDF/13-image catalog with future tools marked “Em breve”, added workflow/image category filters, centered the home hero, matched the captured PDF tool headings, made “Remover arquivo” clear selections, expanded PDF output and option-validation tests, and replaced copied informal approval wording with a neutral summary of the approved scope.
 
 ## Problem
 

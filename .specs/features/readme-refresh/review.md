@@ -13,3 +13,7 @@
 ## Findings
 
 None.
+
+## Follow-up
+
+A repository-wide documentation audit found informal approval wording in the earlier project foundation plan. That record was rewritten as a neutral summary of the approved scope.

@@ -47,3 +47,4 @@ Completed after this review:
 - Expanded tests to check the catalog count, watermark font/color/opacity/placement and page dimensions, image alpha mask, all three page-number formats in PT-BR/English, and invalid option boundaries.
 - Verified the upload-first page and catalog in the browser after the corrections. No file-processing job was submitted there.
 - Verification after the fix pass: full pytest suite, Ruff check, Node syntax checks for both scripts, and `git diff --check` passed.
+- Rephrased the plan's approval record as a neutral summary of the authorized project scope.
