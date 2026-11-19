@@ -76,6 +76,8 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.rotate",
             "pdf.compress",
             "pdf.to_image",
+            "pdf.watermark",
+            "pdf.page_numbers",
             "image.to_pdf",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]

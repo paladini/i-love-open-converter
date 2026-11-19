@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pymupdf
+from PIL import Image, ImageOps
 
 
 class InvalidPdfError(Exception):
@@ -52,6 +53,138 @@ def validate_page_ranges(value: str, page_count: int) -> list[tuple[int, int]]:
     return ranges
 
 
+def _rgb_color(value: str) -> tuple[float, float, float]:
+    normalized = value.lstrip("#")
+    return tuple(int(normalized[index : index + 2], 16) / 255 for index in (0, 2, 4))  # type: ignore[return-value]
+
+
+def _anchor_rect(
+    page: pymupdf.Page,
+    position: str,
+    width: float,
+    height: float,
+    margin: float,
+) -> tuple[pymupdf.Rect, int]:
+    rect = page.rect
+    horizontal, vertical = {
+        "top_left": ("left", "top"),
+        "top_center": ("center", "top"),
+        "top_right": ("right", "top"),
+        "center_left": ("left", "center"),
+        "center": ("center", "center"),
+        "center_right": ("right", "center"),
+        "bottom_left": ("left", "bottom"),
+        "bottom_center": ("center", "bottom"),
+        "bottom_right": ("right", "bottom"),
+    }[position]
+    x0 = (
+        rect.x0 + margin
+        if horizontal == "left"
+        else rect.x1 - margin - width
+        if horizontal == "right"
+        else rect.x0 + (rect.width - width) / 2
+    )
+    y0 = (
+        rect.y0 + margin
+        if vertical == "top"
+        else rect.y1 - margin - height
+        if vertical == "bottom"
+        else rect.y0 + (rect.height - height) / 2
+    )
+    return pymupdf.Rect(x0, y0, x0 + width, y0 + height), {"left": 0, "center": 1, "right": 2}[
+        horizontal
+    ]
+
+
+def _apply_text_watermark(document, options: dict[str, Any]) -> None:
+    color = _rgb_color(str(options["color"]))
+    font_size = int(options["font_size"])
+    for page in document:
+        box_width = page.rect.width * 0.9
+        box_height = page.rect.height * 0.7
+        box, alignment = _anchor_rect(
+            page, str(options["position"]), box_width, box_height, margin=24
+        )
+        written = page.insert_textbox(
+            box,
+            str(options["text"]),
+            fontname=str(options["font"]),
+            fontsize=font_size,
+            color=color,
+            fill_opacity=float(options["opacity"]),
+            align=alignment,
+            overlay=True,
+        )
+        if written < 0:
+            raise InvalidPdfError("Watermark text does not fit on the page")
+
+
+def _prepare_watermark_image(
+    source: Path, destination: Path, max_size: tuple[int, int], opacity: float
+) -> tuple[int, int]:
+    with Image.open(source) as opened:
+        image = ImageOps.exif_transpose(opened).convert("RGBA")
+        image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        alpha = image.getchannel("A").point(lambda value: round(value * opacity))
+        image.putalpha(alpha)
+        image.save(destination, format="PNG", optimize=True)
+        return image.size
+
+
+def _apply_image_watermark(
+    document,
+    image_source: Path,
+    output_dir: Path,
+    options: dict[str, Any],
+) -> None:
+    first_page = document[0]
+    max_size = (
+        max(1, round(first_page.rect.width * 0.24)),
+        max(1, round(first_page.rect.height * 0.2)),
+    )
+    image_path = output_dir / "watermark.png"
+    image_size = _prepare_watermark_image(
+        image_source, image_path, max_size, float(options["opacity"])
+    )
+    for page in document:
+        box, _ = _anchor_rect(page, str(options["position"]), *image_size, margin=24)
+        page.insert_image(box, filename=str(image_path), keep_proportion=True, overlay=True)
+
+
+def _page_number_text(number: int, total: int, format_name: str, language: str) -> str:
+    if format_name == "number":
+        return str(number)
+    if format_name == "number_total":
+        return f"{number} / {total}"
+    label = "Página" if language == "pt-BR" else "Page"
+    connector = "de" if language == "pt-BR" else "of"
+    return f"{label} {number} {connector} {total}"
+
+
+def _apply_page_numbers(document, options: dict[str, Any]) -> None:
+    position = str(options["position"])
+    horizontal = position.rsplit("_", 1)[1]
+    alignment = {"left": 0, "center": 1, "right": 2}[horizontal]
+    font_size = int(options["font_size"])
+    color = _rgb_color(str(options["color"]))
+    total = document.page_count
+    start = int(options["start"])
+    for index, page in enumerate(document):
+        text = _page_number_text(
+            index + start, total, str(options["format"]), str(options["language"])
+        )
+        box, _ = _anchor_rect(page, position, page.rect.width * 0.9, font_size * 1.8, margin=18)
+        page.insert_textbox(
+            box,
+            text,
+            fontname=str(options["font"]),
+            fontsize=font_size,
+            color=color,
+            align=alignment,
+            overlay=True,
+        )
+
+
 def process_pdf(
     operation: str,
     sources: list[tuple[Path, str]],
@@ -97,6 +230,39 @@ def process_pdf(
             output.save(destination, garbage=3, deflate=True, use_objstms=True)
         finally:
             output.close()
+        return [destination], "application/pdf"
+
+    if operation == "pdf.watermark":
+        pdf_sources = [(path, name) for path, name in sources if path.suffix.lower() == ".pdf"]
+        image_sources = [(path, name) for path, name in sources if path.suffix.lower() != ".pdf"]
+        if len(pdf_sources) != 1 or (options["kind"] == "image" and len(image_sources) != 1):
+            raise InvalidPdfError
+        if options["kind"] == "text" and image_sources:
+            raise InvalidPdfError
+        source, _ = pdf_sources[0]
+        document = _open_pdf(source)
+        try:
+            if options["kind"] == "text":
+                _apply_text_watermark(document, options)
+            else:
+                _apply_image_watermark(document, image_sources[0][0], output_dir, options)
+            destination = output_dir / "watermarked.pdf"
+            document.save(destination, garbage=3, deflate=True, use_objstms=True)
+        finally:
+            document.close()
+        return [destination], "application/pdf"
+
+    if operation == "pdf.page_numbers":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        source, _ = sources[0]
+        document = _open_pdf(source)
+        try:
+            _apply_page_numbers(document, options)
+            destination = output_dir / "numbered.pdf"
+            document.save(destination, garbage=3, deflate=True, use_objstms=True)
+        finally:
+            document.close()
         return [destination], "application/pdf"
 
     if len(sources) != 1:

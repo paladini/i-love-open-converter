@@ -1,0 +1,16 @@
+source: https://www.ilovepdf.com/pt/pdf_inserir_numeros_de_paginas
+viewport: 746x720
+title: Adicionar números de páginas em um arquivo PDF online
+header_brand: iLovePDF
+work_area:
+  heading: Inserir números de páginas a um PDF
+  description: Adicione números de página em documentos PDF facilmente. Escolha posição, dimensões, formato e tipografia!
+  initial_state:
+    - Prominent red button: Selecionar arquivo PDF
+    - Google Drive and Dropbox import buttons
+    - Drag-and-drop hint: ou arraste e solte o PDF aqui
+  footer: © iLovePDF 2026 ® - Seu Editor de PDF
+source_departures:
+  - Keep the heading, description, upload-first step, centered primary action and drag-and-drop hint.
+  - Use local file input only; omit Google Drive and Dropbox.
+  - Use I Love Open Converter branding.

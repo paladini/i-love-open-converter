@@ -2,18 +2,20 @@ const messages = {
   "pt-BR": {
     localBadge: "100% local", languageLabel: "Idioma", brandHome: "I Love Open Converter — início",
     removeFile: "Remover arquivos", moveUp: "Mover para cima", moveDown: "Mover para baixo", privacyLabel: "Privacidade e software livre", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
-    heroTitle: 'Converta do seu jeito.<br><span>Fica tudo com você.</span>',
+    heroTitle: 'Ferramentas online para PDFs e imagens.<br><span>Gratuitas e no seu servidor.</span>',
     heroDescription: "Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.",
     metaOpen: "Open-source", metaPrivate: "Arquivos permanecem locais", metaFree: "Gratuito para self-host",
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
-    imageGroup: "Imagens", imageCount: "04 disponíveis", pdfGroup: "PDF", pdfCount: "06 disponíveis",
+    categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
+    categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
+    imageGroup: "Imagens", imageCount: "13 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
-    pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "Imagens para PDF",
-    imageToPdfHint: "Página A4 para cada imagem", rangesLabel: "Intervalos (ex.: 1-3,5)",
+    pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
+    imageToPdfHint: "Uma página para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -40,18 +42,20 @@ const messages = {
   en: {
     localBadge: "100% local", languageLabel: "Language", brandHome: "I Love Open Converter — home",
     removeFile: "Remove files", moveUp: "Move up", moveDown: "Move down", privacyLabel: "Privacy and open-source software", heroEyebrow: "YOUR FILES, YOUR RULES",
-    heroTitle: 'Convert your way.<br><span>It all stays with you.</span>',
+    heroTitle: 'Online tools for PDF and images.<br><span>Free and on your server.</span>',
     heroDescription: "Practical tools for your files, running on your own server. No ads. No sending documents to the cloud.",
     metaOpen: "Open source", metaPrivate: "Files stay on your server", metaFree: "Free to self-host",
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
-    imageGroup: "Images", imageCount: "04 available", pdfGroup: "PDF", pdfCount: "06 available",
+    categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
+    categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
+    imageGroup: "Images", imageCount: "13 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
-    pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "Images to PDF",
-    imageToPdfHint: "One A4 page per image", rangesLabel: "Page ranges (e.g. 1-3,5)",
+    pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
+    imageToPdfHint: "One page for each image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -112,6 +116,9 @@ function applyLanguage(language) {
   document.documentElement.lang = currentLanguage;
   languageSelect.value = currentLanguage;
   localStorage.setItem("i-love-open-converter-language", currentLanguage);
+  document.querySelectorAll("[data-pt][data-en]").forEach((element) => {
+    element.textContent = currentLanguage === "en" ? element.dataset.en : element.dataset.pt;
+  });
   document.querySelectorAll("[data-i18n]").forEach((element) => {
     let value = messages[currentLanguage][element.dataset.i18n];
     if (value === undefined) return;
@@ -193,6 +200,42 @@ function selectTool(operation) {
   fileInput.value = "";
   showFiles([]);
 }
+
+const categoryOperations = {
+  workflows: [],
+  organize: ["pdf.merge", "pdf.split", "pdf.rotate"],
+  optimize: ["pdf.compress", "image.compress"],
+  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.resize", "image.rotate"],
+  edit: ["pdf.watermark", "pdf.page_numbers"],
+  security: [],
+  intelligence: [],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf"],
+  "img-optimize": ["image.resize", "image.compress", "image.rotate"],
+  "img-create": [],
+  "img-edit": [],
+  "img-convert": ["image.convert"],
+  "img-security": [],
+};
+document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
+  document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
+  const category = chip.dataset.category;
+  document.querySelectorAll(".tool-group").forEach((group) => {
+    let shown = 0;
+    group.querySelectorAll(".tool-card").forEach((card) => {
+      const operation = card.dataset.tool || ((card.getAttribute("href") || "").includes("watermark") ? "pdf.watermark" : "pdf.page_numbers");
+      const declared = card.dataset.catalogCategory;
+      const visible = category === "all" ||
+        (category === "images" && declared?.startsWith("img-")) ||
+        (declared ? declared === category : (categoryOperations[category] || []).includes(operation));
+      card.hidden = !visible;
+      if (visible) shown += 1;
+    });
+    group.hidden = shown === 0;
+  });
+  document.querySelector("#empty-category").hidden = category === "all" ||
+    Boolean(document.querySelector(".tool-card:not([hidden])"));
+}));
+document.querySelectorAll("[data-catalog-order]").forEach((card) => { card.style.order = card.dataset.catalogOrder; });
 
 function formatBytes(size) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
