@@ -6,6 +6,7 @@ const messages = {
     heroDescription: "Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.",
     metaOpen: "Open-source", metaPrivate: "Arquivos permanecem locais", metaFree: "Gratuito para self-host",
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
+    categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     imageGroup: "Imagens", imageCount: "04 disponíveis", pdfGroup: "PDF", pdfCount: "06 disponíveis",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
@@ -13,7 +14,7 @@ const messages = {
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "Imagens para PDF",
-    imageToPdfHint: "Página A4 para cada imagem", rangesLabel: "Intervalos (ex.: 1-3,5)",
+    imageToPdfHint: "Página A4 para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -44,6 +45,7 @@ const messages = {
     heroDescription: "Practical tools for your files, running on your own server. No ads. No sending documents to the cloud.",
     metaOpen: "Open source", metaPrivate: "Files stay on your server", metaFree: "Free to self-host",
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
+    categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     imageGroup: "Images", imageCount: "04 available", pdfGroup: "PDF", pdfCount: "06 available",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
@@ -51,7 +53,7 @@ const messages = {
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "Images to PDF",
-    imageToPdfHint: "One A4 page per image", rangesLabel: "Page ranges (e.g. 1-3,5)",
+    imageToPdfHint: "One A4 page per image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -193,6 +195,32 @@ function selectTool(operation) {
   fileInput.value = "";
   showFiles([]);
 }
+
+const categoryOperations = {
+  organize: ["pdf.merge", "pdf.split", "pdf.rotate"],
+  optimize: ["pdf.compress", "image.compress"],
+  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.resize", "image.rotate"],
+  edit: ["pdf.watermark", "pdf.page_numbers"],
+  security: [],
+  intelligence: [],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate"],
+};
+document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
+  document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
+  const category = chip.dataset.category;
+  document.querySelectorAll(".tool-group").forEach((group) => {
+    let shown = 0;
+    group.querySelectorAll(".tool-card").forEach((card) => {
+      const operation = card.dataset.tool || (card.getAttribute("href") || "").includes("watermark") ? card.dataset.tool || "pdf.watermark" : "pdf.page_numbers";
+      const visible = category === "all" || (categoryOperations[category] || []).includes(operation);
+      card.hidden = !visible;
+      if (visible) shown += 1;
+    });
+    group.hidden = shown === 0;
+  });
+  document.querySelector("#empty-category").hidden = category === "all" ||
+    (categoryOperations[category] || []).length > 0;
+}));
 
 function formatBytes(size) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;

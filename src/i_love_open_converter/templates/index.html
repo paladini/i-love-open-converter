@@ -56,11 +56,22 @@
           <div><p class="eyebrow muted" data-i18n="toolsEyebrow">A CAIXA DE FERRAMENTAS</p><h2 id="tools-title" data-i18n="toolsTitle">O que vamos transformar?</h2></div>
           <p class="section-note" data-i18n="toolsNote">Escolha uma ferramenta para começar</p>
         </div>
+        <nav class="category-chips" aria-label="Categorias de ferramentas" data-i18n-aria="categoryLabel">
+          <button type="button" class="category-chip active" data-category="all" data-i18n="categoryAll">Todas</button>
+          <button type="button" class="category-chip" data-category="organize" data-i18n="categoryOrganize">Organizar PDF</button>
+          <button type="button" class="category-chip" data-category="optimize" data-i18n="categoryOptimize">Otimizar PDF</button>
+          <button type="button" class="category-chip" data-category="convert" data-i18n="categoryConvert">Converter PDF</button>
+          <button type="button" class="category-chip" data-category="edit" data-i18n="categoryEdit">Editar PDF</button>
+          <button type="button" class="category-chip" data-category="security" data-i18n="categorySecurity">Segurança PDF</button>
+          <button type="button" class="category-chip" data-category="intelligence" data-i18n="categoryIntelligence">PDF Intelligence</button>
+          <button type="button" class="category-chip" data-category="images" data-i18n="imageGroup">Imagens</button>
+        </nav>
+        <p id="empty-category" class="empty-category" data-i18n="categoryComingSoon" hidden>Esta categoria será incluída em uma próxima etapa.</p>
 
         <section class="tool-group" aria-labelledby="image-tools-heading">
           <div class="group-title"><span class="group-icon image-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-4 3.2 2.7 2.3-2 4 3.3"/></svg></span><h3 id="image-tools-heading" data-i18n="imageGroup">Imagens</h3><span class="tool-count" data-i18n="imageCount">01 disponível</span></div>
           <div class="tool-grid">
-            <button class="tool-card active" type="button" data-tool="image.convert" aria-describedby="convert-hint">
+            <button class="tool-card active" type="button" data-tool="image.convert" data-category="images" aria-describedby="convert-hint">
               <span class="tool-icon icon-lilac"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 4.5h9l5 5V23H7z"/><path d="M16 4.5v5h5M10 14h8M10 18h5"/><path d="m18.8 17.4 2.1 2.1 3.5-4" class="icon-check"/></svg></span>
               <span class="tool-card-copy"><strong data-i18n="convertTitle">Converter imagem</strong><small id="convert-hint" data-i18n="convertHint">PNG, JPG, WebP e mais</small></span>
               <span class="tool-card-arrow" aria-hidden="true">↗</span>
@@ -80,6 +91,8 @@
             <button class="tool-card" type="button" data-tool="pdf.compress"><span class="tool-icon icon-mint"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="m7 19 5-10 3 6 2-3 4 7H7Z"/><path d="M6 6h16M6 23h16"/></svg></span><span class="tool-card-copy"><strong data-i18n="compressPdfTitle">Comprimir PDF</strong><small data-i18n="compressPdfHint">Otimização local sem perdas</small></span></button>
             <button class="tool-card" type="button" data-tool="pdf.to_image"><span class="tool-icon icon-lilac"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 4h9l5 5v15H7zM10 18l3-3 3 2 2-2 3 3"/></svg></span><span class="tool-card-copy"><strong data-i18n="pdfToImageTitle">PDF para JPG</strong><small data-i18n="pdfToImageHint">Uma imagem por página</small></span></button>
             <button class="tool-card" type="button" data-tool="image.to_pdf"><span class="tool-icon icon-peach"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 6h7v7H5zM16 6h7v7h-7zM5 17h7v7H5zM16 17h7v7h-7z"/></svg></span><span class="tool-card-copy"><strong data-i18n="imageToPdfTitle">Imagens para PDF</strong><small data-i18n="imageToPdfHint">Página A4 para cada imagem</small></span></button>
+            <a class="tool-card" href="/tools/pdf-watermark"><span class="tool-icon icon-rose">Aa</span><span class="tool-card-copy"><strong data-i18n="watermarkTitle">Marca d’água</strong><small data-i18n="watermarkHint">Texto ou imagem em cada página</small></span><span class="tool-card-arrow" aria-hidden="true">↗</span></a>
+            <a class="tool-card" href="/tools/pdf-page-numbers"><span class="tool-icon icon-yellow">#</span><span class="tool-card-copy"><strong data-i18n="pageNumbersTitle">Números de página</strong><small data-i18n="pageNumbersHint">Adicione números ao seu PDF</small></span><span class="tool-card-arrow" aria-hidden="true">↗</span></a>
           </div>
         </section>
       </section>

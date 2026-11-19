@@ -1,0 +1,16 @@
+source: https://www.ilovepdf.com/pt/pdf_inserir_marca_daigua
+viewport: 746x720
+title: Inserir uma marca d'água a um PDF. Inserir um texto ou imagem em um PDF
+header_brand: iLovePDF
+work_area:
+  heading: Inserir marca d'água em um PDF
+  description: Escolha uma imagem ou texto para inserir sobre o seu PDF. Selecione a posição, transparência e tipografia.
+  initial_state:
+    - Prominent red button: Selecionar arquivo PDF
+    - Google Drive and Dropbox import buttons
+    - Drag-and-drop hint: ou arraste e solte o PDF aqui
+  footer: © iLovePDF 2026 ® - Seu Editor de PDF
+source_departures:
+  - Keep the heading, description, upload-first step, centered primary action and drag-and-drop hint.
+  - Use local file input only; omit Google Drive and Dropbox.
+  - Use I Love Open Converter branding.

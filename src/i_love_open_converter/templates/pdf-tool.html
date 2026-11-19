@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f8f8f5">
+    <title>{% if tool == 'watermark' %}Marca d’água{% else %}Números de página{% endif %} · I Love Open Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
+    <script defer src="{{ url_for('static', path='/js/pdf-tool.js') }}"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="I Love Open Converter — início"><span class="brand-mark" aria-hidden="true">✓</span><span class="brand-name">I Love <strong>Open Converter</strong></span></a>
+      <div class="header-actions"><span class="privacy-badge"><span class="status-dot"></span>100% local</span><label class="language-picker"><span class="sr-only">Idioma</span><select id="language" aria-label="Idioma"><option value="pt-BR">PT</option><option value="en">EN</option></select></label></div>
+    </header>
+    <main class="pdf-tool" data-tool="{{ tool }}" data-max-file-mb="{{ max_file_size_mb }}">
+      <nav class="breadcrumbs"><a href="/" data-pt="Todas as ferramentas" data-en="All tools">Todas as ferramentas</a><span aria-hidden="true">›</span><span>PDF</span></nav>
+      <section class="pdf-tool-heading"><span class="pdf-tool-icon" aria-hidden="true">PDF</span><h1 id="tool-title" data-watermark-pt="Marca d’água" data-watermark-en="Watermark" data-page-numbers-pt="Números de página" data-page-numbers-en="Page numbers">Marca d’água</h1><p id="tool-description" data-watermark-pt="Adicione uma marca d’água de texto ou imagem em todas as páginas do seu PDF." data-watermark-en="Add a text or image watermark to every page of your PDF." data-page-numbers-pt="Adicione números em todas as páginas do seu PDF e escolha a posição e o formato." data-page-numbers-en="Add page numbers throughout your PDF and choose their position and format.">Adicione uma marca d’água de texto ou imagem em todas as páginas do seu PDF.</p></section>
+      <form id="pdf-tool-form" class="pdf-tool-card">
+        <section id="upload-step" class="upload-step">
+          <label class="pdf-upload" for="pdf-file"><span class="large-upload-icon" aria-hidden="true">↑</span><strong id="upload-title">Selecionar arquivo PDF</strong><span id="upload-note">ou arraste o arquivo PDF até aqui</span><small>PDF · até {{ max_file_size_mb }} MB</small><input id="pdf-file" type="file" accept="application/pdf,.pdf" required></label>
+          <p id="pdf-file-name" class="picked-file" hidden></p>
+          <button id="continue-button" class="primary-button" type="button" disabled>Continuar</button>
+        </section>
+        <section id="options-step" class="pdf-options" hidden>
+          {% if tool == 'watermark' %}
+          <div class="mode-switch" role="group" aria-label="Tipo de marca d’água"><button type="button" class="mode-button active" data-kind="text">Texto</button><button type="button" class="mode-button" data-kind="image">Imagem</button></div>
+          <div id="text-options" class="option-grid"><label class="wide-field"><span data-pt="Texto da marca d’água" data-en="Watermark text">Texto da marca d’água</span><input id="watermark-text" maxlength="500" required value="CONFIDENCIAL"></label><label><span data-pt="Fonte" data-en="Font">Fonte</span><select id="font"><option value="helv">Helvetica</option><option value="tiro">Times</option><option value="cour">Courier</option></select></label><label><span data-pt="Tamanho" data-en="Size">Tamanho</span><input id="font-size" type="number" min="8" max="72" value="24"></label><label><span data-pt="Cor" data-en="Color">Cor</span><input id="color" type="color" value="#808080"></label></div>
+          <label id="watermark-image-field" class="image-upload-option" hidden><span data-pt="Imagem da marca d’água (PNG, JPG ou WebP)" data-en="Watermark image (PNG, JPG, or WebP)">Imagem da marca d’água (PNG, JPG ou WebP)</span><input id="watermark-image" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"></label>
+          <div id="image-picked" class="image-picked" hidden><span id="image-picked-name"></span><button id="remove-watermark-image" class="secondary-button" type="button" data-pt="Remover imagem" data-en="Remove image">Remover imagem</button></div>
+          <div class="option-grid common-options"><label><span data-pt="Posição" data-en="Position">Posição</span><select id="position"><option value="center">Centro</option><option value="top_left">Superior esquerdo</option><option value="top_center">Superior central</option><option value="top_right">Superior direito</option><option value="center_left">Centro esquerdo</option><option value="center_right">Centro direito</option><option value="bottom_left">Inferior esquerdo</option><option value="bottom_center">Inferior central</option><option value="bottom_right">Inferior direito</option></select></label><label><span data-pt="Opacidade" data-en="Opacity">Opacidade</span><input id="opacity" type="range" min="0.1" max="1" step="0.1" value="0.3"><output id="opacity-value">30%</output></label></div>
+          {% else %}
+          <div class="option-grid"><label><span data-pt="Posição" data-en="Position">Posição</span><select id="position"><option value="bottom_center">Inferior central</option><option value="bottom_left">Inferior esquerdo</option><option value="bottom_right">Inferior direito</option><option value="top_left">Superior esquerdo</option><option value="top_center">Superior central</option><option value="top_right">Superior direito</option></select></label><label><span data-pt="Formato" data-en="Format">Formato</span><select id="number-format"><option value="number">1</option><option value="number_total">1 / total</option><option value="page_number_total">Página 1 de total</option></select></label><label><span data-pt="Número inicial" data-en="Starting number">Número inicial</span><input id="start" type="number" min="1" max="999999" value="1"></label><label><span data-pt="Fonte" data-en="Font">Fonte</span><select id="font"><option value="helv">Helvetica</option><option value="tiro">Times</option><option value="cour">Courier</option></select></label><label><span data-pt="Tamanho" data-en="Size">Tamanho</span><input id="font-size" type="number" min="8" max="48" value="12"></label><label><span data-pt="Cor" data-en="Color">Cor</span><input id="color" type="color" value="#000000"></label></div>
+          {% endif %}
+          <p id="selected-pdf" class="picked-file"></p>
+          <p id="form-error" class="form-error" role="alert" hidden></p>
+          <div class="pdf-actions"><button id="back-button" class="secondary-button" type="button" data-pt="Trocar arquivo" data-en="Change file">Trocar arquivo</button><button id="submit-button" class="primary-button" type="submit">{% if tool == 'watermark' %}Adicionar marca d’água{% else %}Numerar páginas{% endif %}</button></div>
+          <div id="job-status" class="job-status pdf-job-status" role="status" aria-live="polite" hidden><p id="job-message"></p><a id="download-link" class="download-button" hidden href="#">Baixar PDF</a></div>
+        </section>
+      </form>
+      <p class="local-note tool-local-note">Seus arquivos são processados no servidor que você controla.</p>
+    </main>
+    <footer class="site-footer"><span>© I Love Open Converter</span><span>Seu espaço. Seus arquivos. Sem complicação.</span><span class="footer-license">AGPL-3.0</span></footer>
+  </body>
+</html>

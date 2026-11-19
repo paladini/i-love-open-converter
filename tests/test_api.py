@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
@@ -31,6 +32,18 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert "PDF" in response.text
     assert "image.convert" in response.text
     assert "https://" not in response.text
+
+
+def test_pdf_markup_tools_open_with_upload_first_screens(settings):
+    with TestClient(create_app(settings)) as client:
+        watermark = client.get("/tools/pdf-watermark")
+        numbers = client.get("/tools/pdf-page-numbers")
+
+    assert watermark.status_code == numbers.status_code == 200
+    for response in (watermark, numbers):
+        assert 'id="upload-step"' in response.text
+        assert 'id="options-step" class="pdf-options" hidden' in response.text
+        assert 'type="file" accept="application/pdf,.pdf"' in response.text
 
 
 def test_convert_job_moves_from_queued_to_downloadable(settings, jpeg_bytes):
@@ -289,6 +302,17 @@ def test_pdf_range_validation_rotation_and_pdf_to_jpg(settings, pdf_bytes):
         assert invalid.status_code == 422
         assert invalid.json()["error"]["code"] == "invalid_options"
 
+        duplicate_pdfs = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.watermark", "options": '{"kind":"image"}'},
+            files=[
+                ("files", ("one.pdf", pdf_bytes, "application/pdf")),
+                ("files", ("two.pdf", pdf_bytes, "application/pdf")),
+            ],
+        )
+        assert duplicate_pdfs.status_code == 422
+        assert duplicate_pdfs.json()["error"]["code"] == "too_many_files"
+
         overlapping = client.post(
             "/api/jobs",
             data={"operation": "pdf.split", "options": '{"ranges":"1-2,2"}'},
@@ -367,6 +391,105 @@ def test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected(settings, jpeg_
         )
         assert invalid.status_code == 422
         assert invalid.json()["error"]["code"] == "invalid_file"
+
+
+def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        watermarked = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.watermark",
+                "options": json.dumps(
+                    {
+                        "kind": "text",
+                        "text": "CONFIDENTIAL",
+                        "position": "center",
+                        "opacity": 0.4,
+                        "font": "helv",
+                        "font_size": 24,
+                        "color": "#808080",
+                    }
+                ),
+            },
+            files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert watermarked.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(watermarked.json()["status_url"])
+        assert status.json()["state"] == "succeeded", status.json()
+        watermarked_pdf = client.get(f"/api/jobs/{watermarked.json()['job_id']}/download")
+        with pymupdf.open(stream=watermarked_pdf.content, filetype="pdf") as document:
+            assert document.page_count == 2
+            assert all("CONFIDENTIAL" in page.get_text() for page in document)
+
+        numbered = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.page_numbers",
+                "options": json.dumps(
+                    {
+                        "position": "bottom_right",
+                        "format": "page_number_total",
+                        "start": 5,
+                        "font": "helv",
+                        "font_size": 12,
+                        "color": "#000000",
+                        "language": "en",
+                    }
+                ),
+            },
+            files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert numbered.status_code == 202
+        assert process_one_job(settings)
+        numbered_pdf = client.get(f"/api/jobs/{numbered.json()['job_id']}/download")
+        with pymupdf.open(stream=numbered_pdf.content, filetype="pdf") as document:
+            extracted = [page.get_text() for page in document]
+            assert all(
+                f"Test page {index}" in text for index, text in enumerate(extracted, start=1)
+            )
+            normalized = [" ".join(text.split()) for text in extracted]
+            assert all(f"Page {index + 5} of 2" in text for index, text in enumerate(normalized))
+
+
+def test_pdf_image_watermark_preserves_page_count_and_rejects_invalid_options(settings, pdf_bytes):
+    watermark_buffer = BytesIO()
+    Image.new("RGBA", (12, 8), (240, 40, 60, 180)).save(watermark_buffer, format="PNG")
+    with TestClient(create_app(settings)) as client:
+        watermarked = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.watermark",
+                "options": json.dumps(
+                    {
+                        "kind": "image",
+                        "position": "bottom_right",
+                        "opacity": 0.5,
+                    }
+                ),
+            },
+            files=[
+                ("files", ("document.pdf", pdf_bytes, "application/pdf")),
+                ("files", ("stamp.png", watermark_buffer.getvalue(), "image/png")),
+            ],
+        )
+        assert watermarked.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(f"/api/jobs/{watermarked.json()['job_id']}/download")
+        with pymupdf.open(stream=output.content, filetype="pdf") as document:
+            assert document.page_count == 2
+            assert all(page.get_images() for page in document)
+
+        invalid = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.page_numbers",
+                "options": '{"color":"red"}',
+            },
+            files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "invalid_options"
 
 
 def test_interrupted_processing_job_is_requeued_and_partial_output_removed(settings, jpeg_bytes):

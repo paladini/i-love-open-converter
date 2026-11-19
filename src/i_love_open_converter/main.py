@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import re
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -180,6 +181,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {"request": request, "max_file_size_mb": settings.max_file_size_mb},
         )
 
+    @app.get("/tools/pdf-watermark", include_in_schema=False)
+    async def pdf_watermark(request: Request):
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pdf-tool.html",
+            {
+                "request": request,
+                "tool": "watermark",
+                "max_file_size_mb": settings.max_file_size_mb,
+            },
+        )
+
+    @app.get("/tools/pdf-page-numbers", include_in_schema=False)
+    async def pdf_page_numbers(request: Request):
+        return TEMPLATES.TemplateResponse(
+            request,
+            "pdf-tool.html",
+            {
+                "request": request,
+                "tool": "page-numbers",
+                "max_file_size_mb": settings.max_file_size_mb,
+            },
+        )
+
     @app.get("/healthz")
     async def health() -> dict[str, str]:
         try:
@@ -232,6 +257,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.rotate",
             "pdf.compress",
             "pdf.to_image",
+            "pdf.watermark",
+            "pdf.page_numbers",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -297,7 +324,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "Selecione de 2 a 10 PDFs."}
                 },
             )
-        single_pdf_operations = {"pdf.split", "pdf.rotate", "pdf.compress", "pdf.to_image"}
+        single_pdf_operations = {
+            "pdf.split",
+            "pdf.rotate",
+            "pdf.compress",
+            "pdf.to_image",
+            "pdf.page_numbers",
+        }
         if operation in single_pdf_operations and len(files) != 1:
             raise HTTPException(
                 status_code=422,
@@ -314,6 +347,210 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         validated_options: dict[str, Any] = {}
+        watermark_kind: str | None = None
+        if operation == "pdf.watermark":
+            watermark_kind = parsed_options.get("kind")
+            if watermark_kind not in {"text", "image"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Escolha uma marca d'água de texto ou imagem.",
+                        }
+                    },
+                )
+            expected_files = 2 if watermark_kind == "image" else 1
+            if len(files) > expected_files:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "too_many_files",
+                            "message": "A quantidade de arquivos excede o limite.",
+                        }
+                    },
+                )
+            if len(files) != expected_files:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Selecione o PDF e a imagem de marca d'água.",
+                        }
+                    },
+                )
+            if watermark_kind == "image":
+                extensions = [
+                    Path(safe_filename(item.filename or "arquivo")).suffix.lower() for item in files
+                ]
+                if (
+                    extensions.count(".pdf") > 1
+                    or sum(ext in {".png", ".jpg", ".jpeg", ".webp"} for ext in extensions) > 1
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "error": {
+                                "code": "too_many_files",
+                                "message": "Envie um PDF e uma imagem de marca d'água.",
+                            }
+                        },
+                    )
+                if (
+                    extensions.count(".pdf") != 1
+                    or sum(ext in {".png", ".jpg", ".jpeg", ".webp"} for ext in extensions) != 1
+                ):
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Envie um PDF e uma imagem PNG, JPG ou WebP.",
+                            }
+                        },
+                    )
+
+            position = parsed_options.get("position", "center")
+            valid_positions = {
+                "top_left",
+                "top_center",
+                "top_right",
+                "center_left",
+                "center",
+                "center_right",
+                "bottom_left",
+                "bottom_center",
+                "bottom_right",
+            }
+            if position not in valid_positions:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Posição inválida."}},
+                )
+            raw_opacity = parsed_options.get("opacity", 0.3)
+            try:
+                opacity = float(raw_opacity)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Opacidade inválida."}},
+                ) from exc
+            if isinstance(raw_opacity, bool) or not 0.1 <= opacity <= 1.0:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Opacidade inválida."}},
+                )
+            validated_options.update(kind=watermark_kind, position=position, opacity=opacity)
+            if watermark_kind == "text":
+                text = parsed_options.get("text")
+                font = parsed_options.get("font", "helv")
+                font_size = parsed_options.get("font_size", 24)
+                color = parsed_options.get("color", "#808080")
+                if not isinstance(text, str) or not text.strip() or len(text) > 500:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Texto inválido."}},
+                    )
+                if font not in {"helv", "tiro", "cour"}:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Fonte inválida."}},
+                    )
+                if (
+                    isinstance(font_size, bool)
+                    or not str(font_size).isdigit()
+                    or not 8 <= int(font_size) <= 72
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "error": {
+                                "code": "invalid_options",
+                                "message": "Tamanho de fonte inválido.",
+                            }
+                        },
+                    )
+                if not isinstance(color, str) or re.fullmatch(r"#[0-9a-fA-F]{6}", color) is None:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Cor inválida."}},
+                    )
+                validated_options.update(
+                    text=text.strip(), font=font, font_size=int(font_size), color=color
+                )
+
+        if operation == "pdf.page_numbers":
+            position = parsed_options.get("position", "bottom_center")
+            format_name = parsed_options.get("format", "number")
+            start = parsed_options.get("start", 1)
+            font = parsed_options.get("font", "helv")
+            font_size = parsed_options.get("font_size", 12)
+            color = parsed_options.get("color", "#000000")
+            language = parsed_options.get("language", "pt-BR")
+            if position not in {
+                "top_left",
+                "top_center",
+                "top_right",
+                "bottom_left",
+                "bottom_center",
+                "bottom_right",
+            }:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Posição inválida."}},
+                )
+            if format_name not in {"number", "number_total", "page_number_total"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Formato inválido."}},
+                )
+            if isinstance(start, bool) or not str(start).isdigit() or not 1 <= int(start) <= 999999:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Número inicial inválido."}
+                    },
+                )
+            if font not in {"helv", "tiro", "cour"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Fonte inválida."}},
+                )
+            if (
+                isinstance(font_size, bool)
+                or not str(font_size).isdigit()
+                or not 8 <= int(font_size) <= 48
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Tamanho de fonte inválido.",
+                        }
+                    },
+                )
+            if not isinstance(color, str) or re.fullmatch(r"#[0-9a-fA-F]{6}", color) is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Cor inválida."}},
+                )
+            if language not in {"pt-BR", "en"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Idioma inválido."}},
+                )
+            validated_options.update(
+                position=position,
+                format=format_name,
+                start=int(start),
+                font=font,
+                font_size=int(font_size),
+                color=color,
+                language=language,
+            )
         output_format = "PNG"
         if operation in image_operations:
             output_format = str(parsed_options.get("format", "PNG")).upper()
@@ -417,7 +654,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
                 is_pdf_operation = operation.startswith("pdf.")
-                if is_pdf_operation and extension != ".pdf":
+                is_watermark_image = (
+                    operation == "pdf.watermark"
+                    and watermark_kind == "image"
+                    and extension in {".png", ".jpg", ".jpeg", ".webp"}
+                )
+                if is_pdf_operation and extension != ".pdf" and not is_watermark_image:
                     raise HTTPException(
                         status_code=415,
                         detail={
@@ -468,7 +710,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 },
                             )
                         target.write(chunk)
-                if is_pdf_operation:
+                if is_pdf_operation and not is_watermark_image:
                     try:
                         page_count = inspect_pdf(destination)
                         content_type = "application/pdf"
@@ -518,7 +760,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 }
                             },
                         ) from exc
-                    if image_format not in INPUT_FORMATS:
+                    if image_format not in INPUT_FORMATS or (
+                        is_watermark_image and image_format not in {"PNG", "JPEG", "WEBP"}
+                    ):
                         raise HTTPException(
                             status_code=415,
                             detail={
