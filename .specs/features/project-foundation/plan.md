@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-19 - user: "sim porra, só vai. Não fica perguntandpo toda hora, eu só quero que vc faça uma cópia do ILovePDF e ILoveIMG Caralho"
 **Settled mid-build:** user delegated sequencing and scope coverage: "Você decide; cubra o objetivo completo por etapas".
-**Review:** not sent
-**Fix pass:** not started
+**Review:** sent at 761e1d3
+**Fix pass:** done - restored the full 31-PDF/13-image catalog with future tools marked “Em breve”, added workflow/image category filters, centered the home hero, matched the captured PDF tool headings, made “Remover arquivo” clear selections, and expanded PDF output and option-validation tests.
 
 ## Problem
 
@@ -98,7 +98,7 @@ A visitor adds a text or image watermark to every page and downloads the resulti
 
 **Acceptance Criteria**
 
-1. WHEN a visitor opens `/` THEN the system SHALL show the combined PDF/image tool catalog using the reference's centered hero, category chips and card grid; PDF and image cards SHALL be grouped and ordered as recorded in `captures/ilovepdf-home.aria.yml` and `captures/iloveimg-home.aria.yml`.
+1. WHEN a visitor opens `/` THEN the system SHALL show the combined PDF/image tool catalog using the reference's centered hero, category chips and card grid; PDF and image cards SHALL be grouped and ordered as recorded in `captures/ilovepdf-home.aria.yml` and `captures/iloveimg-home.aria.yml`; operations deferred to later roadmap stages SHALL remain visible as disabled cards labeled “Em breve” / “Coming soon” (AD-007).
 2. WHEN the visitor selects the `Marca d'água` card THEN the system SHALL navigate to `/tools/pdf-watermark` and show the reference's upload-first flow recorded in `captures/ilovepdf-watermark.aria.yml`; the initial page SHALL not show the watermark editor until a PDF is selected.
 3. WHEN the visitor selects text mode after choosing a PDF THEN the UI SHALL show a required text field, font choices Helvetica/Times/Courier, font size 8–72 pt (default 24), color (default `#808080`), opacity 0.1–1.0 (default 0.3), and nine position choices; choosing a control SHALL update the displayed selected value.
 4. WHEN the visitor selects image mode after choosing a PDF THEN the UI SHALL show one image upload control accepting PNG/JPEG/WebP, opacity 0.1–1.0 (default 0.3), and nine position choices; selecting an image SHALL show its filename and allow replacing or removing it.

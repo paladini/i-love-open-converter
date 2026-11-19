@@ -83,9 +83,17 @@ continueButton.addEventListener("click", () => {
   optionsStep.hidden = false;
 });
 document.querySelector("#back-button").addEventListener("click", () => {
+  pdfInput.value = "";
+  if (imageInput) imageInput.value = "";
+  fileName.textContent = "";
+  fileName.hidden = true;
+  continueButton.disabled = true;
+  if (imageInput) document.querySelector("#image-picked").hidden = true;
+  status.hidden = true;
+  downloadLink.hidden = true;
+  document.querySelector("#submit-button").disabled = false;
   uploadStep.hidden = false;
   optionsStep.hidden = true;
-  status.hidden = true;
   clearInterval(timer);
 });
 if (isWatermark) {

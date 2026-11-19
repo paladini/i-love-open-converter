@@ -7,6 +7,7 @@ from io import BytesIO
 from zipfile import ZipFile
 
 import pymupdf
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -32,6 +33,12 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert "PDF" in response.text
     assert "image.convert" in response.text
     assert "https://" not in response.text
+    assert response.text.count('class="tool-card"') + response.text.count('class="tool-card ') == 44
+    assert "Fluxos de trabalho" in response.text
+    assert "PDF para Markdown" in response.text
+    assert "Desfocar cara" in response.text
+    assert 'data-category="workflows"' in response.text
+    assert 'data-category="img-optimize"' in response.text
 
 
 def test_pdf_markup_tools_open_with_upload_first_screens(settings):
@@ -44,6 +51,9 @@ def test_pdf_markup_tools_open_with_upload_first_screens(settings):
         assert 'id="upload-step"' in response.text
         assert 'id="options-step" class="pdf-options" hidden' in response.text
         assert 'type="file" accept="application/pdf,.pdf"' in response.text
+        assert 'data-pt="Remover arquivo"' in response.text
+    assert "Inserir marca d'água em um PDF" in watermark.text
+    assert "Inserir números de páginas a um PDF" in numbers.text
 
 
 def test_convert_job_moves_from_queued_to_downloadable(settings, jpeg_bytes):
@@ -394,6 +404,8 @@ def test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected(settings, jpeg_
 
 
 def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_bytes):
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as source_document:
+        original_sizes = [page.rect for page in source_document]
     with TestClient(create_app(settings)) as client:
         watermarked = client.post(
             "/api/jobs",
@@ -421,6 +433,27 @@ def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_b
         with pymupdf.open(stream=watermarked_pdf.content, filetype="pdf") as document:
             assert document.page_count == 2
             assert all("CONFIDENTIAL" in page.get_text() for page in document)
+            assert all(
+                f"Test page {index}" in page.get_text() for index, page in enumerate(document, 1)
+            )
+            assert [page.rect for page in document] == original_sizes
+            for page in document:
+                blocks = page.get_text("dict")["blocks"]
+                spans = [
+                    span
+                    for block in blocks
+                    for line in block.get("lines", [])
+                    for span in line["spans"]
+                ]
+                watermark = next(span for span in spans if "CONFIDENTIAL" in span["text"])
+                assert watermark["font"] == "Helvetica"
+                assert watermark["size"] == pytest.approx(24)
+                assert watermark["color"] == int("808080", 16)
+                x0, y0, x1, y1 = watermark["bbox"]
+                assert (x0 + x1) / 2 == pytest.approx(page.rect.width / 2, abs=12)
+                assert (y0 + y1) / 2 == pytest.approx(page.rect.height / 2, abs=30)
+                trace = page.get_texttrace()
+                assert any(item.get("opacity") == pytest.approx(0.4) for item in trace)
 
         numbered = client.post(
             "/api/jobs",
@@ -452,6 +485,61 @@ def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_b
             assert all(f"Page {index + 5} of 2" in text for index, text in enumerate(normalized))
 
 
+def test_pdf_page_number_formats_and_ptbr_translation(settings, pdf_bytes):
+    cases = [
+        ({"format": "number", "start": 7, "language": "en"}, "7", "8"),
+        ({"format": "number_total", "start": 3, "language": "en"}, "3 / 2", "4 / 2"),
+        (
+            {"format": "page_number_total", "start": 4, "language": "pt-BR"},
+            "Página 4 de 2",
+            "Página 5 de 2",
+        ),
+    ]
+    with TestClient(create_app(settings)) as client:
+        for options, first, second in cases:
+            options.update(position="bottom_center", font="helv", font_size=12, color="#000000")
+            submitted = client.post(
+                "/api/jobs",
+                data={"operation": "pdf.page_numbers", "options": json.dumps(options)},
+                files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+            )
+            assert submitted.status_code == 202
+            assert process_one_job(settings)
+            result = client.get(f"/api/jobs/{submitted.json()['job_id']}/download")
+            with pymupdf.open(stream=result.content, filetype="pdf") as document:
+                pages = [" ".join(page.get_text().split()) for page in document]
+                assert first in pages[0]
+                assert second in pages[1]
+
+
+@pytest.mark.parametrize(
+    "operation,options",
+    [
+        ("pdf.watermark", {"kind": "text", "text": "   "}),
+        ("pdf.watermark", {"kind": "text", "text": "ok", "position": "middle"}),
+        ("pdf.watermark", {"kind": "text", "text": "ok", "opacity": 0}),
+        ("pdf.watermark", {"kind": "text", "text": "ok", "font": "comic"}),
+        ("pdf.watermark", {"kind": "text", "text": "ok", "font_size": 7}),
+        ("pdf.watermark", {"kind": "text", "text": "ok", "color": "red"}),
+        ("pdf.page_numbers", {"position": "middle", "format": "number"}),
+        ("pdf.page_numbers", {"position": "bottom_center", "format": "unknown"}),
+        ("pdf.page_numbers", {"position": "bottom_center", "format": "number", "start": 0}),
+        ("pdf.page_numbers", {"position": "bottom_center", "format": "number", "font": "comic"}),
+        ("pdf.page_numbers", {"position": "bottom_center", "format": "number", "font_size": 49}),
+        ("pdf.page_numbers", {"position": "bottom_center", "format": "number", "language": "fr"}),
+    ],
+)
+def test_pdf_operations_reject_invalid_option_ranges(settings, pdf_bytes, operation, options):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": operation, "options": json.dumps(options)},
+            files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+        )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_options"
+
+
 def test_pdf_image_watermark_preserves_page_count_and_rejects_invalid_options(settings, pdf_bytes):
     watermark_buffer = BytesIO()
     Image.new("RGBA", (12, 8), (240, 40, 60, 180)).save(watermark_buffer, format="PNG")
@@ -478,7 +566,13 @@ def test_pdf_image_watermark_preserves_page_count_and_rejects_invalid_options(se
         output = client.get(f"/api/jobs/{watermarked.json()['job_id']}/download")
         with pymupdf.open(stream=output.content, filetype="pdf") as document:
             assert document.page_count == 2
-            assert all(page.get_images() for page in document)
+            for page in document:
+                images = page.get_images(full=True)
+                assert images
+                assert all(image[1] > 0 for image in images)
+                mask = document.extract_image(images[0][1])["image"]
+                with Image.open(BytesIO(mask)) as alpha_mask:
+                    assert alpha_mask.convert("L").getextrema()[1] <= 90
 
         invalid = client.post(
             "/api/jobs",

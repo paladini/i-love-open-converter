@@ -27,6 +27,42 @@ from .pdf_ops import InvalidPdfError, inspect_pdf, validate_page_ranges
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
+PDF_COMING_SOON = [
+    ("PDF para Word", "PDF to Word", "convert", 4),
+    ("PDF para PowerPoint", "PDF to PowerPoint", "convert", 5),
+    ("PDF para Excel", "PDF to Excel", "convert", 6),
+    ("Word para PDF", "Word to PDF", "convert", 7),
+    ("PowerPoint para PDF", "PowerPoint to PDF", "convert", 8),
+    ("Excel para PDF", "Excel to PDF", "convert", 9),
+    ("Editar PDF", "Edit PDF", "edit", 10),
+    ("Assinar PDF", "Sign PDF", "security", 13),
+    ("HTML para PDF", "HTML to PDF", "convert", 16),
+    ("Desbloquear PDF", "Unlock PDF", "security", 17),
+    ("Proteger PDF", "Protect PDF", "security", 18),
+    ("Organizar PDF", "Organize PDF", "organize", 19),
+    ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
+    ("Reparar PDF", "Repair PDF", "organize", 21),
+    ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
+    ("OCR PDF", "OCR PDF", "intelligence", 24),
+    ("Comparar PDF", "Compare PDF", "edit", 25),
+    ("Ocultar PDF", "Redact PDF", "security", 26),
+    ("Recortar PDF", "Crop PDF", "edit", 27),
+    ("Formulários PDF", "PDF forms", "edit", 28),
+    ("Resumir com IA", "AI summary", "intelligence", 29),
+    ("Traduzir PDF", "Translate PDF", "intelligence", 30),
+    ("PDF para Markdown", "PDF to Markdown", "convert", 31),
+]
+IMAGE_COMING_SOON = [
+    ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
+    ("Converter de JPG", "Convert from JPG", "img-convert", 5),
+    ("Editor de fotos", "Photo editor", "img-edit", 6),
+    ("Melhorar Imagem", "Upscale image", "img-create", 7),
+    ("Remover fundo", "Remove background", "img-edit", 8),
+    ("Marcar IMAGEM", "Watermark IMAGE", "img-edit", 9),
+    ("Gerador de memes", "Meme generator", "img-create", 10),
+    ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
+    ("Desfocar cara", "Blur faces", "img-security", 13),
+]
 
 
 class UploadLimitExceeded(Exception):
@@ -178,7 +214,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return TEMPLATES.TemplateResponse(
             request,
             "index.html",
-            {"request": request, "max_file_size_mb": settings.max_file_size_mb},
+            {
+                "request": request,
+                "max_file_size_mb": settings.max_file_size_mb,
+                "pdf_coming_soon": PDF_COMING_SOON,
+                "image_coming_soon": IMAGE_COMING_SOON,
+            },
         )
 
     @app.get("/tools/pdf-watermark", include_in_schema=False)
