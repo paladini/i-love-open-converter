@@ -6,14 +6,16 @@ import mimetypes
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import FormData, Headers, UploadFile
+from starlette.formparsers import MultiPartException, MultiPartParser
 
 from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
@@ -24,6 +26,118 @@ from .pdf_ops import InvalidPdfError, inspect_pdf, validate_page_ranges
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
+
+
+class UploadLimitExceeded(Exception):
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+
+class LimitedMultiPartParser(MultiPartParser):
+    """Enforce file size limits while multipart bytes are still streaming in."""
+
+    def __init__(
+        self,
+        headers: Headers,
+        stream,
+        *,
+        max_files: int,
+        max_file_bytes: int,
+        max_total_bytes: int,
+    ) -> None:
+        super().__init__(
+            headers, stream, max_files=max_files, max_fields=2, max_part_size=1024 * 1024
+        )
+        self.max_file_bytes = max_file_bytes
+        self.max_total_bytes = max_total_bytes
+        self._current_file_bytes = 0
+        self._total_file_bytes = 0
+
+    def on_part_begin(self) -> None:
+        super().on_part_begin()
+        self._current_file_bytes = 0
+
+    def on_part_data(self, data: bytes, start: int, end: int) -> None:
+        if self._current_part.file is not None:
+            chunk_size = end - start
+            self._current_file_bytes += chunk_size
+            self._total_file_bytes += chunk_size
+            if self._current_file_bytes > self.max_file_bytes:
+                raise UploadLimitExceeded(
+                    "file_too_large", "O arquivo excede o limite configurado."
+                )
+            if self._total_file_bytes > self.max_total_bytes:
+                raise UploadLimitExceeded("request_too_large", "O envio excede o limite total.")
+        super().on_part_data(data, start, end)
+
+
+async def parse_limited_upload_form(request: Request, settings: Settings):
+    if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {"code": "invalid_options", "message": "Envie um formulário multipart."}
+            },
+        )
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            body_size = int(content_length)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Content-Length inválido.") from exc
+        # Reject known oversized requests before the multipart parser creates temporary files.
+        if body_size > settings.max_total_upload_bytes + 1024 * 1024:
+            raise HTTPException(
+                status_code=413,
+                detail={
+                    "error": {
+                        "code": "request_too_large",
+                        "message": "O envio excede o limite total.",
+                    }
+                },
+            )
+
+    async def bounded_stream():
+        body_bytes = 0
+        async for chunk in request.stream():
+            body_bytes += len(chunk)
+            if body_bytes > settings.max_total_upload_bytes + 1024 * 1024:
+                raise UploadLimitExceeded("request_too_large", "O envio excede o limite total.")
+            yield chunk
+
+    parser = LimitedMultiPartParser(
+        request.headers,
+        bounded_stream(),
+        max_files=settings.max_files_per_job,
+        max_file_bytes=settings.max_file_size_bytes,
+        max_total_bytes=settings.max_total_upload_bytes,
+    )
+    try:
+        return await parser.parse()
+    except UploadLimitExceeded as exc:
+        raise HTTPException(
+            status_code=413,
+            detail={"error": {"code": exc.code, "message": exc.message}},
+        ) from exc
+    except MultiPartException as exc:
+        if str(exc).startswith("Too many files"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "too_many_files",
+                        "message": "A quantidade de arquivos excede o limite.",
+                    }
+                },
+            ) from exc
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {"code": "invalid_options", "message": "O formulário enviado é inválido."}
+            },
+        ) from exc
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -81,12 +195,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok"}
 
     @app.post("/api/jobs", status_code=202)
-    async def submit_job(
-        request: Request,
-        operation: Annotated[str, Form()],
-        files: Annotated[list[UploadFile], File()],
-        options: Annotated[str, Form()] = "{}",
-    ) -> dict[str, str]:
+    async def submit_job(request: Request) -> dict[str, str]:
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            return await process_upload_form(request, form)
+        finally:
+            await form.close()
+
+    async def process_upload_form(request: Request, form: FormData) -> dict[str, str]:
+        operation = form.get("operation")
+        options = form.get("options", "{}")
+        raw_files = form.getlist("files")
+        files = [item for item in raw_files if isinstance(item, UploadFile)]
+        if (
+            not isinstance(operation, str)
+            or not isinstance(options, str)
+            or len(files) != len(raw_files)
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "invalid_options",
+                        "message": "O formulário enviado é inválido.",
+                    }
+                },
+            )
         supported_operations = {
             "image.convert",
             "image.resize",

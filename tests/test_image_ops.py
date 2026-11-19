@@ -8,6 +8,7 @@ from i_love_open_converter.image_ops import (
     UnsupportedImageError,
     convert_image,
     inspect_image,
+    process_image,
 )
 
 
@@ -62,3 +63,16 @@ def test_inspect_image_rejects_unsupported_image_format(tmp_path):
 
     with pytest.raises(UnsupportedImageError):
         inspect_image(source)
+
+
+def test_image_compression_applies_the_requested_jpeg_quality(tmp_path):
+    source = tmp_path / "noise.png"
+    low_quality = tmp_path / "low.jpg"
+    high_quality = tmp_path / "high.jpg"
+    Image.effect_noise((128, 128), 90).convert("RGB").save(source)
+
+    process_image(source, low_quality, "image.compress", {"format": "JPEG", "quality": 25})
+    process_image(source, high_quality, "image.compress", {"format": "JPEG", "quality": 90})
+
+    with Image.open(low_quality) as low, Image.open(high_quality) as high:
+        assert sum(low.quantization[0]) > sum(high.quantization[0])

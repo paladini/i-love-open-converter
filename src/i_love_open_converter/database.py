@@ -143,6 +143,33 @@ def claim_next_job(database_path: Path) -> dict[str, Any] | None:
     return get_job(database_path, job["id"])
 
 
+def find_interrupted_jobs(database_path: Path) -> list[str]:
+    with closing(connect(database_path)) as connection:
+        return [
+            row["id"]
+            for row in connection.execute(
+                "SELECT id FROM conversion_jobs WHERE state = 'processing' ORDER BY id"
+            ).fetchall()
+        ]
+
+
+def requeue_interrupted_jobs(database_path: Path, job_ids: list[str], retention_hours: int) -> int:
+    if not job_ids:
+        return 0
+    now = utc_now()
+    updated = _timestamp(now)
+    expires = _timestamp(now + timedelta(hours=retention_hours))
+    with closing(connect(database_path)) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        cursor = connection.executemany(
+            "UPDATE conversion_jobs SET state = 'queued', updated_at = ?, expires_at = ? "
+            "WHERE id = ? AND state = 'processing'",
+            [(updated, expires, job_id) for job_id in job_ids],
+        )
+        connection.commit()
+    return cursor.rowcount
+
+
 def mark_succeeded(
     database_path: Path,
     job_id: str,

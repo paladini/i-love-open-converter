@@ -1,9 +1,9 @@
 # I Love Open Converter — primeira versão utilizável
 
 **Approved**: 2026-11-19 - user: "Continue working toward the active thread goal."
-**Settled mid-build:** The PDF dependency is `pymupdf-lite==2.1`, which retains the PyMuPDF API while avoiding optional layout-model dependencies in the base image; basic PDF operations remain local and AGPL-licensed.
-**Review**: not sent
-**Fix pass**: not started
+**Settled mid-build:** Use `pymupdf-lite==2.1` to retain the PyMuPDF API without optional layout-model dependencies in the base image; enforce count and byte limits in the streaming multipart parser before upload spooling (AD-005).
+**Review**: sent at de6fdae
+**Fix pass**: done - stream upload limits before spooling, recover interrupted jobs on worker startup, add regression coverage for the reviewed criteria, and translate the privacy landmark label.
 
 ## Problem
 
@@ -16,7 +16,7 @@ Quando esta versão estiver pronta, qualquer pessoa com acesso ao serviço poder
 O projeto reutiliza bibliotecas open-source de PDF e imagem, SQLite e o sistema de arquivos local em vez de manter conversores próprios ou exigir um broker externo. Regras de validação, limites, estados dos jobs e expiração ficam no backend Python, acessíveis à suíte de testes do projeto.
 
 1. O navegador carrega `Web UI` (new), apresenta as ferramentas em português ou inglês e envia arquivos e opções para `FastAPI` (new).
-2. `FastAPI` (new) valida operação, parâmetros e limites; grava os arquivos no `Local file store` (new) e cria um `ConversionJob` no `SQLite job store` (new).
+2. `FastAPI` (new) valida operação e parâmetros; seu parser multipart limita quantidade e bytes por arquivo e no lote antes de gravar temporários (AD-005), persiste os arquivos no `Local file store` (new) e cria um `ConversionJob` no `SQLite job store` (new).
 3. `Worker` (new) reivindica jobs pendentes no SQLite, lê os arquivos locais e chama `PyMuPDF` e `Pillow` (new dependencies) para converter; registra resultado ou erro e grava os artefatos no armazenamento local.
 4. `FastAPI` (new) lê o estado do job e entrega metadados ou o arquivo de resultado; `Web UI` (new) atualiza o andamento e oferece o download até a expiração.
 5. `Worker` (new) remove registros e artefatos expirados segundo `JOB_RETENTION_HOURS`.
@@ -50,7 +50,7 @@ sequenceDiagram
 | --- | --- |
 | domain | `ConversionJob` é um job de conversão assíncrono com estado `queued`, `processing`, `succeeded` ou `failed`; nenhum domínio existente para preservar. |
 | stored data | Novo SQLite local; sem migração de dados preexistentes. O volume mantém banco e arquivos juntos. |
-| readers | `FastAPI` lê estado e metadados para status/download; `Worker` reivindica jobs e limpa itens expirados. Ambos recebem os mesmos caminhos e configurações pelo Docker Compose (AD-003, AD-004). |
+| readers | `FastAPI` lê estado e metadados para status/download; `Worker` reivindica jobs, recupera jobs interrompidos após reinício e limpa itens expirados. O parser limita o upload antes de usar temporários (AD-005). Os serviços recebem os mesmos caminhos e configurações pelo Docker Compose (AD-003, AD-004). |
 
 ```mermaid
 erDiagram
@@ -63,6 +63,7 @@ New: `ConversionJob` contém operação, estado, opções validadas, timestamps 
 stateDiagram-v2
     [*] --> queued : API aceita upload
     queued --> processing : worker reivindica job
+    processing --> queued : worker reinicia e recupera job interrompido
     processing --> succeeded : conversão termina
     processing --> failed : entrada ou processamento falha
     queued --> deleted : TTL expirou

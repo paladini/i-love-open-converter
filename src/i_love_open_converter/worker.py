@@ -11,9 +11,11 @@ from .database import (
     claim_next_job,
     delete_expired_jobs,
     find_expired_jobs,
+    find_interrupted_jobs,
     initialize,
     mark_failed,
     mark_succeeded,
+    requeue_interrupted_jobs,
 )
 from .files import safe_stem
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
@@ -171,11 +173,34 @@ def cleanup_expired_jobs(settings: Settings) -> int:
     return delete_expired_jobs(settings.database_path, deleted)
 
 
+def recover_interrupted_jobs(settings: Settings) -> int:
+    jobs_root = settings.jobs_dir.resolve()
+    interrupted = find_interrupted_jobs(settings.database_path)
+    requeued: list[str] = []
+    for job_id in interrupted:
+        job_dir = (jobs_root / job_id).resolve()
+        output_dir = (job_dir / "output").resolve()
+        if job_dir == jobs_root or not job_dir.is_relative_to(jobs_root):
+            continue
+        try:
+            shutil.rmtree(output_dir, ignore_errors=False)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            logger.exception("Could not clear partial output for interrupted job %s", job_id)
+            continue
+        requeued.append(job_id)
+    return requeue_interrupted_jobs(settings.database_path, requeued, settings.job_retention_hours)
+
+
 def main() -> None:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
     settings = get_settings()
     settings.prepare()
     initialize(settings.database_path)
+    recovered = recover_interrupted_jobs(settings)
+    if recovered:
+        logger.info("Requeued %s interrupted conversion jobs", recovered)
     logger.info("Worker started; waiting for conversion jobs")
     while True:
         removed = cleanup_expired_jobs(settings)

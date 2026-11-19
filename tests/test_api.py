@@ -9,8 +9,13 @@ import pymupdf
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from i_love_open_converter.database import claim_next_job
 from i_love_open_converter.main import create_app
-from i_love_open_converter.worker import cleanup_expired_jobs, process_one_job
+from i_love_open_converter.worker import (
+    cleanup_expired_jobs,
+    process_one_job,
+    recover_interrupted_jobs,
+)
 
 
 def _multipart(filename: str, content: bytes, content_type: str = "image/jpeg"):
@@ -96,6 +101,49 @@ def test_file_over_configured_limit_returns_413(settings):
 
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "file_too_large"
+
+
+def test_per_file_limit_is_enforced_while_multipart_streams(settings):
+    oversized_file = b"x" * (1024 * 1024 + 1)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files=_multipart("large.jpg", oversized_file),
+        )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "file_too_large"
+
+
+def test_total_upload_limit_is_enforced_while_multipart_streams(settings):
+    chunk = b"x" * (800 * 1024)
+    files = [("files", (f"{index}.jpg", chunk, "image/jpeg")) for index in range(3)]
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files=files,
+        )
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "request_too_large"
+
+
+def test_file_count_limit_is_enforced_during_multipart_parsing(settings, jpeg_bytes):
+    files = [
+        ("files", (f"{index}.jpg", jpeg_bytes, "image/jpeg"))
+        for index in range(settings.max_files_per_job + 1)
+    ]
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files=files,
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "too_many_files"
 
 
 def test_invalid_conversion_options_return_422(settings, jpeg_bytes):
@@ -241,6 +289,14 @@ def test_pdf_range_validation_rotation_and_pdf_to_jpg(settings, pdf_bytes):
         assert invalid.status_code == 422
         assert invalid.json()["error"]["code"] == "invalid_options"
 
+        overlapping = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.split", "options": '{"ranges":"1-2,2"}'},
+            files={"files": ("two.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert overlapping.status_code == 422
+        assert overlapping.json()["error"]["code"] == "invalid_options"
+
         rotated = client.post(
             "/api/jobs",
             data={"operation": "pdf.rotate", "options": '{"degrees":90}'},
@@ -264,6 +320,14 @@ def test_pdf_range_validation_rotation_and_pdf_to_jpg(settings, pdf_bytes):
             assert archive.namelist() == ["two-page-1.jpg", "two-page-2.jpg"]
             with Image.open(BytesIO(archive.read(archive.namelist()[0]))) as page_image:
                 assert page_image.format == "JPEG"
+                assert page_image.size == (500, 250)
+                with pymupdf.open(stream=pdf_bytes, filetype="pdf") as source_document:
+                    pixmap = source_document[0].get_pixmap(dpi=150, colorspace=pymupdf.csRGB)
+                expected = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+                expected_buffer = BytesIO()
+                expected.save(expected_buffer, format="JPEG", quality=85, optimize=True)
+                with Image.open(BytesIO(expected_buffer.getvalue())) as expected_jpg:
+                    assert page_image.quantization == expected_jpg.quantization
 
         compressed = client.post(
             "/api/jobs",
@@ -303,3 +367,22 @@ def test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected(settings, jpeg_
         )
         assert invalid.status_code == 422
         assert invalid.json()["error"]["code"] == "invalid_file"
+
+
+def test_interrupted_processing_job_is_requeued_and_partial_output_removed(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+    job_id = submitted.json()["job_id"]
+    assert claim_next_job(settings.database_path)["id"] == job_id
+    output_dir = settings.jobs_dir / job_id / "output"
+    output_dir.mkdir()
+    (output_dir / "partial.bin").write_bytes(b"partial")
+
+    assert recover_interrupted_jobs(settings) == 1
+    assert not output_dir.exists()
+    with TestClient(create_app(settings)) as client:
+        assert client.get(f"/api/jobs/{job_id}").json()["state"] == "queued"

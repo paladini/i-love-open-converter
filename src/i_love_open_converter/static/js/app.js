@@ -1,7 +1,7 @@
 const messages = {
   "pt-BR": {
     localBadge: "100% local", languageLabel: "Idioma", brandHome: "I Love Open Converter — início",
-    removeFile: "Remover arquivos", moveUp: "Mover para cima", moveDown: "Mover para baixo", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
+    removeFile: "Remover arquivos", moveUp: "Mover para cima", moveDown: "Mover para baixo", privacyLabel: "Privacidade e software livre", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
     heroTitle: 'Converta do seu jeito.<br><span>Fica tudo com você.</span>',
     heroDescription: "Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.",
     metaOpen: "Open-source", metaPrivate: "Arquivos permanecem locais", metaFree: "Gratuito para self-host",
@@ -39,7 +39,7 @@ const messages = {
   },
   en: {
     localBadge: "100% local", languageLabel: "Language", brandHome: "I Love Open Converter — home",
-    removeFile: "Remove files", moveUp: "Move up", moveDown: "Move down", heroEyebrow: "YOUR FILES, YOUR RULES",
+    removeFile: "Remove files", moveUp: "Move up", moveDown: "Move down", privacyLabel: "Privacy and open-source software", heroEyebrow: "YOUR FILES, YOUR RULES",
     heroTitle: 'Convert your way.<br><span>It all stays with you.</span>',
     heroDescription: "Practical tools for your files, running on your own server. No ads. No sending documents to the cloud.",
     metaOpen: "Open source", metaPrivate: "Files stay on your server", metaFree: "Free to self-host",
