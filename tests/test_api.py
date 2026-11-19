@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -139,8 +141,6 @@ def test_expired_terminal_job_is_removed_with_its_files(settings, jpeg_bytes):
 
     job_dir = settings.jobs_dir / job_id
     assert job_dir.exists()
-    import sqlite3
-
     with sqlite3.connect(settings.database_path) as connection:
         expired = (datetime.now(UTC) - timedelta(hours=1)).isoformat(timespec="seconds")
         connection.execute(
@@ -151,3 +151,48 @@ def test_expired_terminal_job_is_removed_with_its_files(settings, jpeg_bytes):
     assert not job_dir.exists()
     with TestClient(create_app(settings)) as client:
         assert client.get(f"/api/jobs/{job_id}").status_code == 404
+
+
+def test_batch_resize_returns_zip_with_aspect_ratio_preserved(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.resize", "options": '{"width":8,"format":"PNG"}'},
+            files=[
+                ("files", ("photo.jpg", jpeg_bytes, "image/jpeg")),
+                ("files", ("photo.jpg", jpeg_bytes, "image/jpeg")),
+            ],
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(f"/api/jobs/{submitted.json()['job_id']}/download")
+
+    assert result.status_code == 200
+    assert result.headers["content-type"] == "application/zip"
+    with ZipFile(BytesIO(result.content)) as archive:
+        assert archive.namelist() == ["photo.png", "photo-2.png"]
+        with Image.open(BytesIO(archive.read("photo.png"))) as resized:
+            assert resized.size == (8, 6)
+
+
+def test_image_rotate_is_clockwise_and_invalid_dimensions_are_rejected(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "image.resize", "options": '{"width":10001}'},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "invalid_options"
+
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.rotate", "options": '{"degrees":90}'},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(f"/api/jobs/{submitted.json()['job_id']}/download")
+
+    with Image.open(BytesIO(result.content)) as rotated:
+        assert rotated.size == (12, 16)

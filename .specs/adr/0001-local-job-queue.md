@@ -14,6 +14,8 @@ Use a SQLite database on a shared local Docker volume for durable job state and 
 
 Serve the interface from FastAPI with Jinja templates and locally hosted CSS/JavaScript. The interface needs one responsive tool-selection and job flow; a separate SPA toolchain is not required for that scope.
 
+Basic PDF operations use `pymupdf-lite` rather than the full PyMuPDF package. This keeps the shared local processing path while avoiding optional layout/OCR model dependencies in the base image (AD-004).
+
 ## Consequences
 
 - The first deployment has only web and worker application services; no external service is required.

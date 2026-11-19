@@ -86,7 +86,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         files: Annotated[list[UploadFile], File()],
         options: Annotated[str, Form()] = "{}",
     ) -> dict[str, str]:
-        if operation != "image.convert":
+        supported_operations = {
+            "image.convert",
+            "image.resize",
+            "image.compress",
+            "image.rotate",
+        }
+        if operation not in supported_operations:
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -103,7 +109,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
-        if len(files) != 1:
+        if not files:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -150,7 +156,52 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "Formato de saída inválido."}
                 },
             )
-        parsed_options = {"format": "JPEG" if output_format == "JPG" else output_format}
+        validated_options: dict[str, Any] = {
+            "format": "JPEG" if output_format == "JPG" else output_format
+        }
+        if operation == "image.resize":
+            for dimension in ("width", "height"):
+                raw = parsed_options.get(dimension)
+                if raw in (None, ""):
+                    continue
+                if isinstance(raw, bool) or not str(raw).isdigit() or not 1 <= int(raw) <= 10000:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "error": {"code": "invalid_options", "message": "Dimensões inválidas."}
+                        },
+                    )
+                validated_options[dimension] = int(raw)
+            if not any(key in validated_options for key in ("width", "height")):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Informe largura ou altura.",
+                        }
+                    },
+                )
+        if operation == "image.rotate":
+            degrees = parsed_options.get("degrees")
+            if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Ângulo inválido."}},
+                )
+            validated_options["degrees"] = int(degrees)
+        if operation == "image.compress" or output_format in {"JPEG", "JPG", "WEBP"}:
+            quality = parsed_options.get("quality", 85)
+            if (
+                isinstance(quality, bool)
+                or not str(quality).isdigit()
+                or not 1 <= int(quality) <= 100
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Qualidade inválida."}},
+                )
+            validated_options["quality"] = int(quality)
 
         job_id = str(uuid4())
         job_dir = settings.jobs_dir / job_id
@@ -159,93 +210,102 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         stored: list[dict[str, Any]] = []
         total_size = 0
         try:
-            upload = files[0]
-            original_name = safe_filename(upload.filename or "imagem")
-            extension = Path(original_name).suffix.lower()
-            accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
-            if extension not in accepted_extensions:
-                raise HTTPException(
-                    status_code=415,
-                    detail={
-                        "error": {
-                            "code": "unsupported_format",
-                            "message": "Formato de imagem não suportado.",
-                        }
-                    },
-                )
-            disk_name = f"0_{original_name}"
-            destination = input_dir / disk_name
-            file_size = 0
-            with destination.open("xb") as target:
-                while chunk := await upload.read(64 * 1024):
-                    file_size += len(chunk)
-                    total_size += len(chunk)
-                    if file_size > settings.max_file_size_bytes:
-                        raise HTTPException(
-                            status_code=413,
-                            detail={
-                                "error": {
-                                    "code": "file_too_large",
-                                    "message": "O arquivo excede o limite configurado.",
-                                }
-                            },
-                        )
-                    if total_size > settings.max_total_upload_bytes:
-                        raise HTTPException(
-                            status_code=413,
-                            detail={
-                                "error": {
-                                    "code": "request_too_large",
-                                    "message": "O envio excede o limite total.",
-                                }
-                            },
-                        )
-                    target.write(chunk)
-            try:
-                image_format, content_type = inspect_image(destination)
-            except UnsupportedImageError as exc:
-                raise HTTPException(
-                    status_code=415,
-                    detail={
-                        "error": {
-                            "code": "unsupported_format",
-                            "message": "Formato de imagem não suportado.",
-                        }
-                    },
-                ) from exc
-            except InvalidImageError as exc:
+            if len(files) > settings.max_files_per_job:
                 raise HTTPException(
                     status_code=422,
                     detail={
                         "error": {
-                            "code": "invalid_file",
-                            "message": "O arquivo não é uma imagem válida.",
-                        }
-                    },
-                ) from exc
-            if image_format not in INPUT_FORMATS:
-                raise HTTPException(
-                    status_code=415,
-                    detail={
-                        "error": {
-                            "code": "unsupported_format",
-                            "message": "Formato de imagem não suportado.",
+                            "code": "too_many_files",
+                            "message": "A quantidade de arquivos excede o limite.",
                         }
                     },
                 )
-            stored.append(
-                {
-                    "name": original_name,
-                    "relative_path": destination.relative_to(settings.data_dir).as_posix(),
-                    "content_type": content_type,
-                    "size_bytes": file_size,
-                }
-            )
+            for index, upload in enumerate(files):
+                original_name = safe_filename(upload.filename or "imagem")
+                extension = Path(original_name).suffix.lower()
+                accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+                if extension not in accepted_extensions:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Formato de imagem não suportado.",
+                            }
+                        },
+                    )
+                destination = input_dir / f"{index}_{original_name}"
+                file_size = 0
+                with destination.open("xb") as target:
+                    while chunk := await upload.read(64 * 1024):
+                        file_size += len(chunk)
+                        total_size += len(chunk)
+                        if file_size > settings.max_file_size_bytes:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={
+                                    "error": {
+                                        "code": "file_too_large",
+                                        "message": "O arquivo excede o limite configurado.",
+                                    }
+                                },
+                            )
+                        if total_size > settings.max_total_upload_bytes:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={
+                                    "error": {
+                                        "code": "request_too_large",
+                                        "message": "O envio excede o limite total.",
+                                    }
+                                },
+                            )
+                        target.write(chunk)
+                try:
+                    image_format, content_type = inspect_image(destination)
+                except UnsupportedImageError as exc:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Formato de imagem não suportado.",
+                            }
+                        },
+                    ) from exc
+                except InvalidImageError as exc:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "error": {
+                                "code": "invalid_file",
+                                "message": "O arquivo não é uma imagem válida.",
+                            }
+                        },
+                    ) from exc
+                if image_format not in INPUT_FORMATS:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Formato de imagem não suportado.",
+                            }
+                        },
+                    )
+                stored.append(
+                    {
+                        "name": original_name,
+                        "relative_path": destination.relative_to(settings.data_dir).as_posix(),
+                        "content_type": content_type,
+                        "size_bytes": file_size,
+                    }
+                )
             create_job(
                 settings.database_path,
                 job_id=job_id,
                 operation=operation,
-                options=parsed_options,
+                options=validated_options,
                 retention_hours=settings.job_retention_hours,
                 artifacts=stored,
             )
@@ -253,7 +313,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             shutil.rmtree(job_dir, ignore_errors=True)
             raise
         finally:
-            await files[0].close()
+            for upload in files:
+                await upload.close()
 
         return {"job_id": job_id, "state": "queued", "status_url": f"/api/jobs/{job_id}"}
 
@@ -321,8 +382,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 status_code=404,
                 detail={"error": {"code": "job_not_found", "message": "Resultado não encontrado."}},
             )
-        guessed_type = mimetypes.guess_type(artifact["name"])[0] or "application/octet-stream"
-        return FileResponse(path, filename=artifact["name"], media_type=guessed_type)
+        media_type = artifact["content_type"] or mimetypes.guess_type(artifact["name"])[0]
+        return FileResponse(
+            path,
+            filename=artifact["name"],
+            media_type=media_type or "application/octet-stream",
+        )
 
     return app
 

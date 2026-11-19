@@ -65,9 +65,9 @@
               <span class="tool-card-copy"><strong data-i18n="convertTitle">Converter imagem</strong><small id="convert-hint" data-i18n="convertHint">PNG, JPG, WebP e mais</small></span>
               <span class="tool-card-arrow" aria-hidden="true">↗</span>
             </button>
-            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-peach"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 8h18M8 5v6m12-6v6M7 12h14v11H7z"/><path d="M11 16h6M11 19h4"/></svg></span><span class="tool-card-copy"><strong data-i18n="resizeTitle">Redimensionar imagem</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
-            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-mint"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 4v14m0 0 5-5m-5 5-5-5M6 22h16"/><path d="m8 7 2-2M20 7l-2-2"/></svg></span><span class="tool-card-copy"><strong data-i18n="compressImageTitle">Comprimir imagem</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
-            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-blue"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M22 13a8 8 0 0 0-14-5L6 10"/><path d="M6 5v5h5M6 15a8 8 0 0 0 14 5l2-2"/><path d="M22 23v-5h-5"/></svg></span><span class="tool-card-copy"><strong data-i18n="rotateImageTitle">Girar imagem</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+            <button class="tool-card" type="button" data-tool="image.resize"><span class="tool-icon icon-peach"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 8h18M8 5v6m12-6v6M7 12h14v11H7z"/><path d="M11 16h6M11 19h4"/></svg></span><span class="tool-card-copy"><strong data-i18n="resizeTitle">Redimensionar imagem</strong><small data-i18n="resizeHint">Defina largura e altura</small></span></button>
+            <button class="tool-card" type="button" data-tool="image.compress"><span class="tool-icon icon-mint"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 4v14m0 0 5-5m-5 5-5-5M6 22h16"/><path d="m8 7 2-2M20 7l-2-2"/></svg></span><span class="tool-card-copy"><strong data-i18n="compressImageTitle">Comprimir imagem</strong><small data-i18n="compressHint">Controle a qualidade final</small></span></button>
+            <button class="tool-card" type="button" data-tool="image.rotate"><span class="tool-icon icon-blue"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M22 13a8 8 0 0 0-14-5L6 10"/><path d="M6 5v5h5M6 15a8 8 0 0 0 14 5l2-2"/><path d="M22 23v-5h-5"/></svg></span><span class="tool-card-copy"><strong data-i18n="rotateImageTitle">Girar imagem</strong><small data-i18n="rotateHint">90°, 180° ou 270°</small></span></button>
           </div>
         </section>
 
@@ -89,7 +89,7 @@
         </div>
         <form id="convert-form">
           <label class="drop-zone" id="drop-zone" for="file-input">
-            <input id="file-input" name="files" type="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff">
+            <input id="file-input" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff">
             <span class="upload-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 21V5m0 0-6 6m6-6 6 6"/><path d="M7 18v8h18v-8"/></svg></span>
             <strong data-i18n="dropTitle">Solte sua imagem aqui</strong>
             <span class="drop-subtitle"><span data-i18n="dropOr">ou</span> <span class="browse-link" data-i18n="browse">escolha um arquivo</span></span>
@@ -101,10 +101,16 @@
             <span class="selected-file-size" id="selected-file-size"></span>
             <button class="remove-file" id="remove-file" type="button" aria-label="Remover arquivo" data-i18n-aria="removeFile">×</button>
           </div>
-          <div class="format-row">
+          <div class="format-row" id="format-row">
             <label class="format-label" for="output-format"><span data-i18n="outputLabel">Converter para</span><select id="output-format" name="output-format"><option value="PNG">PNG</option><option value="JPEG">JPG</option><option value="WEBP">WEBP</option></select></label>
             <div class="format-arrow" aria-hidden="true"><svg viewBox="0 0 32 24"><path d="M3 12h25m-8-8 8 8-8 8"/></svg></div>
             <div class="format-target"><span class="format-target-icon" id="format-target-icon">PNG</span><span><small data-i18n="resultFormat">Formato de saída</small><strong id="format-target-label">PNG</strong></span></div>
+          </div>
+          <div class="operation-options">
+            <label data-option="width"><span data-i18n="widthLabel">Largura (px)</span><input id="width" type="number" min="1" max="10000" inputmode="numeric"></label>
+            <label data-option="height"><span data-i18n="heightLabel">Altura (px)</span><input id="height" type="number" min="1" max="10000" inputmode="numeric"></label>
+            <label data-option="quality"><span data-i18n="qualityLabel">Qualidade</span><input id="quality" type="number" min="1" max="100" value="85"></label>
+            <label data-option="degrees"><span data-i18n="degreesLabel">Rotação</span><select id="degrees"><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
           </div>
           <p class="form-error" id="form-error" role="alert" hidden></p>
           <div class="form-actions">

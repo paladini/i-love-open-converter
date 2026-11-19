@@ -8,9 +8,11 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     imageGroup: "Imagens", imageCount: "01 disponível", pdfGroup: "PDF", pdfCount: "Em preparação",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
-    compressImageTitle: "Comprimir imagem", rotateImageTitle: "Girar imagem", mergeTitle: "Mesclar PDF",
+    resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
+    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
     splitTitle: "Dividir PDF", rotatePdfTitle: "Girar PDF", compressPdfTitle: "Comprimir PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
+    widthLabel: "Largura (px)", heightLabel: "Altura (px)", qualityLabel: "Qualidade", degreesLabel: "Rotação",
     dropTitle: "Solte sua imagem aqui", dropOr: "ou", browse: "escolha um arquivo",
     fileTypes: "JPG, PNG, WEBP, BMP, TIFF · até {maxFileMb} MB", outputLabel: "Converter para",
     resultFormat: "Formato de saída", localNote: "Seu arquivo é processado no servidor que você controla.",
@@ -37,9 +39,11 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     imageGroup: "Images", imageCount: "01 available", pdfGroup: "PDF", pdfCount: "Coming together",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
-    compressImageTitle: "Compress image", rotateImageTitle: "Rotate image", mergeTitle: "Merge PDF",
+    resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
+    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
     splitTitle: "Split PDF", rotatePdfTitle: "Rotate PDF", compressPdfTitle: "Compress PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
+    widthLabel: "Width (px)", heightLabel: "Height (px)", qualityLabel: "Quality", degreesLabel: "Rotation",
     dropTitle: "Drop your image here", dropOr: "or", browse: "choose a file",
     fileTypes: "JPG, PNG, WEBP, BMP, TIFF · up to {maxFileMb} MB", outputLabel: "Convert to",
     resultFormat: "Output format", localNote: "Your file is processed on the server you control.",
@@ -65,6 +69,7 @@ const selectedFile = document.querySelector("#selected-file");
 const selectedName = document.querySelector("#selected-file-name");
 const selectedSize = document.querySelector("#selected-file-size");
 const outputFormat = document.querySelector("#output-format");
+const formatRow = document.querySelector("#format-row");
 const formatTarget = document.querySelector("#format-target-label");
 const formatTargetIcon = document.querySelector("#format-target-icon");
 const dropZone = document.querySelector("#drop-zone");
@@ -78,7 +83,8 @@ const downloadButton = document.querySelector("#download-button");
 const resetButton = document.querySelector("#reset-button");
 const submitButton = document.querySelector("#submit-button");
 const languageSelect = document.querySelector("#language");
-let currentFile = null;
+let currentFiles = [];
+let currentOperation = "image.convert";
 let currentLanguage = localStorage.getItem("i-love-open-converter-language") || "pt-BR";
 let pollTimer = null;
 
@@ -99,6 +105,11 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAria));
   });
+  if (operationTitles[currentOperation]) {
+    const title = t(operationTitles[currentOperation]);
+    document.querySelector("#converter-title").textContent = title;
+    submitButton.querySelector("[data-i18n]").textContent = title;
+  }
   updateFormatTarget();
 }
 
@@ -108,18 +119,45 @@ function updateFormatTarget() {
   formatTargetIcon.textContent = format;
 }
 
+const operationTitles = {
+  "image.convert": "convertTitle",
+  "image.resize": "resizeTitle",
+  "image.compress": "compressImageTitle",
+  "image.rotate": "rotateImageTitle",
+};
+
+function selectTool(operation) {
+  currentOperation = operation;
+  document.querySelectorAll("[data-tool]").forEach((tool) => {
+    const selected = tool.dataset.tool === operation;
+    tool.classList.toggle("active", selected);
+    tool.setAttribute("aria-pressed", String(selected));
+  });
+  const title = t(operationTitles[operation]);
+  document.querySelector("#converter-title").textContent = title;
+  submitButton.querySelector("[data-i18n]").textContent = title;
+  document.querySelector('[data-option="width"]').hidden = operation !== "image.resize";
+  document.querySelector('[data-option="height"]').hidden = operation !== "image.resize";
+  document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress";
+  document.querySelector('[data-option="degrees"]').hidden = operation !== "image.rotate";
+  formatRow.hidden = operation === "image.rotate";
+  fileInput.value = "";
+  showFiles([]);
+}
+
 function formatBytes(size) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function showFile(file) {
-  currentFile = file || null;
-  selectedFile.hidden = !currentFile;
-  dropZone.hidden = Boolean(currentFile);
-  if (currentFile) {
-    selectedName.textContent = currentFile.name;
-    selectedSize.textContent = formatBytes(currentFile.size);
+function showFiles(files) {
+  currentFiles = Array.from(files || []);
+  selectedFile.hidden = currentFiles.length === 0;
+  dropZone.hidden = currentFiles.length > 0;
+  if (currentFiles.length) {
+    selectedName.textContent = currentFiles.map((file) => file.name).join(", ");
+    const totalSize = currentFiles.reduce((sum, file) => sum + file.size, 0);
+    selectedSize.textContent = `${currentFiles.length} · ${formatBytes(totalSize)}`;
   }
   clearError();
 }
@@ -182,10 +220,13 @@ async function pollJob(statusUrl) {
   }
 }
 
-fileInput.addEventListener("change", () => showFile(fileInput.files?.[0]));
+fileInput.addEventListener("change", () => showFiles(fileInput.files));
 document.querySelector("#remove-file").addEventListener("click", () => {
   fileInput.value = "";
-  showFile(null);
+  showFiles([]);
+});
+document.querySelectorAll("[data-tool]").forEach((tool) => {
+  tool.addEventListener("click", () => selectTool(tool.dataset.tool));
 });
 outputFormat.addEventListener("change", updateFormatTarget);
 languageSelect.addEventListener("change", () => applyLanguage(languageSelect.value));
@@ -203,12 +244,12 @@ for (const eventName of ["dragleave", "drop"]) {
     dropZone.classList.remove("dragover");
   });
 }
-dropZone.addEventListener("drop", (event) => showFile(event.dataTransfer.files?.[0]));
+dropZone.addEventListener("drop", (event) => showFiles(event.dataTransfer.files));
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   clearError();
-  if (!currentFile) {
+  if (!currentFiles.length) {
     formError.textContent = t("selectFile");
     formError.hidden = false;
     fileInput.focus();
@@ -222,9 +263,16 @@ form.addEventListener("submit", async (event) => {
   jobStatusText.textContent = t("queued");
   submitButton.disabled = true;
   const body = new FormData();
-  body.append("operation", "image.convert");
-  body.append("options", JSON.stringify({ format: outputFormat.value }));
-  body.append("files", currentFile, currentFile.name);
+  const options = { format: outputFormat.value };
+  if (currentOperation === "image.resize") {
+    if (document.querySelector("#width").value) options.width = document.querySelector("#width").value;
+    if (document.querySelector("#height").value) options.height = document.querySelector("#height").value;
+  }
+  if (currentOperation === "image.compress") options.quality = document.querySelector("#quality").value;
+  if (currentOperation === "image.rotate") options.degrees = document.querySelector("#degrees").value;
+  body.append("operation", currentOperation);
+  body.append("options", JSON.stringify(options));
+  currentFiles.forEach((file) => body.append("files", file, file.name));
   try {
     const response = await fetch("/api/jobs", { method: "POST", body });
     const payload = await response.json();
@@ -243,7 +291,7 @@ resetButton.addEventListener("click", () => {
   clearInterval(pollTimer);
   form.reset();
   fileInput.value = "";
-  showFile(null);
+  showFiles([]);
   jobStatus.hidden = true;
   jobResult.hidden = true;
   resetButton.hidden = true;
@@ -254,4 +302,5 @@ resetButton.addEventListener("click", () => {
   dropZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
+selectTool(currentOperation);
 applyLanguage(currentLanguage);
