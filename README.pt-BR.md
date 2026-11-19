@@ -1,62 +1,203 @@
 # I Love Open Converter
 
-Uma caixa de ferramentas gratuita e self-hosted para conversões comuns de imagens e PDFs. Envie arquivos pelo navegador, processe tudo no seu próprio servidor e baixe o resultado. Os arquivos ficam no seu HomeLab; o aplicativo não tem anúncios, contas, armazenamento em nuvem nem telemetria externa.
+**Uma caixa de ferramentas privada e self-hosted para tarefas do dia a dia com
+PDFs e imagens.**
 
-O projeto está em desenvolvimento ativo. A primeira versão foca em operações comuns com imagens estáticas e ferramentas essenciais para PDF.
+Envie um arquivo, escolha uma ferramenta e baixe o resultado por uma interface
+web simples. O processamento e o armazenamento ficam no seu próprio servidor.
 
-## Início rápido
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="https://github.com/paladini/i-love-open-converter/releases">Versões</a> ·
+  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Imagem de container</a> ·
+  <a href="CONTRIBUTING.md">Como contribuir</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/paladini/i-love-open-converter/releases/latest"><img alt="Versão mais recente" src="https://img.shields.io/github/v/release/paladini/i-love-open-converter?display_name=tag"></a>
+  <a href="LICENSE"><img alt="Licença AGPL-3.0" src="https://img.shields.io/github/license/paladini/i-love-open-converter"></a>
+  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter"><img alt="Imagem de container no GHCR" src="https://img.shields.io/badge/container-GHCR-2496ED?logo=github"></a>
+</p>
+
+O I Love Open Converter reúne operações comuns de PDF e imagem em um único
+aplicativo web para seu computador, HomeLab ou NAS. Você não precisa usar
+comandos no terminal nem enviar arquivos a um serviço de conversão na nuvem.
+
+## Como funciona
+
+1. **Escolha uma ferramenta** no catálogo de PDF e imagens.
+2. **Envie seu arquivo** e defina as opções da operação.
+3. **Baixe o resultado** quando o processamento local terminar.
+
+## Ferramentas disponíveis
+
+Somente as ferramentas marcadas como disponíveis no aplicativo já estão
+implementadas. As demais aparecem como **Em breve** e fazem parte de etapas
+futuras do projeto.
+
+### Imagens
+
+- Converter imagens estáticas JPEG, PNG, WebP, BMP e TIFF para JPEG, PNG ou
+  WebP.
+- Redimensionar por largura, altura ou ambas, preservando a proporção original.
+- Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
+- Girar imagens em 90°, 180° ou 270°.
+
+Você pode processar várias imagens em um job. Resultados com vários arquivos
+são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
+
+### PDF
+
+- Mesclar PDFs na ordem escolhida.
+- Dividir um PDF por intervalos de páginas.
+- Girar todas as páginas em 90°, 180° ou 270°.
+- Otimizar PDFs com compressão estrutural local sem perdas.
+- Renderizar cada página de um PDF como imagem JPG.
+- Transformar imagens em um PDF com uma página para cada imagem.
+- Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
+  posição e opacidade; marcas de texto também permitem configurar fonte,
+  tamanho e cor.
+- Numerar todas as páginas. Escolha posição no cabeçalho ou rodapé, formato,
+  número inicial, fonte, tamanho e cor.
+
+As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
+ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
+
+### Formatos e limites
+
+| Entrada | Operações disponíveis | Saída |
+| --- | --- | --- |
+| JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
+| PDF sem criptografia | Mesclar, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, JPG ou ZIP |
+| Imagem estática | Imagens para PDF | PDF |
+
+Por padrão, cada arquivo pode ter até 100 MB, cada requisição pode enviar até
+500 MB no total e cada job pode incluir até 10 arquivos. Jobs concluídos ou
+com falha e seus arquivos são removidos após 24 horas. Você pode alterar esses
+valores em `.env`.
+
+A página inicial mostra o catálogo completo de PDFs e imagens. Ferramentas
+marcadas como **Em breve** ainda não processam arquivos; o
+[roadmap do projeto](.specs/features/project-foundation/plan.md) registra as
+próximas etapas.
+
+## Início rápido com Docker
 
 Requisitos: Docker Engine e Docker Compose v2.
 
 ```sh
+git clone https://github.com/paladini/i-love-open-converter.git
+cd i-love-open-converter
 cp .env.example .env
 mkdir -p data
-docker compose up -d --build
+docker compose up -d
 ```
 
-Abra <http://localhost:8080>. Se a porta já estiver em uso, altere `APP_PORT` em `.env` e reinicie o Compose.
+O Compose baixa a imagem publicada no GitHub Container Registry e inicia o
+serviço web junto de um worker em segundo plano. Abra
+<http://localhost:8080> para usar o aplicativo.
 
-Para parar a aplicação:
+No Windows PowerShell, copie o arquivo de ambiente e crie a pasta de dados
+com:
+
+```powershell
+Copy-Item .env.example .env
+New-Item -ItemType Directory -Force data
+docker compose up -d
+```
+
+Confira os serviços e os logs com:
 
 ```sh
-docker compose down
+docker compose ps
+docker compose logs -f web worker
 ```
 
-O banco e os arquivos ficam em `./data`. Faça backup desse diretório se quiser preservar jobs pendentes ou resultados ao trocar de máquina.
+Para atualizar para a imagem publicada mais recente:
 
-## Recursos disponíveis
+```sh
+docker compose pull
+docker compose up -d
+```
 
-- Converter, redimensionar, comprimir e girar imagens estáticas JPEG, PNG, WebP, BMP ou TIFF; processe até 10 arquivos por job e baixe lotes em ZIP.
-- Mesclar, dividir por intervalos de páginas, girar e otimizar PDFs sem senha; renderizar páginas de PDF para JPG ou transformar imagens em PDFs A4.
-- Interface em português do Brasil e inglês.
-- Processamento local por serviço web, fila SQLite e worker.
-
-Cada arquivo enviado pode ter até 100 MB por padrão. Cada job pode processar até 10 arquivos. Imagens animadas e conversões avançadas de documentos (Office, OCR, PDF/A e IA) ficam fora da versão inicial. Os formatos de entrada são validados pelo conteúdo antes do processamento.
+Para parar sem apagar os arquivos, execute `docker compose down`. O banco
+SQLite, a fila de jobs e os resultados ficam em `./data`. Faça backup desse
+diretório se precisar preservá-los ao trocar de máquina.
 
 ## Configuração
 
-Copie `.env.example` para `.env`. O Compose lê essas configurações ao iniciar os containers:
+Copie `.env.example` para `.env` antes de alterar as configurações. O Compose
+lê esses valores ao iniciar os containers.
 
 | Configuração | Padrão | Finalidade |
 | --- | --- | --- |
-| `APP_PORT` | `8080` | Porta no host para a interface e a API |
-| `MAX_FILE_SIZE_MB` | `100` | Tamanho máximo de cada arquivo enviado |
-| `MAX_TOTAL_UPLOAD_MB` | `500` | Total máximo enviado em uma requisição |
+| `APP_PORT` | `8080` | Porta exposta no host |
+| `IMAGE_TAG` | `latest` | Tag da imagem publicada no GHCR |
+| `MAX_FILE_SIZE_MB` | `100` | Tamanho máximo de cada arquivo |
+| `MAX_TOTAL_UPLOAD_MB` | `500` | Tamanho total máximo por requisição |
 | `MAX_FILES_PER_JOB` | `10` | Quantidade máxima de arquivos por job |
-| `JOB_RETENTION_HOURS` | `24` | Tempo até remover o job e os arquivos locais |
+| `JOB_RETENTION_HOURS` | `24` | Tempo de retenção dos jobs e arquivos |
 | `WORKER_POLL_SECONDS` | `1` | Intervalo entre consultas do worker à fila |
-| `PUID`, `PGID` | `1000` | IDs de usuário e grupo donos dos arquivos no volume |
+| `PUID` | `1000` | ID do usuário dono dos arquivos em `./data` |
+| `PGID` | `1000` | ID do grupo dono dos arquivos em `./data` |
 
-O worker e o processo web precisam de acesso de leitura e gravação em `./data`. No Linux, configure `PUID` e `PGID` com os IDs da conta dona desse diretório.
+Os dois containers precisam ler e gravar em `./data`. No Linux, configure
+`PUID` e `PGID` com o usuário e grupo donos da pasta. Altere `APP_PORT` se a
+porta 8080 já estiver ocupada. Defina `IMAGE_TAG` como uma versão publicada
+para fixar o deployment em vez de acompanhar `latest`.
 
-## Privacidade
+## Privacidade e segurança
 
-Todo processamento e armazenamento acontecem na máquina em que a aplicação foi instalada. A interface usa arquivos estáticos locais e não carrega analytics, fontes ou scripts de terceiros. Qualquer pessoa que consiga acessar o serviço pode usá-lo. Os links de job usam IDs imprevisíveis, mas não são contas nem uma fronteira de controle de acesso. Disponibilize o serviço apenas em uma rede que você controla.
+- Os arquivos são enviados e processados pelo servidor onde o aplicativo foi
+  instalado.
+- A interface usa recursos estáticos locais e não carrega fontes, scripts,
+  analytics ou telemetria de terceiros.
+- Não há contas nem autenticação integrada. Qualquer pessoa que alcance o
+  serviço web pode enviar jobs e acessar um job se tiver sua URL.
+- Os IDs dos jobs são imprevisíveis, mas não substituem controle de acesso.
 
-## Contribuição
+Mantenha o serviço em uma rede que você controla. Para acesso remoto, use uma
+VPN ou um proxy reverso com autenticação. Não exponha o serviço sem autenticação
+diretamente à internet pública.
 
-Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para configurar o ambiente de desenvolvimento, executar testes e seguir as instruções de contribuição.
+## Arquitetura
+
+O aplicativo web valida os arquivos enviados e cria jobs em uma fila SQLite
+local. Um worker separado processa cada job com bibliotecas Python open-source
+e grava o resultado no diretório local de dados. O navegador consulta o status
+e baixa o arquivo pelo mesmo servidor.
+
+```mermaid
+flowchart LR
+    Browser[Navegador] -->|Envia e consulta| Web[Serviço web FastAPI]
+    Web -->|Cria job| Queue[(Fila SQLite)]
+    Queue --> Worker[Worker em segundo plano]
+    Worker -->|Processa localmente| Engine[PyMuPDF e Pillow]
+    Worker -->|Lê e grava| Files[(Arquivos locais)]
+    Browser -->|Baixa o resultado| Web
+```
+
+## Desenvolvimento
+
+Requisitos: Python 3.14 e [uv](https://docs.astral.sh/uv/).
+
+```sh
+uv sync --all-groups
+uv run uvicorn i_love_open_converter.main:app --app-dir src --reload
+```
+
+Execute as verificações do projeto com:
+
+```sh
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+```
+
+Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para orientações de desenvolvimento
+e pull requests.
 
 ## Licença
 
-Este projeto está sob a GNU Affero General Public License v3.0. Consulte [LICENSE](LICENSE).
+O I Love Open Converter é licenciado sob a
+[GNU Affero General Public License v3.0](LICENSE).

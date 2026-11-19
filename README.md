@@ -1,64 +1,197 @@
 # I Love Open Converter
 
-A free, self-hosted toolkit for common image and PDF conversions. Upload files in a browser, run a conversion on your own server, and download the result. Files stay on your HomeLab; the application has no ads, accounts, cloud storage, or external telemetry.
+**A private, self-hosted toolkit for everyday PDF and image tasks.**
 
-The project is under active development. The initial release focuses on common static image operations and essential PDF tools.
+Upload a file, choose a tool, and download the result from a simple web
+interface. Processing and file storage stay on your own server.
 
-## Quick start
+<p align="center">
+  <a href="README.pt-BR.md">Português (Brasil)</a> ·
+  <a href="https://github.com/paladini/i-love-open-converter/releases">Releases</a> ·
+  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Container image</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/paladini/i-love-open-converter/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/paladini/i-love-open-converter?display_name=tag"></a>
+  <a href="LICENSE"><img alt="AGPL-3.0 license" src="https://img.shields.io/github/license/paladini/i-love-open-converter"></a>
+  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter"><img alt="Container image on GHCR" src="https://img.shields.io/badge/container-GHCR-2496ED?logo=github"></a>
+</p>
+
+I Love Open Converter brings common PDF and image operations together in one
+web app for your computer, HomeLab, or NAS. You do not need a command-line
+workflow or a hosted file-conversion service.
+
+## How it works
+
+1. **Choose a tool** from the PDF and image catalog.
+2. **Upload your file** and set the options for that operation.
+3. **Download the result** when local processing finishes.
+
+## Available tools
+
+Only tools marked as available in the app are implemented today. Other catalog
+entries are labeled **Coming soon** and belong to later roadmap stages.
+
+### Images
+
+- Convert static JPEG, PNG, WebP, BMP, and TIFF images to JPEG, PNG, or WebP.
+- Resize images by width, height, or both while keeping the original aspect
+  ratio.
+- Compress JPEG and WebP output with a quality setting.
+- Rotate images by 90°, 180°, or 270°.
+
+You can process multiple images in one job. Multi-file results download as a
+ZIP archive. Animated images are not supported.
+
+### PDF
+
+- Merge PDFs in the order you choose.
+- Split a PDF by page ranges.
+- Rotate every page by 90°, 180°, or 270°.
+- Optimize a PDF with local lossless structural compression.
+- Render each PDF page as a JPG image.
+- Turn images into a PDF with one page per image.
+- Add a text or image watermark to every page. Choose its position and
+  opacity; text watermarks also support font, size, and color options.
+- Add page numbers to every page. Choose a header or footer position, number
+  format, starting number, font, size, and color.
+
+PDF tools accept unencrypted PDFs. A split or multi-page PDF-to-JPG result
+downloads as a ZIP archive.
+
+### Formats and limits
+
+| Input | Available operations | Output |
+| --- | --- | --- |
+| JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
+| Unencrypted PDF | Merge, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, JPG, or ZIP |
+| Static image | Images to PDF | PDF |
+
+Default limits are 100 MB per file, 500 MB total per request, and 10 files per
+job. Completed and failed jobs and their files are removed after 24 hours by
+default. You can change these values in `.env`.
+
+The home page shows the broader PDF and image catalog. Tools marked **Coming
+soon** are not available for processing yet; the [project roadmap](.specs/features/project-foundation/plan.md)
+tracks the remaining stages.
+
+## Quick start with Docker
 
 Requirements: Docker Engine and Docker Compose v2.
 
 ```sh
+git clone https://github.com/paladini/i-love-open-converter.git
+cd i-love-open-converter
 cp .env.example .env
 mkdir -p data
 docker compose up -d
 ```
 
-Compose pulls the published image from GitHub Container Registry. Set `IMAGE_TAG` in `.env` to use a specific release instead of `latest`.
+Compose pulls the published image from GitHub Container Registry. It starts a
+web service and a separate background worker. Open
+<http://localhost:8080> to use the app.
 
-Open <http://localhost:8080>. If the port is already in use, change `APP_PORT` in `.env` and restart Compose.
+On Windows PowerShell, copy the environment file and create the data directory
+with:
 
-To stop the application:
-
-```sh
-docker compose down
+```powershell
+Copy-Item .env.example .env
+New-Item -ItemType Directory -Force data
+docker compose up -d
 ```
 
-Your database and files live in `./data`. Back up that directory if you need to preserve pending jobs or downloaded results across machine changes.
+Check the running services and logs with:
 
-## Current capabilities
+```sh
+docker compose ps
+docker compose logs -f web worker
+```
 
-- Convert, resize, compress, and rotate static JPEG, PNG, WebP, BMP, or TIFF images; process up to 10 files in one job and download batches as ZIP.
-- Merge, split by page ranges, rotate, and optimize unencrypted PDFs; render PDF pages to JPG or turn images into A4 PDFs.
-- Use the interface in Brazilian Portuguese or English.
-- Process conversions through a local web service, SQLite queue, and worker.
+To update to the latest published image, run:
 
-Each upload is limited to 100 MB by default. Batch jobs support up to 10 files. Animated images and advanced document conversion (Office, OCR, PDF/A, and AI) are outside the initial release. Supported inputs are validated from their content before processing.
+```sh
+docker compose pull
+docker compose up -d
+```
+
+To stop the app without deleting its files, run `docker compose down`. The
+SQLite database, queued jobs, and results are stored under `./data`. Back up
+that directory if you need to preserve them across machine changes.
 
 ## Configuration
 
-Copy `.env.example` to `.env`. Compose reads these settings when the containers start:
+Copy `.env.example` to `.env` before changing settings. Compose reads these
+values when the containers start.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `APP_PORT` | `8080` | Host port for the web interface and API |
+| `APP_PORT` | `8080` | Port exposed on the host |
+| `IMAGE_TAG` | `latest` | Published GHCR image tag |
 | `MAX_FILE_SIZE_MB` | `100` | Maximum size of one uploaded file |
-| `MAX_TOTAL_UPLOAD_MB` | `500` | Maximum total uploaded bytes in one request |
-| `MAX_FILES_PER_JOB` | `10` | Maximum files accepted in one conversion job |
-| `JOB_RETENTION_HOURS` | `24` | Time before a job and its local files are removed |
-| `WORKER_POLL_SECONDS` | `1` | How often the worker checks the local queue |
-| `PUID`, `PGID` | `1000` | User and group IDs that own data created in the bind mount |
+| `MAX_TOTAL_UPLOAD_MB` | `500` | Maximum combined upload size per request |
+| `MAX_FILES_PER_JOB` | `10` | Maximum number of files in one job |
+| `JOB_RETENTION_HOURS` | `24` | How long job records and files are kept |
+| `WORKER_POLL_SECONDS` | `1` | How often the worker checks the queue |
+| `PUID` | `1000` | User ID for files created in `./data` |
+| `PGID` | `1000` | Group ID for files created in `./data` |
 
-The worker and web process need read/write access to `./data`. On Linux, set `PUID` and `PGID` to the account that owns that directory.
+Both containers need read and write access to `./data`. On Linux, set `PUID`
+and `PGID` to the user and group that own the directory. Set `APP_PORT` if
+port 8080 is already in use. Set `IMAGE_TAG` to a release version when you
+want to pin the deployment instead of following `latest`.
 
-## Privacy
+## Privacy and security
 
-All processing and file storage run on the machine where you deploy the application. The UI uses local static files; it does not load analytics, fonts, or scripts from third-party hosts. Anyone who can reach the web service can use it. Job links use unpredictable IDs, but they are not user accounts or access-control boundaries. Deploy the service only on a network you control.
+- Files are uploaded to and processed by the server where you run the app.
+- The interface uses local static assets and does not load third-party fonts,
+  scripts, analytics, or telemetry.
+- There are no user accounts or built-in authentication. Anyone who can reach
+  the web service can submit jobs and access a job if they have its URL.
+- Job IDs are unpredictable, but they are not an access-control boundary.
 
-## Contributing
+Keep the service on a network you control. If you need remote access, put it
+behind a VPN or an authenticated reverse proxy. Do not expose the unauthenticated
+service directly to the public internet.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, tests, formatting, and contribution guidelines.
+## Architecture
+
+The web app validates uploads and creates jobs in a local SQLite queue. A
+separate worker processes each job with open-source Python libraries and saves
+the result in the local data directory. The browser checks job status and
+downloads the result from the same server.
+
+```mermaid
+flowchart LR
+    Browser -->|Upload and poll| Web[FastAPI web service]
+    Web -->|Create job| Queue[(SQLite queue)]
+    Queue --> Worker[Background worker]
+    Worker -->|Process locally| Engine[PyMuPDF and Pillow]
+    Worker -->|Read and write| Files[(Local files)]
+    Browser -->|Download result| Web
+```
+
+## Development
+
+Requirements: Python 3.14 and [uv](https://docs.astral.sh/uv/).
+
+```sh
+uv sync --all-groups
+uv run uvicorn i_love_open_converter.main:app --app-dir src --reload
+```
+
+Run the project checks with:
+
+```sh
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and pull request
+guidelines.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+I Love Open Converter is licensed under the
+[GNU Affero General Public License v3.0](LICENSE).
