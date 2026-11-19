@@ -1,6 +1,6 @@
 services:
   web:
-    build: .
+    image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     ports:
@@ -33,7 +33,7 @@ services:
       start_period: 15s
 
   worker:
-    build: .
+    image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
     command:

@@ -11,8 +11,10 @@ Requirements: Docker Engine and Docker Compose v2.
 ```sh
 cp .env.example .env
 mkdir -p data
-docker compose up -d --build
+docker compose up -d
 ```
+
+Compose pulls the published image from GitHub Container Registry. Set `IMAGE_TAG` in `.env` to use a specific release instead of `latest`.
 
 Open <http://localhost:8080>. If the port is already in use, change `APP_PORT` in `.env` and restart Compose.
 
