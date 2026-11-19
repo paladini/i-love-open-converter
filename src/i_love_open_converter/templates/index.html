@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f8f8f5">
+    <meta name="description" content="Conversões de arquivos simples, locais e open-source.">
+    <title>I Love Open Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
+    <script defer src="{{ url_for('static', path='/js/app.js') }}"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="I Love Open Converter — início" data-i18n-aria="brandHome">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M8.4 17.2 14.7 23l9-12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3.6 19.3 6l4.1-.1 1.5 3.8 3.5 2.2-.9 4 1 4-3.5 2.3-1.4 3.8-4.1-.1-3.4 2.3-3.3-2.3-4.1.1-1.4-3.8-3.5-2.3 1-4-.9-4 3.5-2.2 1.5-3.8 4.1.1L16 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="brand-name">I Love <strong>Open Converter</strong></span>
+      </a>
+      <div class="header-actions">
+        <span class="privacy-badge"><span class="status-dot"></span><span data-i18n="localBadge">100% local</span></span>
+        <label class="language-picker">
+          <span class="sr-only" data-i18n="languageLabel">Idioma</span>
+          <select id="language" aria-label="Idioma" data-i18n-aria="languageLabel">
+            <option value="pt-BR">PT</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="sparkle" aria-hidden="true">✳</span><span data-i18n="heroEyebrow">SEUS ARQUIVOS, SUAS REGRAS</span></p>
+          <h1 id="hero-title" data-i18n="heroTitle">Converta do seu jeito.<br><span>Fica tudo com você.</span></h1>
+          <p class="hero-description" data-i18n="heroDescription">Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.</p>
+          <div class="hero-meta">
+            <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaOpen">Open-source</span></span>
+          <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaPrivate">Arquivos permanecem locais</span></span>
+            <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaFree">Gratuito para self-host</span></span>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <div class="art-file art-file-back"><span>PDF</span><i></i><i></i><i></i></div>
+          <div class="art-file art-file-front"><span class="photo-sun"></span><span class="photo-mountain"></span><span class="photo-mountain second"></span></div>
+          <div class="art-arrow"><svg viewBox="0 0 44 28"><path d="M2 14h38m-11-11 11 11-11 11"/></svg></div>
+          <div class="art-spark spark-a">✳</div><div class="art-spark spark-b">✦</div>
+          <div class="art-sticker">.png</div>
+        </div>
+      </section>
+
+      <section class="tools-section" aria-labelledby="tools-title">
+        <div class="section-heading">
+          <div><p class="eyebrow muted" data-i18n="toolsEyebrow">A CAIXA DE FERRAMENTAS</p><h2 id="tools-title" data-i18n="toolsTitle">O que vamos transformar?</h2></div>
+          <p class="section-note" data-i18n="toolsNote">Escolha uma ferramenta para começar</p>
+        </div>
+
+        <section class="tool-group" aria-labelledby="image-tools-heading">
+          <div class="group-title"><span class="group-icon image-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-4 3.2 2.7 2.3-2 4 3.3"/></svg></span><h3 id="image-tools-heading" data-i18n="imageGroup">Imagens</h3><span class="tool-count" data-i18n="imageCount">01 disponível</span></div>
+          <div class="tool-grid">
+            <button class="tool-card active" type="button" data-tool="image.convert" aria-describedby="convert-hint">
+              <span class="tool-icon icon-lilac"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 4.5h9l5 5V23H7z"/><path d="M16 4.5v5h5M10 14h8M10 18h5"/><path d="m18.8 17.4 2.1 2.1 3.5-4" class="icon-check"/></svg></span>
+              <span class="tool-card-copy"><strong data-i18n="convertTitle">Converter imagem</strong><small id="convert-hint" data-i18n="convertHint">PNG, JPG, WebP e mais</small></span>
+              <span class="tool-card-arrow" aria-hidden="true">↗</span>
+            </button>
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-peach"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 8h18M8 5v6m12-6v6M7 12h14v11H7z"/><path d="M11 16h6M11 19h4"/></svg></span><span class="tool-card-copy"><strong data-i18n="resizeTitle">Redimensionar imagem</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-mint"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 4v14m0 0 5-5m-5 5-5-5M6 22h16"/><path d="m8 7 2-2M20 7l-2-2"/></svg></span><span class="tool-card-copy"><strong data-i18n="compressImageTitle">Comprimir imagem</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-blue"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M22 13a8 8 0 0 0-14-5L6 10"/><path d="M6 5v5h5M6 15a8 8 0 0 0 14 5l2-2"/><path d="M22 23v-5h-5"/></svg></span><span class="tool-card-copy"><strong data-i18n="rotateImageTitle">Girar imagem</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+          </div>
+        </section>
+
+        <section class="tool-group pdf-group" aria-labelledby="pdf-tools-heading">
+          <div class="group-title"><span class="group-icon pdf-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6.5 3.5h8l4 4V21h-12z"/><path d="M14.5 3.5v4h4M9 13h7M9 16h5"/></svg></span><h3 id="pdf-tools-heading" data-i18n="pdfGroup">PDF</h3><span class="tool-count" data-i18n="pdfCount">Em preparação</span></div>
+          <div class="tool-grid">
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-rose"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="4" y="5" width="8" height="17" rx="2"/><rect x="16" y="5" width="8" height="17" rx="2"/><path d="M12 13.5h4m-2-2 2 2-2 2"/></svg></span><span class="tool-card-copy"><strong data-i18n="mergeTitle">Mesclar PDF</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-yellow"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 4h16v7H6zM6 17h16v7H6zM14 11v6m-2-2 2 2 2-2"/></svg></span><span class="tool-card-copy"><strong data-i18n="splitTitle">Dividir PDF</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-blue"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M22 13a8 8 0 0 0-14-5L6 10"/><path d="M6 5v5h5M6 15a8 8 0 0 0 14 5l2-2"/><path d="M22 23v-5h-5"/></svg></span><span class="tool-card-copy"><strong data-i18n="rotatePdfTitle">Girar PDF</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+            <button class="tool-card disabled" type="button" disabled><span class="tool-icon icon-mint"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="m7 19 5-10 3 6 2-3 4 7H7Z"/><path d="M6 6h16M6 23h16"/></svg></span><span class="tool-card-copy"><strong data-i18n="compressPdfTitle">Comprimir PDF</strong><small data-i18n="comingSoon">Em breve</small></span><span class="soon-pill" data-i18n="soon">Em breve</span></button>
+          </div>
+        </section>
+      </section>
+
+      <section class="converter-panel" id="converter-panel" aria-labelledby="converter-title">
+        <div class="converter-heading">
+          <div class="converter-heading-icon"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 4.5h10l6 6V24H6z"/><path d="M16 4.5v6h6M9.5 15h9M9.5 18.5h5"/></svg></div>
+          <div><p class="eyebrow muted" data-i18n="selectedTool">FERRAMENTA SELECIONADA</p><h2 id="converter-title" data-i18n="convertTitle">Converter imagem</h2></div>
+        </div>
+        <form id="convert-form">
+          <label class="drop-zone" id="drop-zone" for="file-input">
+            <input id="file-input" name="files" type="file" accept=".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff">
+            <span class="upload-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 21V5m0 0-6 6m6-6 6 6"/><path d="M7 18v8h18v-8"/></svg></span>
+            <strong data-i18n="dropTitle">Solte sua imagem aqui</strong>
+            <span class="drop-subtitle"><span data-i18n="dropOr">ou</span> <span class="browse-link" data-i18n="browse">escolha um arquivo</span></span>
+            <span class="file-types" id="file-types" data-max-file-mb="{{ max_file_size_mb }}" data-i18n="fileTypes"></span>
+          </label>
+          <div class="selected-file" id="selected-file" hidden>
+            <span class="selected-file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/></svg></span>
+            <span class="selected-file-name" id="selected-file-name"></span>
+            <span class="selected-file-size" id="selected-file-size"></span>
+            <button class="remove-file" id="remove-file" type="button" aria-label="Remover arquivo" data-i18n-aria="removeFile">×</button>
+          </div>
+          <div class="format-row">
+            <label class="format-label" for="output-format"><span data-i18n="outputLabel">Converter para</span><select id="output-format" name="output-format"><option value="PNG">PNG</option><option value="JPEG">JPG</option><option value="WEBP">WEBP</option></select></label>
+            <div class="format-arrow" aria-hidden="true"><svg viewBox="0 0 32 24"><path d="M3 12h25m-8-8 8 8-8 8"/></svg></div>
+            <div class="format-target"><span class="format-target-icon" id="format-target-icon">PNG</span><span><small data-i18n="resultFormat">Formato de saída</small><strong id="format-target-label">PNG</strong></span></div>
+          </div>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <div class="form-actions">
+            <p class="local-note"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="9" rx="2"/><path d="M7 9V6a3 3 0 0 1 6 0v3m-3 4v2"/></svg><span data-i18n="localNote">Seu arquivo é processado no servidor que você controla.</span></p>
+            <button class="primary-button" id="submit-button" type="submit"><span data-i18n="convertButton">Converter imagem</span><span class="button-arrow" aria-hidden="true">→</span></button>
+          </div>
+          <div class="job-status" id="job-status" role="status" aria-live="polite" hidden>
+            <div class="job-status-main"><span class="job-spinner" id="job-spinner"></span><span class="job-status-text" id="job-status-text"></span></div>
+            <div class="job-result" id="job-result" hidden><span class="result-check">✓</span><span class="result-name" id="result-name"></span><a class="download-button" id="download-button" href="#"><span data-i18n="downloadButton">Baixar arquivo</span><span aria-hidden="true">↓</span></a></div>
+            <button class="reset-button" id="reset-button" type="button" hidden data-i18n="startAgain">Converter outro arquivo</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="trust-strip" aria-label="Privacidade e software livre">
+        <div class="trust-item"><span class="trust-icon">⌂</span><span><strong data-i18n="trustLocalTitle">Hospedado por você</strong><small data-i18n="trustLocalBody">Seus arquivos ficam no seu HomeLab</small></span></div>
+        <div class="trust-item"><span class="trust-icon">◉</span><span><strong data-i18n="trustNoAdsTitle">Sem anúncios ou rastreadores</strong><small data-i18n="trustNoAdsBody">Sem conexões com serviços externos</small></span></div>
+        <div class="trust-item"><span class="trust-icon">⌘</span><span><strong data-i18n="trustOpenTitle">Feito para ser aberto</strong><small data-i18n="trustOpenBody">Código aberto, gratuito e seu</small></span></div>
+      </section>
+    </main>
+    <footer class="site-footer"><span>© <span id="year"></span> I Love Open Converter</span><span data-i18n="footerText">Seu espaço. Seus arquivos. Sem complicação.</span><span class="footer-license">AGPL-3.0</span></footer>
+  </body>
+</html>

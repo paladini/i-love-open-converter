@@ -1,0 +1,41 @@
+[project]
+name = "i-love-open-converter"
+version = "0.1.0"
+description = "A private, self-hosted file converter for PDFs and images."
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
+license = "AGPL-3.0-only"
+dependencies = [
+  "fastapi==0.164.0",
+  "jinja2==3.1.6",
+  "pymupdf-lite==2.1",
+  "pillow==13.0.0",
+  "python-multipart==0.0.34",
+  "uvicorn==0.38.0",
+]
+
+[dependency-groups]
+dev = [
+  "httpx2==2.16.2",
+  "pytest==9.0.2",
+  "ruff==0.14.7",
+]
+
+[build-system]
+requires = ["hatchling==1.28.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/i_love_open_converter"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+

@@ -1,0 +1,53 @@
+services:
+  web:
+    build: .
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment: &app-environment
+      DATA_DIR: /data
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-100}
+      MAX_TOTAL_UPLOAD_MB: ${MAX_TOTAL_UPLOAD_MB:-500}
+      MAX_FILES_PER_JOB: ${MAX_FILES_PER_JOB:-10}
+      JOB_RETENTION_HOURS: ${JOB_RETENTION_HOURS:-24}
+      WORKER_POLL_SECONDS: ${WORKER_POLL_SECONDS:-1}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./data:/data
+    user: "${PUID:-1000}:${PGID:-1000}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2)"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  worker:
+    build: .
+    init: true
+    restart: unless-stopped
+    command:
+      - /app/.venv/bin/python
+      - -m
+      - i_love_open_converter.worker
+    environment: *app-environment
+    volumes:
+      - ./data:/data
+    user: "${PUID:-1000}:${PGID:-1000}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      web:
+        condition: service_healthy
