@@ -1,21 +1,454 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import html
 import re
+import tempfile
+from difflib import SequenceMatcher
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 import pymupdf
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageOps
+
+from .pdf_archive import convert_pdfa
 
 
 class InvalidPdfError(Exception):
     """The input is not a readable, unencrypted PDF."""
 
 
+EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
+FONT_DIR = Path(__file__).resolve().parent / "static" / "fonts"
+
+
+def compare_pdfs(sources: list[tuple[Path, str]], output_dir: Path, language: str) -> Path:
+    if len(sources) != 2:
+        raise InvalidPdfError
+    labels = {
+        "pt-BR": {
+            "title": "Comparação de PDFs",
+            "same": "Sem alteração",
+            "changed": "Alterada",
+            "added": "Adicionada",
+            "removed": "Removida",
+            "page": "Página",
+            "empty": "Sem página correspondente",
+            "scope": (
+                "Comparação visual com até 1000 pixels por lado; metadados, campos e conteúdo "
+                "não visível não são comparados. Detalhes pequenos podem passar despercebidos."
+            ),
+        },
+        "en": {
+            "title": "PDF comparison",
+            "same": "Unchanged",
+            "changed": "Changed",
+            "added": "Added",
+            "removed": "Removed",
+            "page": "Page",
+            "empty": "No corresponding page",
+            "scope": (
+                "Visual comparison at up to 1000 pixels per side; metadata, fields and invisible "
+                "content are not compared. Small details may be missed."
+            ),
+        },
+    }[language]
+    try:
+        with tempfile.TemporaryDirectory(dir=output_dir) as directory:
+            rendered: list[list[tuple[str, Path]]] = [[], []]
+            for side, (source, _) in enumerate(sources):
+                with _open_pdf(source) as document:
+                    for number, page in enumerate(document):
+                        scale = min(1.0, 1000 / max(page.rect.width, page.rect.height))
+                        pixmap = page.get_pixmap(
+                            matrix=pymupdf.Matrix(scale, scale),
+                            colorspace=pymupdf.csRGB,
+                            alpha=False,
+                        )
+                        pixels = pixmap.tobytes("png")
+                        path = Path(directory) / f"{side}-{number}.png"
+                        path.write_bytes(pixels)
+                        rendered[side].append((hashlib.sha256(pixels).hexdigest(), path))
+            left, right = rendered
+            matcher = SequenceMatcher(
+                None, [x[0] for x in left], [x[0] for x in right], autojunk=False
+            )
+            rows: list[tuple[str, int | None, int | None]] = []
+            for tag, a0, a1, b0, b1 in matcher.get_opcodes():
+                if tag == "equal":
+                    rows.extend(
+                        ("same", a, b) for a, b in zip(range(a0, a1), range(b0, b1), strict=True)
+                    )
+                elif tag == "replace":
+                    paired = min(a1 - a0, b1 - b0)
+                    rows.extend(("changed", a0 + i, b0 + i) for i in range(paired))
+                    rows.extend(("removed", a, None) for a in range(a0 + paired, a1))
+                    rows.extend(("added", None, b) for b in range(b0 + paired, b1))
+                elif tag == "delete":
+                    rows.extend(("removed", a, None) for a in range(a0, a1))
+                else:
+                    rows.extend(("added", None, b) for b in range(b0, b1))
+            counts = {
+                key: sum(1 for kind, _, _ in rows if kind == key)
+                for key in ("same", "changed", "added", "removed")
+            }
+            destination = output_dir / "comparison.html"
+            with destination.open("w", encoding="utf-8") as report:
+                report.write(
+                    '<!doctype html><html lang="'
+                    + html.escape(language)
+                    + '"><meta charset="utf-8"><meta name="viewport" '
+                    + 'content="width=device-width,initial-scale=1">'
+                    + '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
+                    + "img-src data:; style-src 'unsafe-inline'\"><title>"
+                    + labels["title"]
+                    + "</title><style>body{font:16px sans-serif;max-width:1200px;"
+                    + "margin:auto;padding:1rem}"
+                    + "section{border-top:1px solid #ccc;padding:1rem 0}.pair{display:grid;"
+                    + "grid-template-columns:1fr 1fr;gap:1rem}"
+                    + "img{max-width:100%;border:1px solid #ddd}"
+                    + "@media(max-width:600px){.pair{grid-template-columns:1fr}}</style><h1>"
+                    + labels["title"]
+                    + "</h1>"
+                )
+                report.write(
+                    '<p id="summary">'
+                    + " · ".join(f"{labels[key]}: {value}" for key, value in counts.items())
+                    + "</p>"
+                )
+                report.write("<p>" + labels["scope"] + "</p>")
+                report.write(
+                    "<p>" + html.escape(sources[0][1]) + " → " + html.escape(sources[1][1]) + "</p>"
+                )
+                for kind, first, second in rows:
+                    report.write("<section><h2>" + labels[kind] + '</h2><div class="pair">')
+                    difference = None
+                    if kind == "changed" and first is not None and second is not None:
+                        with (
+                            Image.open(left[first][1]) as before,
+                            Image.open(right[second][1]) as after,
+                        ):
+                            if before.size == after.size:
+                                difference = ImageChops.difference(before, after).getbbox()
+                    for side, index in enumerate((first, second)):
+                        if index is None:
+                            report.write("<div>" + labels["empty"] + "</div>")
+                        else:
+                            path = rendered[side][index][1]
+                            if difference:
+                                with Image.open(path) as original:
+                                    marked = original.copy()
+                                    ImageDraw.Draw(marked).rectangle(
+                                        difference, outline="red", width=2
+                                    )
+                                    buffer = BytesIO()
+                                    marked.save(buffer, format="PNG")
+                                    image_bytes = buffer.getvalue()
+                            else:
+                                image_bytes = path.read_bytes()
+                            image = base64.b64encode(image_bytes).decode("ascii")
+                            report.write(
+                                f"<div><p>{labels['page']} {index + 1}</p>"
+                                f'<img alt="{labels["page"]} {index + 1}" '
+                                f'src="data:image/png;base64,{image}"></div>'
+                            )
+                    report.write("</div></section>")
+                report.write("</html>")
+        return destination
+    except InvalidPdfError:
+        raise
+    except Exception as exc:
+        raise InvalidPdfError from exc
+
+
+def validate_crop_options(options: dict[str, Any], page_count: int) -> list[int]:
+    rectangle = options.get("rectangle")
+    if (
+        not isinstance(rectangle, list)
+        or len(rectangle) != 4
+        or any(type(value) not in (int, float) or not 0 <= value <= 1 for value in rectangle)
+    ):
+        raise InvalidPdfError
+    x0, y0, x1, y1 = rectangle
+    if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+        raise InvalidPdfError
+    ranges = options.get("ranges")
+    if not isinstance(ranges, str):
+        raise InvalidPdfError
+    return [
+        page
+        for first, last in validate_page_ranges(ranges, page_count)
+        for page in range(first, last + 1)
+    ]
+
+
+def crop_page(page: pymupdf.Page, rectangle: list[float]) -> None:
+    visible = page.rect
+    x0, y0, x1, y1 = rectangle
+    selected = pymupdf.Rect(
+        x0 * visible.width, y0 * visible.height, x1 * visible.width, y1 * visible.height
+    )
+    unrotated = selected * page.derotation_matrix
+    origin = page.cropbox_position
+    unrotated += (origin.x, origin.y, origin.x, origin.y)
+    page.set_cropbox(unrotated)
+
+
+def validate_redactions(options: dict[str, Any], page_count: int) -> None:
+    regions = options.get("regions")
+    if not isinstance(regions, list) or not 1 <= len(regions) <= 100:
+        raise InvalidPdfError
+    for region in regions:
+        if not isinstance(region, dict) or type(region.get("page")) is not int:
+            raise InvalidPdfError
+        page = region["page"]
+        if not 1 <= page <= page_count:
+            raise InvalidPdfError
+        validate_crop_options(
+            {"rectangle": region.get("rectangle"), "ranges": str(page)}, page_count
+        )
+
+
+def _reject_accessibility_text(document) -> None:
+    """Fail closed when PDF accessibility structures could retain redacted content."""
+    forbidden = re.compile(rb"/(?:ActualText|Alt|StructTreeRoot)\b")
+
+    def contains_forbidden(data: bytes) -> bool:
+        decoded = re.sub(rb"#([0-9a-fA-F]{2})", lambda match: bytes([int(match[1], 16)]), data)
+        return bool(forbidden.search(decoded))
+
+    for xref in range(1, document.xref_length()):
+        if contains_forbidden(document.xref_object(xref).encode("utf-8")):
+            raise InvalidPdfError("Accessibility content requires a different redaction method")
+        if document.xref_is_stream(xref):
+            subtype = document.xref_get_key(xref, "Subtype")
+            if subtype == ("name", "/Image"):
+                continue
+            stream = document.xref_stream(xref) or b""
+            if contains_forbidden(stream) or re.search(
+                rb"(?<![A-Za-z])(?:BDC|BMC)(?![A-Za-z])", stream
+            ):
+                raise InvalidPdfError("Accessibility content requires a different redaction method")
+
+
+def redact_pages(document, options: dict[str, Any]) -> None:
+    validate_redactions(options, document.page_count)
+    _reject_accessibility_text(document)
+    areas: dict[int, list[pymupdf.Rect]] = {}
+    for region in options["regions"]:
+        number = region["page"] - 1
+        page = document[number]
+        x0, y0, x1, y1 = region["rectangle"]
+        rectangle = (
+            pymupdf.Rect(
+                x0 * page.rect.width,
+                y0 * page.rect.height,
+                x1 * page.rect.width,
+                y1 * page.rect.height,
+            )
+            * page.derotation_matrix
+        )
+        areas.setdefault(number, []).append(rectangle)
+    for number, rectangles in areas.items():
+        page = document[number]
+        annotations = list(page.annots() or [])
+        if any(annotation.type[0] == pymupdf.PDF_ANNOT_REDACT for annotation in annotations):
+            raise InvalidPdfError("PDF contains pending redactions")
+        for annotation in annotations:
+            if any(annotation.rect.intersects(rectangle) for rectangle in rectangles):
+                page.delete_annot(annotation)
+        for widget in list(page.widgets() or []):
+            if any(widget.rect.intersects(rectangle) for rectangle in rectangles):
+                page.delete_widget(widget)
+        for rectangle in rectangles:
+            page.add_redact_annot(rectangle, fill=(0, 0, 0), cross_out=False)
+        page.apply_redactions(
+            images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
+            graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+            text=pymupdf.PDF_REDACT_TEXT_REMOVE,
+        )
+
+
+def list_form_fields(document) -> list[dict[str, Any]]:
+    fields = []
+    for page_number in range(document.page_count):
+        page = document[page_number]
+        for widget in page.widgets() or []:
+            field_type = {
+                pymupdf.PDF_WIDGET_TYPE_TEXT: "text",
+                pymupdf.PDF_WIDGET_TYPE_CHECKBOX: "checkbox",
+            }.get(widget.field_type, "unsupported")
+            if widget.field_flags & pymupdf.PDF_FIELD_IS_READ_ONLY:
+                field_type = "unsupported"
+            value = widget.field_value
+            if field_type == "checkbox":
+                value = value not in (None, "", "Off", False, 0)
+            elif field_type == "text":
+                value = str(value or "")
+            else:
+                value = None
+            fields.append(
+                {
+                    "page": page_number + 1,
+                    "id": widget.xref,
+                    "name": widget.field_label or widget.field_name or f"Field {widget.xref}",
+                    "type": field_type,
+                    "value": value,
+                    "multiline": bool(
+                        field_type == "text"
+                        and widget.field_flags & pymupdf.PDF_TX_FIELD_IS_MULTILINE
+                    ),
+                    "max_length": widget.text_maxlen if field_type == "text" else 0,
+                }
+            )
+    return fields
+
+
+def validate_form_updates(document, updates: Any) -> None:
+    if not isinstance(updates, list) or len(updates) > 500:
+        raise InvalidPdfError
+    fields = {field["id"]: field for field in list_form_fields(document)}
+    seen = set()
+    for update in updates:
+        if not isinstance(update, dict) or type(update.get("id")) is not int:
+            raise InvalidPdfError
+        identifier = update["id"]
+        field = fields.get(identifier)
+        if not field or identifier in seen or field["type"] == "unsupported":
+            raise InvalidPdfError
+        seen.add(identifier)
+        value = update.get("value")
+        if field["type"] == "checkbox":
+            if type(value) is not bool:
+                raise InvalidPdfError
+        elif (
+            not isinstance(value, str)
+            or len(value) > 5000
+            or (field["max_length"] and len(value) > field["max_length"])
+        ):
+            raise InvalidPdfError
+
+
+def fill_form(document, updates: list[dict[str, Any]]) -> None:
+    validate_form_updates(document, updates)
+    changes = {update["id"]: update["value"] for update in updates}
+    for page in document:
+        for widget in page.widgets() or []:
+            if widget.xref in changes:
+                value = changes[widget.xref]
+                widget.field_value = (
+                    widget.on_state()
+                    if widget.field_type == pymupdf.PDF_WIDGET_TYPE_CHECKBOX and value
+                    else ("Off" if widget.field_type == pymupdf.PDF_WIDGET_TYPE_CHECKBOX else value)
+                )
+                widget.update()
+
+
+def validate_edit_options(options: dict[str, Any], page_count: int) -> None:
+    page = options.get("page")
+    kind = options.get("kind")
+    if type(page) is not int or not 1 <= page <= page_count:
+        raise InvalidPdfError
+    validate_crop_options({"rectangle": options.get("rectangle"), "ranges": str(page)}, page_count)
+    if kind not in ("text", "image", "shape", "note"):
+        raise InvalidPdfError
+    color = options.get("color")
+    if not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        raise InvalidPdfError
+    if kind in ("text", "note"):
+        value = options.get("text")
+        if not isinstance(value, str) or not value.strip() or len(value) > 500:
+            raise InvalidPdfError
+    if kind == "text":
+        size = options.get("font_size")
+        if (
+            type(size) is not int
+            or not 8 <= size <= 72
+            or options.get("font") not in ("helv", "tiro", "cour")
+        ):
+            raise InvalidPdfError
+        font = pymupdf.Font(fontfile=str(FONT_DIR / EDIT_FONTS[options["font"]]))
+        if any(char not in "\n\r\t" and not font.has_glyph(ord(char)) for char in value):
+            raise InvalidPdfError
+    if kind == "note" and any(ord(char) > 255 for char in value):
+        raise InvalidPdfError
+    if kind == "shape" and options.get("shape") not in ("rectangle", "ellipse"):
+        raise InvalidPdfError
+
+
+def edit_page(page: pymupdf.Page, options: dict[str, Any], image_path: Path | None) -> None:
+    x0, y0, x1, y1 = options["rectangle"]
+    rect = (
+        pymupdf.Rect(
+            x0 * page.rect.width, y0 * page.rect.height, x1 * page.rect.width, y1 * page.rect.height
+        )
+        * page.derotation_matrix
+    )
+    color = _rgb_color(options["color"])
+    kind = options["kind"]
+    if kind == "text":
+        if (
+            page.insert_textbox(
+                rect,
+                options["text"],
+                fontsize=options["font_size"],
+                fontname="OpenConverterFont",
+                fontfile=str(FONT_DIR / EDIT_FONTS[options["font"]]),
+                color=color,
+                rotate=page.rotation,
+            )
+            < 0
+        ):
+            raise InvalidPdfError("Text does not fit in the selected area")
+    elif kind == "image":
+        if image_path is None:
+            raise InvalidPdfError
+        with Image.open(image_path) as source_image:
+            prepared = ImageOps.exif_transpose(source_image).convert("RGBA")
+            output = BytesIO()
+            prepared.save(output, format="PNG")
+        page.insert_image(
+            rect, stream=output.getvalue(), keep_proportion=True, rotate=page.rotation
+        )
+    elif kind == "shape":
+        if options["shape"] == "ellipse":
+            page.draw_oval(rect, color=color, width=2)
+        else:
+            page.draw_rect(rect, color=color, width=2)
+    else:
+        annotation = page.add_freetext_annot(rect, options["text"], text_color=color, fontsize=12)
+        annotation.update()
+
+
 def inspect_pdf(path: Path) -> int:
     try:
         with pymupdf.open(path) as document:
-            if document.needs_pass or document.is_repaired or document.page_count < 1:
+            if (
+                not document.is_pdf
+                or document.needs_pass
+                or document.is_repaired
+                or document.page_count < 1
+            ):
+                raise InvalidPdfError
+            return document.page_count
+    except InvalidPdfError:
+        raise
+    except Exception as exc:
+        raise InvalidPdfError from exc
+
+
+def inspect_protected_pdf(path: Path, password: str) -> int:
+    try:
+        with pymupdf.open(path) as document:
+            if (
+                not document.is_pdf
+                or document.xref_get_key(-1, "Encrypt")[0] == "null"
+                or not document.authenticate(password)
+                or document.is_repaired
+                or document.page_count < 1
+            ):
                 raise InvalidPdfError
             return document.page_count
     except InvalidPdfError:
@@ -26,7 +459,12 @@ def inspect_pdf(path: Path) -> int:
 
 def _open_pdf(path: Path):
     document = pymupdf.open(path)
-    if document.needs_pass or document.is_repaired or document.page_count < 1:
+    if (
+        not document.is_pdf
+        or document.needs_pass
+        or document.is_repaired
+        or document.page_count < 1
+    ):
         document.close()
         raise InvalidPdfError
     return document
@@ -190,9 +628,91 @@ def process_pdf(
     sources: list[tuple[Path, str]],
     options: dict[str, Any],
     output_dir: Path,
+    secret: str | None = None,
 ) -> tuple[list[Path], str]:
     """Run one PDF operation; returned paths are ready-to-download artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    if operation == "pdf.pdfa":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        destination = output_dir / "archival.pdf"
+        convert_pdfa(sources[0][0], destination)
+        return [destination], "application/pdf"
+    if operation == "pdf.compare":
+        return [compare_pdfs(sources, output_dir, options["language"])], "text/html; charset=utf-8"
+    if operation == "pdf.repair":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        try:
+            with pymupdf.open(sources[0][0]) as document:
+                if not document.is_pdf or document.needs_pass or document.page_count < 1:
+                    raise InvalidPdfError
+                destination = output_dir / "repaired.pdf"
+                document.save(destination, garbage=4, deflate=True)
+            inspect_pdf(destination)
+        except InvalidPdfError:
+            raise
+        except Exception as exc:
+            raise InvalidPdfError from exc
+        return [destination], "application/pdf"
+    if operation in {"pdf.protect", "pdf.unlock"}:
+        if len(sources) != 1 or not secret:
+            raise InvalidPdfError
+        if operation == "pdf.unlock":
+            inspect_protected_pdf(sources[0][0], secret)
+            document = pymupdf.open(sources[0][0])
+            document.authenticate(secret)
+        else:
+            document = _open_pdf(sources[0][0])
+        try:
+            destination = output_dir / (
+                "protected.pdf" if operation == "pdf.protect" else "unlocked.pdf"
+            )
+            if operation == "pdf.protect":
+                document.save(
+                    destination,
+                    encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                    owner_pw=secret,
+                    user_pw=secret,
+                    garbage=3,
+                    deflate=True,
+                )
+            else:
+                document.save(
+                    destination, encryption=pymupdf.PDF_ENCRYPT_NONE, garbage=3, deflate=True
+                )
+        finally:
+            document.close()
+        return [destination], "application/pdf"
+    if operation in {"pdf.edit", "pdf.sign"}:
+        document = _open_pdf(sources[0][0])
+        try:
+            validate_edit_options(options, document.page_count)
+            edit_page(
+                document[options["page"] - 1], options, sources[1][0] if len(sources) > 1 else None
+            )
+            destination = output_dir / "edited.pdf"
+            document.save(destination, garbage=3, deflate=True, use_objstms=True)
+        finally:
+            document.close()
+        return [destination], "application/pdf"
+    if operation == "pdf.organize":
+        documents = []
+        output = pymupdf.open()
+        try:
+            for source, _ in sources:
+                documents.append(_open_pdf(source))
+            for file_number, page_number in options["pages"]:
+                output.insert_pdf(
+                    documents[file_number - 1], from_page=page_number - 1, to_page=page_number - 1
+                )
+            destination = output_dir / "organized.pdf"
+            output.save(destination, garbage=3, deflate=True, use_objstms=True)
+        finally:
+            output.close()
+            for document in documents:
+                document.close()
+        return [destination], "application/pdf"
     if operation == "pdf.merge":
         merged = pymupdf.open()
         try:
@@ -270,6 +790,24 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.forms":
+            fill_form(document, options["updates"])
+            destination = output_dir / "filled.pdf"
+            document.save(destination, garbage=3, deflate=True)
+            return [destination], "application/pdf"
+        if operation == "pdf.redact":
+            redact_pages(document, options)
+            destination = output_dir / "redacted.pdf"
+            document.save(destination, garbage=4, deflate=True)
+            return [destination], "application/pdf"
+
+        if operation == "pdf.crop":
+            for page_number in validate_crop_options(options, document.page_count):
+                crop_page(document[page_number], options["rectangle"])
+            destination = output_dir / "cropped.pdf"
+            document.save(destination, garbage=3, deflate=True, use_objstms=True)
+            return [destination], "application/pdf"
+
         if operation == "pdf.rotate":
             degrees = int(options["degrees"])
             for page in document:

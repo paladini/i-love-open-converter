@@ -49,6 +49,11 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 ### PDF
 
 - Mesclar PDFs na ordem escolhida.
+- Reordenar ou remover páginas e inserir páginas de um segundo PDF.
+- Recortar páginas selecionadas ou adicionar texto, imagem, forma ou anotação a uma página.
+- Adicionar uma assinatura visual desenhada ou enviada e proteger ou desbloquear PDFs com senha.
+- Preencher campos de texto e caixas de seleção existentes e ocultar permanentemente áreas selecionadas.
+- Tentar reparar PDFs, comparar a aparência de páginas lado a lado e converter e validar PDF/A-2b.
 - Dividir um PDF por intervalos de páginas.
 - Girar todas as páginas em 90°, 180° ou 270°.
 - Otimizar PDFs com compressão estrutural local sem perdas.
@@ -68,7 +73,8 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
-| PDF sem criptografia | Mesclar, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, JPG ou ZIP |
+| PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, HTML, JPG ou ZIP |
+| PDF protegido por senha | Desbloquear com a senha atual | PDF |
 | Imagem estática | Imagens para PDF | PDF |
 
 Por padrão, cada arquivo pode ter até 100 MB, cada requisição pode enviar até
@@ -148,6 +154,9 @@ para fixar o deployment em vez de acompanhar `latest`.
 
 ## Privacidade e segurança
 
+- A comparação verifica a aparência renderizada das páginas, sem comparar metadados ou conteúdo invisível. A conversão PDF/A verifica conformidade, número de páginas e texto extraído; confira o layout e os demais elementos do resultado.
+- A ocultação remove conteúdo das áreas selecionadas. PDFs com conteúdo marcado ou estruturas de acessibilidade são rejeitados, pois podem manter informações sensíveis. Confira separadamente outras páginas, metadados, anexos e cópias; o original enviado permanece no servidor até o job expirar.
+- Senhas de jobs de PDF ficam temporariamente em um arquivo local do job para que o worker possa processá-las e retomar o trabalho; o arquivo é removido após o processamento. Uma interrupção pode mantê-lo até uma nova tentativa ou a expiração do job. Em sistemas compatíveis, o arquivo é criado com permissão apenas para o proprietário.
 - Os arquivos são enviados e processados pelo servidor onde o aplicativo foi
   instalado.
 - A interface usa recursos estáticos locais e não carrega fontes, scripts,

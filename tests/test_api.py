@@ -24,6 +24,819 @@ def _multipart(filename: str, content: bytes, content_type: str = "image/jpeg"):
     return {"files": (filename, content, content_type)}
 
 
+def test_organization_inserts_pages_from_the_requested_source(settings):
+    def make_pdf(prefix):
+        document = pymupdf.open()
+        for number in range(1, 4):
+            document.new_page().insert_text((40, 50), f"{prefix} {number}")
+        data = document.tobytes()
+        document.close()
+        return data
+
+    files = [
+        ("files", ("first.pdf", make_pdf("First"), "application/pdf")),
+        ("files", ("second.pdf", make_pdf("Second"), "application/pdf")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.organize",
+                "options": json.dumps({"pages": [[1, 1], [2, 2], [2, 3], [1, 2], [1, 3]]}),
+            },
+            files=files,
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(submitted.json()["status_url"] + "/download")
+        with pymupdf.open(stream=response.content, filetype="pdf") as result:
+            assert [page.get_text().strip() for page in result] == [
+                "First 1",
+                "Second 2",
+                "Second 3",
+                "First 2",
+                "First 3",
+            ]
+
+
+@pytest.mark.parametrize("rotation", [90, 180, 270])
+def test_edited_text_is_upright_on_rotated_pages(settings, rotation):
+    document = pymupdf.open()
+    page = document.new_page(width=300, height=200)
+    page.set_rotation(rotation)
+    source = document.tobytes()
+    document.close()
+    options = {
+        "kind": "text",
+        "page": 1,
+        "rectangle": [0.1, 0.1, 0.9, 0.9],
+        "color": "#000000",
+        "font": "helv",
+        "font_size": 12,
+        "text": "São Paulo — café €",
+    }
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(submitted.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as result:
+            page = result[0]
+            line = page.get_text("dict")["blocks"][0]["lines"][0]
+            assert line["spans"][0]["text"] == options["text"]
+            vector = (
+                pymupdf.Point(*line["dir"]) * page.rotation_matrix
+                - pymupdf.Point(0, 0) * page.rotation_matrix
+            )
+            assert vector.x == pytest.approx(1)
+            assert vector.y == pytest.approx(0)
+
+
+def test_pdf_edit_preserves_unicode_and_rejects_missing_glyphs(settings, pdf_bytes):
+    options = {
+        "kind": "text",
+        "page": 1,
+        "rectangle": [0.05, 0.05, 0.95, 0.95],
+        "color": "#000000",
+        "font": "helv",
+        "font_size": 12,
+        "text": "São Paulo — café €",
+    }
+    with TestClient(create_app(settings)) as client:
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(result.json()["status_url"] + "/download")
+        with pymupdf.open(stream=output.content, filetype="pdf") as document:
+            assert options["text"] in document[0].get_text()
+        options["text"] = "\U0001f984"
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert invalid.status_code == 422
+
+
+@pytest.mark.parametrize("rotation", [90, 180, 270])
+def test_signature_image_orientation_matches_preview_on_rotated_pages(settings, rotation):
+    document = pymupdf.open()
+    page = document.new_page(width=200, height=100)
+    page.set_rotation(rotation)
+    source = document.tobytes()
+    document.close()
+    signature = Image.new("RGB", (100, 100), "red")
+    for x in range(50, 100):
+        for y in range(100):
+            signature.putpixel((x, y), (0, 0, 255))
+    buffer = BytesIO()
+    signature.save(buffer, "PNG")
+    options = {"kind": "image", "page": 1, "rectangle": [0, 0, 1, 1], "color": "#000000"}
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.sign", "options": json.dumps(options)},
+            files=[
+                ("files", ("a.pdf", source, "application/pdf")),
+                ("files", ("sign.png", buffer.getvalue(), "image/png")),
+            ],
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        with pymupdf.open(stream=result.content, filetype="pdf") as output:
+            pixmap = output[0].get_pixmap(colorspace=pymupdf.csRGB, alpha=False)
+            rendered = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+            middle = pixmap.height // 2
+            assert rendered.getpixel((pixmap.width // 2 - 20, middle))[0] > 200
+            assert rendered.getpixel((pixmap.width // 2 + 20, middle))[2] > 200
+
+
+def test_multiline_form_field_remains_unchanged_when_another_field_is_edited(settings):
+    document = pymupdf.open()
+    page = document.new_page()
+    for name, value, flags, top in [
+        ("notes", "line one\nline two", pymupdf.PDF_TX_FIELD_IS_MULTILINE, 10),
+        ("name", "old", 0, 100),
+    ]:
+        widget = pymupdf.Widget()
+        widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+        widget.field_name = name
+        widget.field_flags = flags
+        widget.field_value = value
+        widget.rect = pymupdf.Rect(10, top, 250, top + 60)
+        page.add_widget(widget)
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        fields = client.post(
+            "/api/pdf/fields", files=_multipart("a.pdf", data, "application/pdf")
+        ).json()["fields"]
+        by_name = {field["name"]: field for field in fields}
+        assert by_name["notes"]["multiline"] is True
+        assert by_name["notes"]["value"] == "line one\nline two"
+        updates = [{"id": by_name["name"]["id"], "value": "new"}]
+        job = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.forms", "options": json.dumps({"updates": updates})},
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert job.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(job.json()["status_url"] + "/download")
+        with pymupdf.open(stream=output.content, filetype="pdf") as result:
+            values = {widget.field_name: widget.field_value for widget in result[0].widgets()}
+            assert values["notes"] == "line one\nline two"
+            assert values["name"] == "new"
+
+
+def test_unlock_accepts_owner_password_when_open_password_is_empty(settings):
+    document = pymupdf.open()
+    document.new_page().insert_text((20, 40), "protected")
+    source = document.tobytes(
+        encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="owner123", user_pw=""
+    )
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.unlock", "password": "owner123"},
+            files=_multipart("restricted.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with pymupdf.open(stream=result.content, filetype="pdf") as output:
+            assert output.xref_get_key(-1, "Encrypt")[0] == "null"
+            assert "protected" in output[0].get_text()
+
+
+def test_redaction_fails_closed_for_accessibility_actualtext(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=200, height=200)
+    page.insert_text((20, 40), "visible text")
+    content_xref = page.get_contents()[0]
+    content = document.xref_stream(content_xref)
+    document.update_stream(
+        content_xref, b"/Span << /#41ctualText (SECRET_IN_ACTUALTEXT) >> BDC\n" + content + b"\nEMC"
+    )
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 1, 1]}]}),
+            },
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        assert client.get(submitted.json()["status_url"]).json()["state"] == "failed"
+        assert client.get(submitted.json()["status_url"] + "/download").status_code == 409
+
+
+def test_pdf_repair_recovers_cross_reference_and_handles_unreadable_file(settings, pdf_bytes):
+    import re
+
+    damaged = re.sub(rb"startxref\s+\d+", b"startxref\n0", pdf_bytes)
+    with pymupdf.open(stream=damaged, filetype="pdf") as document:
+        assert document.is_repaired
+    with TestClient(create_app(settings)) as client:
+        request = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.repair"},
+            files=_multipart("damaged.pdf", damaged, "application/pdf"),
+        )
+        assert request.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(request.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            assert not document.is_repaired
+            assert document[0].get_text().strip() == "Test page 1"
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.repair"},
+            files=_multipart("bad.pdf", b"not a pdf", "application/pdf"),
+        )
+        assert invalid.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(invalid.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "invalid_file"
+
+
+def test_pdf_compare_reports_changed_added_and_removed_pages(settings):
+    def make_pdf(pages):
+        document = pymupdf.open()
+        for text in pages:
+            page = document.new_page(width=200, height=100)
+            page.insert_text((20, 50), text)
+        data = document.tobytes()
+        document.close()
+        return data
+
+    first, second = make_pdf(["A", "B", "C", "D"]), make_pdf(["A", "B changed", "C", "E", "F"])
+    uploads = [
+        ("files", ("before.pdf", first, "application/pdf")),
+        ("files", ("after.pdf", second, "application/pdf")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compare"},
+            files=_multipart("one.pdf", first, "application/pdf"),
+        )
+        assert invalid.status_code == 422
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compare", "options": '{"language":"en"}'},
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        assert "text/html" in result.headers["content-type"]
+        assert "Unchanged: 2" in result.text
+        assert "Changed: 2" in result.text
+        assert "Added: 1" in result.text
+        assert "Removed: 0" in result.text
+        assert result.text.count('src="data:image/png;base64,') == 9
+
+
+def test_pdf_compare_reports_removed_page(settings, pdf_bytes):
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as document:
+        document.delete_page(1)
+        shorter = document.tobytes()
+    uploads = [
+        ("files", ("before.pdf", pdf_bytes, "application/pdf")),
+        ("files", ("after.pdf", shorter, "application/pdf")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compare", "options": '{"language":"en"}'},
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        report = client.get(response.json()["status_url"] + "/download")
+        assert "Unchanged: 1" in report.text
+        assert "Removed: 1" in report.text
+        assert "Added: 0" in report.text
+
+
+def test_organize_pdf_pages_and_reject_invalid_selection(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/tools/pdf-organize").status_code == 200
+        inspected = client.post(
+            "/api/pdf/pages", files=_multipart("a.pdf", pdf_bytes, "application/pdf")
+        )
+        assert inspected.json() == {"page_count": 2}
+        uploads = [
+            ("files", ("a.pdf", pdf_bytes, "application/pdf")),
+            ("files", ("b.pdf", pdf_bytes, "application/pdf")),
+        ]
+        for pages in ([], [[1, 3]], [[3, 1]], [[1, 1], [1, 1]], [[True, 1]]):
+            response = client.post(
+                "/api/jobs",
+                data={"operation": "pdf.organize", "options": json.dumps({"pages": pages})},
+                files=uploads,
+            )
+            assert response.status_code == 422
+            assert response.json()["error"]["code"] == "invalid_options"
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.organize",
+                "options": json.dumps({"pages": [[1, 2], [2, 1], [1, 1]]}),
+            },
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(response.json()["status_url"] + "/download")
+        assert download.status_code == 200
+        with pymupdf.open(stream=download.content, filetype="pdf") as document:
+            assert [page.get_text().strip() for page in document] == [
+                "Test page 2",
+                "Test page 1",
+                "Test page 1",
+            ]
+
+
+def test_pdf_page_inspection_rejects_non_pdf_content(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        inspected = client.post(
+            "/api/pdf/pages", files=_multipart("fake.pdf", jpeg_bytes, "application/pdf")
+        )
+        assert inspected.status_code == 422
+        assert inspected.json()["error"]["code"] == "invalid_file"
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.organize", "options": '{"pages": [[1, 1]]}'},
+            files=_multipart("fake.pdf", jpeg_bytes, "application/pdf"),
+        )
+        assert submitted.status_code == 422
+        assert submitted.json()["error"]["code"] == "invalid_file"
+
+
+def test_pdf_preview_renders_selected_page_and_rejects_invalid_input(
+    settings, pdf_bytes, jpeg_bytes
+):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/pdf/preview",
+            data={"page": "2"},
+            files=_multipart("document.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+        with Image.open(BytesIO(response.content)) as preview:
+            assert preview.size == (240, 120)
+        for number in ("0", "3", "-1", "1.5"):
+            result = client.post(
+                "/api/pdf/preview",
+                data={"page": number},
+                files=_multipart("document.pdf", pdf_bytes, "application/pdf"),
+            )
+            assert result.status_code == 422
+        invalid = client.post(
+            "/api/pdf/preview", files=_multipart("fake.pdf", jpeg_bytes, "application/pdf")
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "invalid_file"
+
+
+def test_crop_preserves_unselected_pages_and_respects_rotation(settings):
+    source = pymupdf.open()
+    page = source.new_page(width=300, height=200)
+    page.insert_text((70, 70), "inside")
+    page.set_cropbox(pymupdf.Rect(20, 10, 280, 190))
+    page.set_rotation(90)
+    source.new_page(width=300, height=200)
+    pdf = source.tobytes()
+    source.close()
+    with TestClient(create_app(settings)) as client:
+        for rectangle, ranges in [
+            ([0, 0, 0, 1], "1"),
+            ([0, 0, 2, 1], "1"),
+            ([0, 0, 1, True], "1"),
+            ([0, 0, 1, 1], "3"),
+        ]:
+            result = client.post(
+                "/api/jobs",
+                data={
+                    "operation": "pdf.crop",
+                    "options": json.dumps({"rectangle": rectangle, "ranges": ranges}),
+                },
+                files=_multipart("a.pdf", pdf, "application/pdf"),
+            )
+            assert result.status_code == 422
+            assert result.json()["error"]["code"] == "invalid_options"
+        result = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.crop",
+                "options": json.dumps({"rectangle": [0, 0, 0.5, 1], "ranges": "1"}),
+            },
+            files=_multipart("a.pdf", pdf, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(result.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            assert document[0].rotation == 90
+            assert document[0].rect.width == pytest.approx(90)
+            assert document[0].rect.height == pytest.approx(260)
+            assert document[0].cropbox == pymupdf.Rect(20, 100, 280, 190)
+            assert document[1].rect == pymupdf.Rect(0, 0, 300, 200)
+
+
+def test_pdf_preview_limits_large_page_dimensions(settings):
+    document = pymupdf.open()
+    document.new_page(width=3000, height=1500)
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/pdf/preview", files=_multipart("large.pdf", source, "application/pdf")
+        )
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        with Image.open(BytesIO(response.content)) as preview:
+            assert preview.size == (1000, 500)
+
+
+@pytest.mark.parametrize("kind", ["text", "image", "shape", "note"])
+def test_pdf_edit_adds_requested_content(settings, pdf_bytes, jpeg_bytes, kind):
+    options = {
+        "kind": kind,
+        "page": 1,
+        "rectangle": [0.1, 0.1, 0.9, 0.9],
+        "color": "#ff0000",
+        "font": "helv",
+        "font_size": 12,
+        "text": "Example note",
+        "shape": "ellipse",
+    }
+    uploads = [("files", ("a.pdf", pdf_bytes, "application/pdf"))]
+    if kind == "image":
+        uploads.append(("files", ("photo.jpg", jpeg_bytes, "image/jpeg")))
+    with TestClient(create_app(settings)) as client:
+        invalid = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.edit",
+                "options": json.dumps({**options, "rectangle": [0, 0, 2, 1]}),
+            },
+            files=uploads,
+        )
+        assert invalid.status_code == 422
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=uploads,
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(result.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            page = document[0]
+            if kind == "text":
+                assert "Example note" in page.get_text()
+            elif kind == "image":
+                assert len(page.get_images()) == 1
+            elif kind == "shape":
+                assert len(page.get_drawings()) == 1
+            else:
+                assert list(page.annots())[0].info["content"] == "Example note"
+
+
+def test_pdf_edit_accepts_webp_with_transparency(settings, pdf_bytes):
+    image = BytesIO()
+    Image.new("RGBA", (16, 16), (255, 0, 0, 80)).save(image, "WEBP", lossless=True)
+    options = {"kind": "image", "page": 1, "rectangle": [0.1, 0.1, 0.9, 0.9], "color": "#000000"}
+    uploads = [
+        ("files", ("a.pdf", pdf_bytes, "application/pdf")),
+        ("files", ("a.webp", image.getvalue(), "image/webp")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=uploads,
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(result.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            assert document[0].get_images()[0][1] != 0
+
+
+def test_password_protection_and_unlock_do_not_store_password_in_job_options(
+    settings, pdf_bytes, caplog
+):
+    password = "long secret 123"
+    with TestClient(create_app(settings)) as client:
+        request = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.protect", "password": password},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert request.status_code == 202
+        job_id = request.json()["job_id"]
+        with sqlite3.connect(settings.database_path) as connection:
+            options = connection.execute(
+                "SELECT options_json FROM conversion_jobs WHERE id = ?", (job_id,)
+            ).fetchone()[0]
+        assert password not in options
+        assert process_one_job(settings)
+        assert not (settings.jobs_dir / job_id / "secret").exists()
+        protected = client.get(request.json()["status_url"] + "/download")
+        assert protected.status_code == 200
+        with pymupdf.open(stream=protected.content, filetype="pdf") as document:
+            assert document.needs_pass
+            assert not document.authenticate("wrong")
+            assert document.authenticate(password)
+            assert document.page_count == 2
+        wrong = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.unlock", "password": "wrong"},
+            files=_multipart("protected.pdf", protected.content, "application/pdf"),
+        )
+        assert wrong.status_code == 422
+        assert wrong.json()["error"]["code"] == "invalid_file"
+        unlocked = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.unlock", "password": password},
+            files=_multipart("protected.pdf", protected.content, "application/pdf"),
+        )
+        assert unlocked.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(unlocked.json()["status_url"] + "/download")
+        with pymupdf.open(stream=output.content, filetype="pdf") as document:
+            assert not document.needs_pass
+            assert document[0].get_text().strip() == "Test page 1"
+        assert password not in caplog.text
+
+
+def test_visual_signature_adds_an_image_to_selected_page(settings, pdf_bytes, jpeg_bytes):
+    options = {"kind": "image", "page": 2, "rectangle": [0.1, 0.1, 0.9, 0.7], "color": "#000000"}
+    uploads = [
+        ("files", ("source.pdf", pdf_bytes, "application/pdf")),
+        ("files", ("signature.jpg", jpeg_bytes, "image/jpeg")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/tools/pdf-sign")
+        assert page.status_code == 200
+        assert "signature" in page.text and "certificado digital" in page.text
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.sign", "options": json.dumps(options)},
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with pymupdf.open(stream=result.content, filetype="pdf") as document:
+            assert not document[0].get_images()
+            assert len(document[1].get_images()) == 1
+
+
+@pytest.mark.parametrize(
+    "operation,password,code",
+    [
+        ("pdf.protect", "", "invalid_options"),
+        ("pdf.protect", "a" * 41, "invalid_options"),
+        ("pdf.unlock", "", "invalid_file"),
+    ],
+)
+def test_password_job_rejects_missing_or_oversized_password(
+    settings, pdf_bytes, operation, password, code
+):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": operation, "password": password},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == code
+
+
+def test_password_job_recovers_after_interruption(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.protect", "password": "recovery-pass"},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        job_id = submitted.json()["job_id"]
+        assert claim_next_job(settings.database_path)["id"] == job_id
+        assert recover_interrupted_jobs(settings) == 1
+        assert process_one_job(settings)
+        assert not (settings.jobs_dir / job_id / "secret").exists()
+        assert client.get(submitted.json()["status_url"]).json()["state"] == "succeeded"
+
+
+def test_redaction_removes_content_and_keeps_other_page_text(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=200, height=200)
+    page.insert_text((20, 40), "SECRET_TOKEN")
+    page.insert_text((20, 150), "Keep this")
+    page.draw_rect(pymupdf.Rect(20, 20, 80, 50), color=(1, 0, 0))
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        for regions in (
+            [],
+            [{"page": 2, "rectangle": [0, 0, 1, 1]}],
+            [{"page": 1, "rectangle": [0, 0, 0, 1]}],
+        ):
+            invalid = client.post(
+                "/api/jobs",
+                data={"operation": "pdf.redact", "options": json.dumps({"regions": regions})},
+                files=_multipart("a.pdf", source, "application/pdf"),
+            )
+            assert invalid.status_code == 422
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 0.6, 0.35]}]}),
+            },
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(submitted.json()["status_url"] + "/download")
+        assert output.status_code == 200
+        with pymupdf.open(stream=output.content, filetype="pdf") as result:
+            assert "SECRET_TOKEN" not in result[0].get_text()
+            assert "Keep this" in result[0].get_text()
+            streams = [
+                result.xref_stream(xref) or b""
+                for xref in range(1, result.xref_length())
+                if result.xref_is_stream(xref)
+            ]
+            assert all(b"SECRET_TOKEN" not in stream for stream in streams)
+
+
+def test_redaction_blanks_image_pixels_and_removes_overlapping_annotations(settings):
+    picture = BytesIO()
+    Image.new("RGB", (100, 100), (255, 0, 0)).save(picture, "PNG")
+    document = pymupdf.open()
+    page = document.new_page(width=100, height=100)
+    page.insert_image(page.rect, stream=picture.getvalue())
+    annotation = page.add_text_annot((10, 10), "sensitive comment")
+    annotation.update()
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 0.5, 1]}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        with pymupdf.open(stream=result.content, filetype="pdf") as output:
+            page = output[0]
+            assert not list(page.annots() or [])
+            pixmap = page.get_pixmap(colorspace=pymupdf.csRGB, alpha=False)
+            rendered = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+            assert rendered.getpixel((20, 60)) == (0, 0, 0)
+            assert rendered.getpixel((80, 60)) == (255, 0, 0)
+            for image in page.get_images():
+                extracted = Image.open(BytesIO(output.extract_image(image[0])["image"])).convert(
+                    "RGB"
+                )
+                assert extracted.getpixel((20, 60)) != (255, 0, 0)
+
+
+def test_form_fields_are_listed_filled_and_unsupported_rejected(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=300, height=300)
+    for kind, name, rect, value in [
+        (pymupdf.PDF_WIDGET_TYPE_TEXT, "name", (10, 10, 200, 40), "before"),
+        (pymupdf.PDF_WIDGET_TYPE_CHECKBOX, "consent", (10, 60, 30, 80), "Off"),
+        (pymupdf.PDF_WIDGET_TYPE_TEXT, "unchanged", (10, 100, 200, 130), "keep"),
+    ]:
+        widget = pymupdf.Widget()
+        widget.field_type = kind
+        widget.field_name = name
+        widget.rect = pymupdf.Rect(rect)
+        widget.field_value = value
+        page.add_widget(widget)
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        fields = client.post(
+            "/api/pdf/fields", files=_multipart("a.pdf", data, "application/pdf")
+        ).json()["fields"]
+        by_name = {field["name"]: field for field in fields}
+        assert by_name["name"]["value"] == "before"
+        assert by_name["consent"]["value"] is False
+        invalid = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.forms",
+                "options": json.dumps({"updates": [{"id": 999999, "value": "bad"}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert invalid.status_code == 422
+        updates = [
+            {"id": by_name["name"]["id"], "value": "after"},
+            {"id": by_name["consent"]["id"], "value": True},
+        ]
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.forms", "options": json.dumps({"updates": updates})},
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(result.json()["status_url"] + "/download")
+        assert output.status_code == 200
+        with pymupdf.open(stream=output.content, filetype="pdf") as filled:
+            widgets = {widget.field_name: widget.field_value for widget in filled[0].widgets()}
+            assert widgets["name"] == "after"
+            assert widgets["consent"] not in (None, "Off", False)
+            assert widgets["unchanged"] == "keep"
+
+
+def test_readonly_form_field_is_reported_and_cannot_be_changed(settings):
+    document = pymupdf.open()
+    page = document.new_page()
+    widget = pymupdf.Widget()
+    widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    widget.field_name = "read-only"
+    widget.field_flags = pymupdf.PDF_FIELD_IS_READ_ONLY
+    widget.field_value = "original"
+    widget.rect = pymupdf.Rect(10, 10, 200, 40)
+    page.add_widget(widget)
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        field = client.post(
+            "/api/pdf/fields", files=_multipart("a.pdf", data, "application/pdf")
+        ).json()["fields"][0]
+        assert field["type"] == "unsupported"
+        result = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.forms",
+                "options": json.dumps({"updates": [{"id": field["id"], "value": "changed"}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert result.status_code == 422
+        assert result.json()["error"]["code"] == "invalid_options"
+
+
+def test_redaction_rejects_existing_pending_annotations_on_selected_page(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=100, height=100)
+    page.add_redact_annot(pymupdf.Rect(50, 50, 90, 90))
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        result = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 0.4, 0.4]}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        assert client.get(result.json()["status_url"]).json()["state"] == "failed"
+        assert client.get(result.json()["status_url"] + "/download").status_code == 409
+
+
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")

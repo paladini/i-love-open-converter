@@ -3,16 +3,20 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import os
 import re
 import shutil
+import tempfile
 from contextlib import asynccontextmanager
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+import pymupdf
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import FormData, Headers, UploadFile
@@ -22,7 +26,18 @@ from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
 from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
-from .pdf_ops import InvalidPdfError, inspect_pdf, validate_page_ranges
+from .pdf_archive import pdfa_available
+from .pdf_ops import (
+    InvalidPdfError,
+    inspect_pdf,
+    inspect_protected_pdf,
+    list_form_fields,
+    validate_crop_options,
+    validate_edit_options,
+    validate_form_updates,
+    validate_page_ranges,
+    validate_redactions,
+)
 
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
@@ -34,20 +49,10 @@ PDF_COMING_SOON = [
     ("Word para PDF", "Word to PDF", "convert", 7),
     ("PowerPoint para PDF", "PowerPoint to PDF", "convert", 8),
     ("Excel para PDF", "Excel to PDF", "convert", 9),
-    ("Editar PDF", "Edit PDF", "edit", 10),
-    ("Assinar PDF", "Sign PDF", "security", 13),
     ("HTML para PDF", "HTML to PDF", "convert", 16),
-    ("Desbloquear PDF", "Unlock PDF", "security", 17),
-    ("Proteger PDF", "Protect PDF", "security", 18),
-    ("Organizar PDF", "Organize PDF", "organize", 19),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
-    ("Reparar PDF", "Repair PDF", "organize", 21),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
     ("OCR PDF", "OCR PDF", "intelligence", 24),
-    ("Comparar PDF", "Compare PDF", "edit", 25),
-    ("Ocultar PDF", "Redact PDF", "security", 26),
-    ("Recortar PDF", "Crop PDF", "edit", 27),
-    ("Formulários PDF", "PDF forms", "edit", 28),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
     ("PDF para Markdown", "PDF to Markdown", "convert", 31),
@@ -85,7 +90,7 @@ class LimitedMultiPartParser(MultiPartParser):
         max_total_bytes: int,
     ) -> None:
         super().__init__(
-            headers, stream, max_files=max_files, max_fields=2, max_part_size=1024 * 1024
+            headers, stream, max_files=max_files, max_fields=3, max_part_size=1024 * 1024
         )
         self.max_file_bytes = max_file_bytes
         self.max_total_bytes = max_total_bytes
@@ -217,7 +222,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {
                 "request": request,
                 "max_file_size_mb": settings.max_file_size_mb,
-                "pdf_coming_soon": PDF_COMING_SOON,
+                "pdf_coming_soon": [
+                    item for item in PDF_COMING_SOON if item[3] != 20 or not pdfa_available()
+                ],
+                "pdfa_available": pdfa_available(),
                 "image_coming_soon": IMAGE_COMING_SOON,
             },
         )
@@ -245,6 +253,151 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "max_file_size_mb": settings.max_file_size_mb,
             },
         )
+
+    @app.get("/tools/pdf-organize", include_in_schema=False)
+    async def pdf_organize(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-organize.html", {"request": request})
+
+    @app.get("/tools/pdf-crop", include_in_schema=False)
+    async def pdf_crop(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-crop.html", {"request": request})
+
+    @app.get("/tools/pdf-edit", include_in_schema=False)
+    async def pdf_edit(request: Request):
+        return TEMPLATES.TemplateResponse(
+            request, "pdf-edit.html", {"request": request, "sign": False}
+        )
+
+    @app.get("/tools/pdf-sign", include_in_schema=False)
+    async def pdf_sign(request: Request):
+        return TEMPLATES.TemplateResponse(
+            request, "pdf-edit.html", {"request": request, "sign": True}
+        )
+
+    @app.get("/tools/pdf-redact", include_in_schema=False)
+    async def pdf_redact(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-redact.html", {"request": request})
+
+    @app.get("/tools/pdf-forms", include_in_schema=False)
+    async def pdf_forms(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-forms.html", {"request": request})
+
+    @app.get("/tools/pdf-repair", include_in_schema=False)
+    async def pdf_repair(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-repair.html", {"request": request})
+
+    @app.get("/tools/pdf-compare", include_in_schema=False)
+    async def pdf_compare(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-compare.html", {"request": request})
+
+    @app.get("/tools/pdf-pdfa", include_in_schema=False)
+    async def pdf_pdfa(request: Request):
+        if not pdfa_available():
+            raise HTTPException(
+                status_code=503,
+                detail={"error": {"code": "service_unavailable", "message": "PDF/A indisponível."}},
+            )
+        return TEMPLATES.TemplateResponse(request, "pdf-pdfa.html", {"request": request})
+
+    @app.get("/tools/pdf-{action}", include_in_schema=False)
+    async def pdf_password_tool(request: Request, action: str):
+        if action not in {"protect", "unlock"}:
+            raise HTTPException(status_code=404, detail="Not found")
+        return TEMPLATES.TemplateResponse(
+            request, "pdf-password.html", {"request": request, "action": action}
+        )
+
+    @app.post("/api/pdf/pages")
+    async def pdf_pages(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            if len(files) != 1 or not isinstance(files[0], UploadFile):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_file"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                try:
+                    count = inspect_pdf(path)
+                except InvalidPdfError as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+            return {"page_count": count}
+        finally:
+            await form.close()
+
+    @app.post("/api/pdf/preview")
+    async def pdf_preview(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            page_value = form.get("page", "1")
+            if (
+                len(files) != 1
+                or not isinstance(files[0], UploadFile)
+                or not isinstance(page_value, str)
+                or not page_value.isascii()
+                or not page_value.isdecimal()
+                or len(page_value) > 9
+                or int(page_value) < 1
+            ):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_options"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                try:
+                    count = inspect_pdf(path)
+                    page_number = int(page_value)
+                    if page_number > count:
+                        raise HTTPException(
+                            status_code=422, detail={"error": {"code": "invalid_options"}}
+                        )
+                    with pymupdf.open(path) as document:
+                        page = document[page_number - 1]
+                        scale = min(1.0, 1000 / max(page.rect.width, page.rect.height))
+                        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
+                        image = BytesIO(pixmap.tobytes("png"))
+                except InvalidPdfError as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+                except (RuntimeError, ValueError, ZeroDivisionError) as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+            return Response(
+                content=image.getvalue(),
+                media_type="image/png",
+                headers={"Cache-Control": "no-store"},
+            )
+        finally:
+            await form.close()
+
+    @app.post("/api/pdf/fields")
+    async def pdf_fields(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            if len(files) != 1 or not isinstance(files[0], UploadFile):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_file"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                try:
+                    inspect_pdf(path)
+                    with pymupdf.open(path) as document:
+                        fields = list_form_fields(document)
+                except (InvalidPdfError, RuntimeError, ValueError) as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+            return {"fields": fields}
+        finally:
+            await form.close()
 
     @app.get("/healthz")
     async def health() -> dict[str, str]:
@@ -300,6 +453,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_image",
             "pdf.watermark",
             "pdf.page_numbers",
+            "pdf.organize",
+            "pdf.crop",
+            "pdf.edit",
+            "pdf.sign",
+            "pdf.protect",
+            "pdf.unlock",
+            "pdf.redact",
+            "pdf.forms",
+            "pdf.repair",
+            "pdf.compare",
+            "pdf.pdfa",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -371,6 +535,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.compress",
             "pdf.to_image",
             "pdf.page_numbers",
+            "pdf.crop",
+            "pdf.protect",
+            "pdf.unlock",
+            "pdf.redact",
+            "pdf.forms",
+            "pdf.repair",
+            "pdf.pdfa",
         }
         if operation in single_pdf_operations and len(files) != 1:
             raise HTTPException(
@@ -388,6 +559,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         validated_options: dict[str, Any] = {}
+        if operation == "pdf.pdfa" and not pdfa_available():
+            raise HTTPException(
+                status_code=503,
+                detail={"error": {"code": "service_unavailable", "message": "PDF/A indisponível."}},
+            )
+        if operation == "pdf.compare":
+            language = parsed_options.get("language", "pt-BR")
+            if len(files) != 2 or language not in ("pt-BR", "en"):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Selecione dois PDFs."}
+                    },
+                )
+            validated_options["language"] = language
+        secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
+        if operation in {"pdf.protect", "pdf.unlock"} and (
+            not isinstance(secret, str)
+            or not secret
+            or "\0" in secret
+            or len(secret.encode("utf-8")) > 40
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "invalid_options" if operation == "pdf.protect" else "invalid_file",
+                        "message": "Senha inválida.",
+                    }
+                },
+            )
         watermark_kind: str | None = None
         if operation == "pdf.watermark":
             watermark_kind = parsed_options.get("kind")
@@ -658,6 +860,74 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["ranges"] = ranges
+        if operation == "pdf.organize":
+            pages = parsed_options.get("pages")
+            if (
+                not isinstance(pages, list)
+                or not pages
+                or len(files) > 2
+                or any(
+                    not isinstance(item, list)
+                    or len(item) != 2
+                    or any(type(value) is not int or value < 1 for value in item)
+                    for item in pages
+                )
+                or len({tuple(item) for item in pages}) != len(pages)
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Páginas inválidas."}},
+                )
+            validated_options["pages"] = pages
+        if operation == "pdf.crop":
+            validated_options = {
+                "rectangle": parsed_options.get("rectangle"),
+                "ranges": parsed_options.get("ranges"),
+            }
+        if operation == "pdf.redact":
+            validated_options = {"regions": parsed_options.get("regions")}
+        if operation == "pdf.forms":
+            validated_options = {"updates": parsed_options.get("updates")}
+        if operation in {"pdf.edit", "pdf.sign"}:
+            validated_options = {
+                key: parsed_options.get(key)
+                for key in (
+                    "kind",
+                    "page",
+                    "rectangle",
+                    "color",
+                    "text",
+                    "font",
+                    "font_size",
+                    "shape",
+                )
+            }
+            expected = 2 if validated_options["kind"] == "image" else 1
+            if operation == "pdf.sign" and validated_options["kind"] != "image":
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Assinatura inválida."}
+                    },
+                )
+            if (
+                len(files) != expected
+                or Path(files[0].filename or "").suffix.lower() != ".pdf"
+                or (
+                    expected == 2
+                    and Path(files[1].filename or "").suffix.lower()
+                    not in {".png", ".jpg", ".jpeg", ".webp"}
+                )
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Selecione os arquivos necessários.",
+                        }
+                    },
+                )
         if operation == "image.compress" or (
             operation in image_operations and output_format in {"JPEG", "JPG", "WEBP"}
         ):
@@ -678,6 +948,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         input_dir = job_dir / "input"
         input_dir.mkdir(parents=True, exist_ok=False)
         stored: list[dict[str, Any]] = []
+        pdf_page_counts: list[int] = []
         total_size = 0
         try:
             if len(files) > settings.max_files_per_job:
@@ -696,10 +967,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
                 is_pdf_operation = operation.startswith("pdf.")
                 is_watermark_image = (
-                    operation == "pdf.watermark"
-                    and watermark_kind == "image"
-                    and extension in {".png", ".jpg", ".jpeg", ".webp"}
-                )
+                    (operation == "pdf.watermark" and watermark_kind == "image")
+                    or (
+                        operation in {"pdf.edit", "pdf.sign"}
+                        and validated_options["kind"] == "image"
+                        and index == 1
+                    )
+                ) and extension in {".png", ".jpg", ".jpeg", ".webp"}
                 if is_pdf_operation and extension != ".pdf" and not is_watermark_image:
                     raise HTTPException(
                         status_code=415,
@@ -753,7 +1027,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         target.write(chunk)
                 if is_pdf_operation and not is_watermark_image:
                     try:
-                        page_count = inspect_pdf(destination)
+                        page_count = (
+                            0
+                            if operation == "pdf.repair"
+                            else inspect_protected_pdf(destination, secret)
+                            if operation == "pdf.unlock"
+                            else inspect_pdf(destination)
+                        )
+                        pdf_page_counts.append(page_count)
                         content_type = "application/pdf"
                     except InvalidPdfError as exc:
                         raise HTTPException(
@@ -775,6 +1056,59 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     "error": {
                                         "code": "invalid_options",
                                         "message": "Intervalos de páginas inválidos para este PDF.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.crop":
+                        try:
+                            validate_crop_options(validated_options, page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Recorte inválido.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.redact":
+                        try:
+                            validate_redactions(validated_options, page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Áreas inválidas.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.forms":
+                        try:
+                            with pymupdf.open(destination) as document:
+                                validate_form_updates(document, validated_options["updates"])
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Campos inválidos.",
+                                    }
+                                },
+                            ) from exc
+                    if operation in {"pdf.edit", "pdf.sign"}:
+                        try:
+                            validate_edit_options(validated_options, page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Edição inválida.",
                                     }
                                 },
                             ) from exc
@@ -821,6 +1155,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         "size_bytes": file_size,
                     }
                 )
+            if operation == "pdf.organize" and any(
+                file_number > len(pdf_page_counts) or page > pdf_page_counts[file_number - 1]
+                for file_number, page in validated_options["pages"]
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Páginas inválidas."}},
+                )
+            if secret is not None:
+                descriptor = os.open(
+                    job_dir / "secret", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+                )
+                with os.fdopen(descriptor, "w", encoding="utf-8") as secret_file:
+                    secret_file.write(secret)
             create_job(
                 settings.database_path,
                 job_id=job_id,
