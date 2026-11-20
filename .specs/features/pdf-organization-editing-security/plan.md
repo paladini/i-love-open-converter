@@ -62,10 +62,12 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 | `POST /api/jobs` (extended) | multipart `operation`, repeated `files`, JSON `options` | existing job response; successful status exposes result artifacts | `202`; `413` upload limit; `415 unsupported_format`; `422 invalid_file`, `invalid_options`, or `too_many_files` | anyone |
 | `POST /api/pdf/pages` (new) | multipart `files`: one PDF | `{page_count}` for the local page list | `200`; `413` upload limit; `422 invalid_file` | anyone |
 | `POST /api/pdf/preview` (new) | multipart `files`: one PDF; `page`: 1-based page number | PNG preview bounded to 1000 pixels on its longest side | `200`; `413` upload limit; `422 invalid_file` or `invalid_options` | anyone |
+| `POST /api/pdf/fields` (new) | multipart `files`: one PDF | existing widgets with identifiers, types, values and read-only/unsupported markers | `200`; `413` upload limit; `422 invalid_file` | anyone |
 | `GET /tools/pdf-organize` (new) | none | upload-first page organization form | `200` | anyone |
 | `GET /tools/pdf-crop` (new) | none | upload-first PDF crop form with preview | `200` | anyone |
 | `GET /tools/pdf-edit` (new) | none | upload-first PDF editing form with preview | `200` | anyone |
 | `GET /tools/pdf-sign`, `/tools/pdf-protect`, `/tools/pdf-unlock` (new) | none | upload-first signature and password tool forms | `200` | anyone |
+| `GET /tools/pdf-forms`, `/tools/pdf-redact` (new) | none | upload-first forms and redaction tools | `200` | anyone |
 | `GET /api/jobs/{job_id}` (unchanged) | opaque job UUID | existing state, safe error, output metadata | `200`; `404 job_not_found` | anyone with the job ID |
 | `GET /api/jobs/{job_id}/download` (unchanged) | opaque job UUID | PDF or ZIP/report artifact | `200`; `404 job_not_found`; `409 job_not_ready` | anyone with the job ID |
 
@@ -81,6 +83,7 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 - `pdf.crop` accepts `ranges` in the existing page-range syntax and `rectangle` as `[left, top, right, bottom]` fractions of each page's visible, rotated bounds. The same proportional rectangle applies to each selected page.
 - `pdf.edit` applies one text, image, outlined shape or free-text annotation per job to a chosen page, with a proportional rectangle in the same coordinates. Image mode accepts a second PNG, JPEG or WebP input; repeated edits can be made by uploading the downloaded result.
 - `pdf.sign` applies a visual image to a chosen page. `pdf.protect` uses AES-256; `pdf.unlock` requires a valid current password. The separate multipart `password` field is retained temporarily in the local job directory according to AD-008, not in job options.
+- `pdf.forms` accepts widget IDs and new values for text or checkbox fields. `pdf.redact` accepts up to 100 page and normalized rectangle pairs; it applies actual redactions, removes overlapping annotations and widgets, and saves a non-incremental file with garbage collection. Existing pending redaction annotations on a selected page cause a safe failure.
 
 ## Criteria
 

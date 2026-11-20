@@ -84,6 +84,8 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.sign",
             "pdf.protect",
             "pdf.unlock",
+            "pdf.redact",
+            "pdf.forms",
             "image.to_pdf",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]

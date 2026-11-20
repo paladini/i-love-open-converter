@@ -46,6 +46,129 @@ def crop_page(page: pymupdf.Page, rectangle: list[float]) -> None:
     page.set_cropbox(unrotated)
 
 
+def validate_redactions(options: dict[str, Any], page_count: int) -> None:
+    regions = options.get("regions")
+    if not isinstance(regions, list) or not 1 <= len(regions) <= 100:
+        raise InvalidPdfError
+    for region in regions:
+        if not isinstance(region, dict) or type(region.get("page")) is not int:
+            raise InvalidPdfError
+        page = region["page"]
+        if not 1 <= page <= page_count:
+            raise InvalidPdfError
+        validate_crop_options(
+            {"rectangle": region.get("rectangle"), "ranges": str(page)}, page_count
+        )
+
+
+def redact_pages(document, options: dict[str, Any]) -> None:
+    validate_redactions(options, document.page_count)
+    areas: dict[int, list[pymupdf.Rect]] = {}
+    for region in options["regions"]:
+        number = region["page"] - 1
+        page = document[number]
+        x0, y0, x1, y1 = region["rectangle"]
+        rectangle = (
+            pymupdf.Rect(
+                x0 * page.rect.width,
+                y0 * page.rect.height,
+                x1 * page.rect.width,
+                y1 * page.rect.height,
+            )
+            * page.derotation_matrix
+        )
+        areas.setdefault(number, []).append(rectangle)
+    for number, rectangles in areas.items():
+        page = document[number]
+        annotations = list(page.annots() or [])
+        if any(annotation.type[0] == pymupdf.PDF_ANNOT_REDACT for annotation in annotations):
+            raise InvalidPdfError("PDF contains pending redactions")
+        for annotation in annotations:
+            if any(annotation.rect.intersects(rectangle) for rectangle in rectangles):
+                page.delete_annot(annotation)
+        for widget in list(page.widgets() or []):
+            if any(widget.rect.intersects(rectangle) for rectangle in rectangles):
+                page.delete_widget(widget)
+        for rectangle in rectangles:
+            page.add_redact_annot(rectangle, fill=(0, 0, 0), cross_out=False)
+        page.apply_redactions(
+            images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
+            graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+            text=pymupdf.PDF_REDACT_TEXT_REMOVE,
+        )
+
+
+def list_form_fields(document) -> list[dict[str, Any]]:
+    fields = []
+    for page_number in range(document.page_count):
+        page = document[page_number]
+        for widget in page.widgets() or []:
+            field_type = {
+                pymupdf.PDF_WIDGET_TYPE_TEXT: "text",
+                pymupdf.PDF_WIDGET_TYPE_CHECKBOX: "checkbox",
+            }.get(widget.field_type, "unsupported")
+            if widget.field_flags & pymupdf.PDF_FIELD_IS_READ_ONLY:
+                field_type = "unsupported"
+            value = widget.field_value
+            if field_type == "checkbox":
+                value = value not in (None, "", "Off", False, 0)
+            elif field_type == "text":
+                value = str(value or "")
+            else:
+                value = None
+            fields.append(
+                {
+                    "page": page_number + 1,
+                    "id": widget.xref,
+                    "name": widget.field_label or widget.field_name or f"Field {widget.xref}",
+                    "type": field_type,
+                    "value": value,
+                    "max_length": widget.text_maxlen if field_type == "text" else 0,
+                }
+            )
+    return fields
+
+
+def validate_form_updates(document, updates: Any) -> None:
+    if not isinstance(updates, list) or len(updates) > 500:
+        raise InvalidPdfError
+    fields = {field["id"]: field for field in list_form_fields(document)}
+    seen = set()
+    for update in updates:
+        if not isinstance(update, dict) or type(update.get("id")) is not int:
+            raise InvalidPdfError
+        identifier = update["id"]
+        field = fields.get(identifier)
+        if not field or identifier in seen or field["type"] == "unsupported":
+            raise InvalidPdfError
+        seen.add(identifier)
+        value = update.get("value")
+        if field["type"] == "checkbox":
+            if type(value) is not bool:
+                raise InvalidPdfError
+        elif (
+            not isinstance(value, str)
+            or len(value) > 5000
+            or (field["max_length"] and len(value) > field["max_length"])
+        ):
+            raise InvalidPdfError
+
+
+def fill_form(document, updates: list[dict[str, Any]]) -> None:
+    validate_form_updates(document, updates)
+    changes = {update["id"]: update["value"] for update in updates}
+    for page in document:
+        for widget in page.widgets() or []:
+            if widget.xref in changes:
+                value = changes[widget.xref]
+                widget.field_value = (
+                    widget.on_state()
+                    if widget.field_type == pymupdf.PDF_WIDGET_TYPE_CHECKBOX and value
+                    else ("Off" if widget.field_type == pymupdf.PDF_WIDGET_TYPE_CHECKBOX else value)
+                )
+                widget.update()
+
+
 def validate_edit_options(options: dict[str, Any], page_count: int) -> None:
     page = options.get("page")
     kind = options.get("kind")
@@ -458,6 +581,17 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.forms":
+            fill_form(document, options["updates"])
+            destination = output_dir / "filled.pdf"
+            document.save(destination, garbage=3, deflate=True)
+            return [destination], "application/pdf"
+        if operation == "pdf.redact":
+            redact_pages(document, options)
+            destination = output_dir / "redacted.pdf"
+            document.save(destination, garbage=4, deflate=True)
+            return [destination], "application/pdf"
+
         if operation == "pdf.crop":
             for page_number in validate_crop_options(options, document.page_count):
                 crop_page(document[page_number], options["rectangle"])

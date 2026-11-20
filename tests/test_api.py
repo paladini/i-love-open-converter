@@ -342,6 +342,187 @@ def test_password_job_recovers_after_interruption(settings, pdf_bytes):
         assert client.get(submitted.json()["status_url"]).json()["state"] == "succeeded"
 
 
+def test_redaction_removes_content_and_keeps_other_page_text(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=200, height=200)
+    page.insert_text((20, 40), "SECRET_TOKEN")
+    page.insert_text((20, 150), "Keep this")
+    page.draw_rect(pymupdf.Rect(20, 20, 80, 50), color=(1, 0, 0))
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        for regions in (
+            [],
+            [{"page": 2, "rectangle": [0, 0, 1, 1]}],
+            [{"page": 1, "rectangle": [0, 0, 0, 1]}],
+        ):
+            invalid = client.post(
+                "/api/jobs",
+                data={"operation": "pdf.redact", "options": json.dumps({"regions": regions})},
+                files=_multipart("a.pdf", source, "application/pdf"),
+            )
+            assert invalid.status_code == 422
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 0.6, 0.35]}]}),
+            },
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(submitted.json()["status_url"] + "/download")
+        assert output.status_code == 200
+        with pymupdf.open(stream=output.content, filetype="pdf") as result:
+            assert "SECRET_TOKEN" not in result[0].get_text()
+            assert "Keep this" in result[0].get_text()
+            streams = [
+                result.xref_stream(xref) or b""
+                for xref in range(1, result.xref_length())
+                if result.xref_is_stream(xref)
+            ]
+            assert all(b"SECRET_TOKEN" not in stream for stream in streams)
+
+
+def test_redaction_blanks_image_pixels_and_removes_overlapping_annotations(settings):
+    picture = BytesIO()
+    Image.new("RGB", (100, 100), (255, 0, 0)).save(picture, "PNG")
+    document = pymupdf.open()
+    page = document.new_page(width=100, height=100)
+    page.insert_image(page.rect, stream=picture.getvalue())
+    annotation = page.add_text_annot((10, 10), "sensitive comment")
+    annotation.update()
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 0.5, 1]}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        with pymupdf.open(stream=result.content, filetype="pdf") as output:
+            page = output[0]
+            assert not list(page.annots() or [])
+            pixmap = page.get_pixmap(colorspace=pymupdf.csRGB, alpha=False)
+            rendered = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+            assert rendered.getpixel((20, 60)) == (0, 0, 0)
+            assert rendered.getpixel((80, 60)) == (255, 0, 0)
+            for image in page.get_images():
+                extracted = Image.open(BytesIO(output.extract_image(image[0])["image"])).convert(
+                    "RGB"
+                )
+                assert extracted.getpixel((20, 60)) != (255, 0, 0)
+
+
+def test_form_fields_are_listed_filled_and_unsupported_rejected(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=300, height=300)
+    for kind, name, rect, value in [
+        (pymupdf.PDF_WIDGET_TYPE_TEXT, "name", (10, 10, 200, 40), "before"),
+        (pymupdf.PDF_WIDGET_TYPE_CHECKBOX, "consent", (10, 60, 30, 80), "Off"),
+        (pymupdf.PDF_WIDGET_TYPE_TEXT, "unchanged", (10, 100, 200, 130), "keep"),
+    ]:
+        widget = pymupdf.Widget()
+        widget.field_type = kind
+        widget.field_name = name
+        widget.rect = pymupdf.Rect(rect)
+        widget.field_value = value
+        page.add_widget(widget)
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        fields = client.post(
+            "/api/pdf/fields", files=_multipart("a.pdf", data, "application/pdf")
+        ).json()["fields"]
+        by_name = {field["name"]: field for field in fields}
+        assert by_name["name"]["value"] == "before"
+        assert by_name["consent"]["value"] is False
+        invalid = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.forms",
+                "options": json.dumps({"updates": [{"id": 999999, "value": "bad"}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert invalid.status_code == 422
+        updates = [
+            {"id": by_name["name"]["id"], "value": "after"},
+            {"id": by_name["consent"]["id"], "value": True},
+        ]
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.forms", "options": json.dumps({"updates": updates})},
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(result.json()["status_url"] + "/download")
+        assert output.status_code == 200
+        with pymupdf.open(stream=output.content, filetype="pdf") as filled:
+            widgets = {widget.field_name: widget.field_value for widget in filled[0].widgets()}
+            assert widgets["name"] == "after"
+            assert widgets["consent"] not in (None, "Off", False)
+            assert widgets["unchanged"] == "keep"
+
+
+def test_readonly_form_field_is_reported_and_cannot_be_changed(settings):
+    document = pymupdf.open()
+    page = document.new_page()
+    widget = pymupdf.Widget()
+    widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    widget.field_name = "read-only"
+    widget.field_flags = pymupdf.PDF_FIELD_IS_READ_ONLY
+    widget.field_value = "original"
+    widget.rect = pymupdf.Rect(10, 10, 200, 40)
+    page.add_widget(widget)
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        field = client.post(
+            "/api/pdf/fields", files=_multipart("a.pdf", data, "application/pdf")
+        ).json()["fields"][0]
+        assert field["type"] == "unsupported"
+        result = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.forms",
+                "options": json.dumps({"updates": [{"id": field["id"], "value": "changed"}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert result.status_code == 422
+        assert result.json()["error"]["code"] == "invalid_options"
+
+
+def test_redaction_rejects_existing_pending_annotations_on_selected_page(settings):
+    document = pymupdf.open()
+    page = document.new_page(width=100, height=100)
+    page.add_redact_annot(pymupdf.Rect(50, 50, 90, 90))
+    data = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        result = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.redact",
+                "options": json.dumps({"regions": [{"page": 1, "rectangle": [0, 0, 0.4, 0.4]}]}),
+            },
+            files=_multipart("a.pdf", data, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        assert client.get(result.json()["status_url"]).json()["state"] == "failed"
+        assert client.get(result.json()["status_url"] + "/download").status_code == 409
+
+
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")

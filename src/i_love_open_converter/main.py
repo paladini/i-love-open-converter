@@ -30,9 +30,12 @@ from .pdf_ops import (
     InvalidPdfError,
     inspect_pdf,
     inspect_protected_pdf,
+    list_form_fields,
     validate_crop_options,
     validate_edit_options,
+    validate_form_updates,
     validate_page_ranges,
+    validate_redactions,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,8 +54,6 @@ PDF_COMING_SOON = [
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
     ("OCR PDF", "OCR PDF", "intelligence", 24),
     ("Comparar PDF", "Compare PDF", "edit", 25),
-    ("Ocultar PDF", "Redact PDF", "security", 26),
-    ("Formulários PDF", "PDF forms", "edit", 28),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
     ("PDF para Markdown", "PDF to Markdown", "convert", 31),
@@ -271,6 +272,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             request, "pdf-edit.html", {"request": request, "sign": True}
         )
 
+    @app.get("/tools/pdf-redact", include_in_schema=False)
+    async def pdf_redact(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-redact.html", {"request": request})
+
+    @app.get("/tools/pdf-forms", include_in_schema=False)
+    async def pdf_forms(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-forms.html", {"request": request})
+
     @app.get("/tools/pdf-{action}", include_in_schema=False)
     async def pdf_password_tool(request: Request, action: str):
         if action not in {"protect", "unlock"}:
@@ -348,6 +357,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         finally:
             await form.close()
 
+    @app.post("/api/pdf/fields")
+    async def pdf_fields(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            if len(files) != 1 or not isinstance(files[0], UploadFile):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_file"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                try:
+                    inspect_pdf(path)
+                    with pymupdf.open(path) as document:
+                        fields = list_form_fields(document)
+                except (InvalidPdfError, RuntimeError, ValueError) as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+            return {"fields": fields}
+        finally:
+            await form.close()
+
     @app.get("/healthz")
     async def health() -> dict[str, str]:
         try:
@@ -408,6 +440,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.sign",
             "pdf.protect",
             "pdf.unlock",
+            "pdf.redact",
+            "pdf.forms",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -482,6 +516,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.crop",
             "pdf.protect",
             "pdf.unlock",
+            "pdf.redact",
+            "pdf.forms",
         }
         if operation in single_pdf_operations and len(files) != 1:
             raise HTTPException(
@@ -809,6 +845,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "rectangle": parsed_options.get("rectangle"),
                 "ranges": parsed_options.get("ranges"),
             }
+        if operation == "pdf.redact":
+            validated_options = {"regions": parsed_options.get("regions")}
+        if operation == "pdf.forms":
+            validated_options = {"updates": parsed_options.get("updates")}
         if operation in {"pdf.edit", "pdf.sign"}:
             validated_options = {
                 key: parsed_options.get(key)
@@ -988,6 +1028,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     "error": {
                                         "code": "invalid_options",
                                         "message": "Recorte inválido.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.redact":
+                        try:
+                            validate_redactions(validated_options, page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Áreas inválidas.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.forms":
+                        try:
+                            with pymupdf.open(destination) as document:
+                                validate_form_updates(document, validated_options["updates"])
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Campos inválidos.",
                                     }
                                 },
                             ) from exc
