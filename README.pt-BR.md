@@ -58,6 +58,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 - Girar todas as páginas em 90°, 180° ou 270°.
 - Otimizar PDFs com compressão estrutural local sem perdas.
 - Renderizar cada página de um PDF como imagem JPG.
+- Extrair imagens incorporadas do PDF em PNG dentro de um ZIP, preservando a transparência. Objetos de imagem repetidos são incluídos uma vez; imagens inline são incluídas em cada ocorrência.
 - Transformar imagens em um PDF com uma página para cada imagem.
 - Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
   posição e opacidade; marcas de texto também permitem configurar fonte,
@@ -73,7 +74,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
-| PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, HTML, JPG ou ZIP |
+| PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, extrair imagens, marca d'água, números de página | PDF, HTML, JPG ou ZIP |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |
 | Imagem estática | Imagens para PDF | PDF |
 

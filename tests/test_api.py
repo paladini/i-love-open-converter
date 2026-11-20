@@ -24,6 +24,195 @@ def _multipart(filename: str, content: bytes, content_type: str = "image/jpeg"):
     return {"files": (filename, content, content_type)}
 
 
+def test_extract_images_deduplicates_and_preserves_transparency(settings, pdf_bytes):
+    image = BytesIO()
+    Image.new("RGBA", (8, 8), (255, 0, 0, 80)).save(image, format="PNG")
+    document = pymupdf.open()
+    page = document.new_page()
+    xref = page.insert_image(pymupdf.Rect(10, 10, 100, 100), stream=image.getvalue())
+    document.new_page().insert_image(pymupdf.Rect(10, 10, 100, 100), xref=xref)
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with ZipFile(BytesIO(result.content)) as archive:
+            assert archive.namelist() == ["image-001.png"]
+            with Image.open(BytesIO(archive.read("image-001.png"))) as extracted:
+                assert extracted.convert("RGBA").getpixel((0, 0)) == (255, 0, 0, 80)
+        empty = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
+            files=_multipart("empty.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert empty.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(empty.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "no_images"
+
+
+def test_extracts_image_in_annotation_appearance(settings):
+    image = BytesIO()
+    Image.new("RGB", (4, 4), "red").save(image, "PNG")
+    document = pymupdf.open()
+    page = document.new_page()
+    image_xref = page.insert_image(pymupdf.Rect(10, 10, 50, 50), stream=image.getvalue())
+    content = page.get_contents()[0]
+    annotation = page.add_stamp_annot(pymupdf.Rect(20, 20, 120, 120))
+    appearance = int(document.xref_get_key(annotation.xref, "AP/N")[1].split()[0])
+    document.update_object(
+        appearance,
+        f"<< /Type /XObject /Subtype /Form /BBox [0 0 100 100] "
+        f"/Resources << /XObject << /Im {image_xref} 0 R >> >> >>",
+    )
+    document.update_stream(appearance, b"q 100 0 0 100 0 0 cm /Im Do Q")
+    document.update_stream(content, b"")
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs", data={"operation": "pdf.extract_images"},
+            files=_multipart("annotation.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with ZipFile(BytesIO(result.content)) as archive:
+            with Image.open(BytesIO(archive.read("image-001.png"))) as extracted:
+                assert extracted.convert("RGB").getpixel((0, 0)) == (255, 0, 0)
+
+
+def test_extracts_inline_pdf_image(settings):
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((20, 50), "placeholder")
+    xref = page.get_contents()[0]
+    document.update_stream(
+        xref,
+        b"q 10 0 0 10 10 10 cm BI /W 1 /H 1 /CS /RGB /BPC 8 ID " + bytes([255, 0, 0]) + b" EI Q",
+    )
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with ZipFile(BytesIO(result.content)) as archive:
+            assert archive.namelist() == ["image-001.png"]
+            with Image.open(BytesIO(archive.read("image-001.png"))) as extracted:
+                assert extracted.convert("RGB").getpixel((0, 0)) == (255, 0, 0)
+
+
+def test_extracts_distinct_pdf_objects_even_when_pixels_are_identical(settings):
+    image = BytesIO()
+    Image.new("RGB", (4, 4), "red").save(image, "PNG")
+    document = pymupdf.open()
+    page = document.new_page()
+    first = page.insert_image(pymupdf.Rect(0, 0, 20, 20), stream=image.getvalue())
+    second = document.get_new_xref()
+    document.update_object(second, document.xref_object(first))
+    document.update_stream(second, document.xref_stream(first))
+    page.insert_image(pymupdf.Rect(30, 0, 50, 20), xref=second)
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        with ZipFile(BytesIO(result.content)) as archive:
+            assert archive.namelist() == ["image-001.png", "image-002.png"]
+
+
+def test_extraction_follows_drawing_order_with_reuse_and_inline_images(settings):
+    image = BytesIO()
+    Image.new("RGB", (4, 4), "red").save(image, "PNG")
+    document = pymupdf.open()
+    page = document.new_page()
+    first = page.insert_image(pymupdf.Rect(0, 0, 20, 20), stream=image.getvalue())
+    page.insert_image(pymupdf.Rect(30, 0, 50, 20), xref=first)
+    second = document.get_new_xref()
+    document.update_object(second, document.xref_object(first))
+    document.update_stream(second, document.xref_stream(first))
+    page.insert_image(pymupdf.Rect(90, 0, 110, 20), xref=second)
+    streams = page.get_contents()
+    inline = (
+        b"q 10 0 0 10 60 10 cm BI /W 1 /H 1 /CS /RGB /BPC 8 ID " + bytes([0, 255, 0]) + b" EI Q\n"
+    )
+    combined = (
+        document.xref_stream(streams[0])
+        + document.xref_stream(streams[1])
+        + inline
+        + document.xref_stream(streams[2])
+    )
+    document.update_stream(streams[0], combined)
+    page.set_contents(streams[0])
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with ZipFile(BytesIO(result.content)) as archive:
+            assert archive.namelist() == ["image-001.png", "image-002.png", "image-003.png"]
+            colors = []
+            for name in archive.namelist():
+                with Image.open(BytesIO(archive.read(name))) as extracted:
+                    colors.append(extracted.convert("RGB").getpixel((0, 0)))
+            assert colors == [(255, 0, 0), (0, 255, 0), (255, 0, 0)]
+
+
+def test_extracts_images_inside_nested_pdf_forms(settings):
+    image = BytesIO()
+    Image.new("RGB", (4, 4), "blue").save(image, "PNG")
+    child = pymupdf.open()
+    child.new_page(width=100, height=100).insert_image(
+        pymupdf.Rect(0, 0, 50, 50), stream=image.getvalue()
+    )
+    parent = pymupdf.open()
+    parent.new_page(width=200, height=200).show_pdf_page(pymupdf.Rect(0, 0, 100, 100), child, 0)
+    source = parent.tobytes()
+    parent.close()
+    child.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
+            files=_multipart("a.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with ZipFile(BytesIO(result.content)) as archive:
+            with Image.open(BytesIO(archive.read("image-001.png"))) as extracted:
+                assert extracted.convert("RGB").getpixel((0, 0)) == (0, 0, 255)
+
+
 def test_organization_inserts_pages_from_the_requested_source(settings):
     def make_pdf(prefix):
         document = pymupdf.open()

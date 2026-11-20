@@ -125,6 +125,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "pillow" },
     { name = "pymupdf-lite" },
+    { name = "pypdf" },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -142,6 +143,7 @@ requires-dist = [
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "pymupdf-lite", specifier = "==2.1" },
+    { name = "pypdf", specifier = "==7.1.1" },
     { name = "python-multipart", specifier = "==0.0.34" },
     { name = "uvicorn", specifier = "==0.38.0" },
 ]
@@ -367,6 +369,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/20/22/c09b8be64b3c69692f9c7f9c3754ed356652180d08c632e0ee84318dd2cc/pymupdf_lite-2.1-cp311-abi3-win_arm64.whl", hash = "sha256:8a56ae09707f13aa412b2ab3c451e898b9a3f650e687dd2f3cdf5c9e28175f2d", size = 19420239, upload-time = "2026-11-02T17:17:03.749Z" },
     { url = "https://files.pythonhosted.org/packages/c0/e1/3b06bb465231d683b3032e38d32704752f8e2d41c056525acd080841e772/pymupdf_lite-2.1-cp313-abi3-pyemscripten_2025_0_wasm32.whl", hash = "sha256:d4d16f0ed7c6c9268cfee8074bba85b78c44783941e37f735a93d543ae50dd6c", size = 18442310, upload-time = "2026-11-02T17:17:08.281Z" },
     { url = "https://files.pythonhosted.org/packages/e7/7f/9d2c7b72985b74c8ecfb661808d102e556be6b4a72d0055a65a08a9089f8/pymupdf_lite-2.1-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:78d6481a36cd4be37020dba8d874bb01e33e9ed6ae55ebcceb29f0c088cecae6", size = 25884129, upload-time = "2026-11-02T17:17:15.024Z" },
+]
+
+[[package]]
+name = "pypdf"
+version = "7.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/5f/f41984a8150ec37c6ee50fa6fa1868d065337b65ba510a155848b2ce0b62/pypdf-7.1.1.tar.gz", hash = "sha256:2eff4e2fc5fb22a6d6711e6f1166cdc9ab5765d90cd0d77dfea3f4aa91a27b1d", size = 7221452, upload-time = "2026-11-18T11:51:08.608Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/ef/11ed995bd10a1632f7fea3da38ae8d42bc3ccc5b9969fe04d8620c844408/pypdf-7.1.1-py3-none-any.whl", hash = "sha256:04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1", size = 421026, upload-time = "2026-11-18T11:51:06.563Z" },
 ]
 
 [[package]]

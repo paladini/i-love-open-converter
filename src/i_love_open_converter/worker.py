@@ -19,7 +19,7 @@ from .database import (
 )
 from .files import safe_stem
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
-from .pdf_ops import InvalidPdfError, process_pdf
+from .pdf_ops import InvalidPdfError, NoEmbeddedImagesError, process_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.rotate",
             "pdf.compress",
             "pdf.to_image",
+            "pdf.extract_images",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -107,7 +108,11 @@ def process_one_job(settings: Settings) -> bool:
             paths, content_type = process_pdf(
                 job["operation"], sources, job["options"], output_dir, secret
             )
-            if len(paths) > 1 or job["operation"] in {"pdf.split", "pdf.to_image"}:
+            if len(paths) > 1 or job["operation"] in {
+                "pdf.split",
+                "pdf.to_image",
+                "pdf.extract_images",
+            }:
                 output_name = "converted-files.zip"
                 destination = output_dir / output_name
                 with ZipFile(destination, "w", ZIP_DEFLATED) as archive:
@@ -149,6 +154,15 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "invalid_file",
             "O arquivo não é uma imagem válida.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoEmbeddedImagesError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "no_images",
+            "O PDF não contém imagens extraíveis.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

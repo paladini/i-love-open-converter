@@ -7,7 +7,7 @@
     <meta name="description" content="Conversões de arquivos simples, locais e open-source.">
     <title>I Love Open Converter</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
-    <script defer src="{{ url_for('static', path='/js/app.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/app.js') }}?v=2"></script>
   </head>
   <body>
     <header class="site-header">
@@ -125,6 +125,7 @@
           <div class="converter-heading-icon"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 4.5h10l6 6V24H6z"/><path d="M16 4.5v6h6M9.5 15h9M9.5 18.5h5"/></svg></div>
           <div><p class="eyebrow muted" data-i18n="selectedTool">FERRAMENTA SELECIONADA</p><h2 id="converter-title" data-i18n="convertTitle">Converter imagem</h2></div>
         </div>
+        <p id="extract-images-link" hidden><a href="/tools/pdf-extract-images" data-pt="Extrair imagens embutidas do PDF" data-en="Extract embedded images from PDF">Extrair imagens embutidas do PDF</a></p>
         <form id="convert-form">
           <label class="drop-zone" id="drop-zone" for="file-input">
           <input id="file-input" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff">

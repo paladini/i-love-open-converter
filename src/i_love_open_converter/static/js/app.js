@@ -174,6 +174,7 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
     tool.classList.toggle("active", selected);
@@ -442,5 +443,5 @@ resetButton.addEventListener("click", () => {
   dropZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
-selectTool(currentOperation);
+selectTool(new URLSearchParams(window.location.search).get('tool') === 'pdf.to_image' ? 'pdf.to_image' : currentOperation);
 applyLanguage(currentLanguage);

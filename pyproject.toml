@@ -12,6 +12,7 @@ dependencies = [
   "pillow==13.0.0",
   "python-multipart==0.0.34",
   "uvicorn==0.38.0",
+  "pypdf==7.1.1",
 ]
 
 [dependency-groups]
