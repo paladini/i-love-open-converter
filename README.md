@@ -59,6 +59,7 @@ ZIP archive. Animated images are not supported.
 - Convert Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) and Excel (`.xls`, `.xlsx`) documents to PDF using local LibreOffice.
 - Extract embedded PDF images as PNG files in a ZIP, preserving transparency. Repeated image objects are included once; inline images are included at each occurrence.
 - Convert PDFs to Markdown with locally extracted text, tables and figures in a portable ZIP. Scanned pages require OCR, which is not part of this conversion; complex layouts may not be reconstructed faithfully.
+- Convert a PDF to an editable Word DOCX locally. Scanned PDFs need OCR, and complex layouts may differ from the original.
 
 - Turn images into a PDF with one page per image.
 - Add a text or image watermark to every page. Choose its position and
@@ -68,6 +69,7 @@ ZIP archive. Animated images are not supported.
 
 PDF-to-Markdown uses the full PyMuPDF layout engine and CPU-only ONNX Runtime locally. ONNX telemetry is disabled before initialization.
 To bound rendering memory, pages exceeding 16 million pixels at 150 DPI are rejected; conversion is also subject to time and output-size limits.
+PDF-to-Word uses the local `pdf2docx` library, which its upstream no longer actively maintains. It applies the same page-size, time and output-size limits.
 
 PDF tools accept unencrypted PDFs. A split or multi-page PDF-to-JPG result
 downloads as a ZIP archive.
@@ -77,7 +79,7 @@ downloads as a ZIP archive.
 | Input | Available operations | Output |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
-| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG or Markdown, extract images, watermark, page numbers | PDF, HTML, JPG, or ZIP |
+| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown or Word, extract images, watermark, page numbers | PDF, DOCX, HTML, JPG, or ZIP |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
 | Password-protected PDF | Unlock with the current password | PDF |
 | Static image | Images to PDF | PDF |
