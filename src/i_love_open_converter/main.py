@@ -26,6 +26,7 @@ from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
 from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
+from .office_ops import FAMILIES
 from .pdf_archive import pdfa_available
 from .pdf_ops import (
     InvalidPdfError,
@@ -46,9 +47,6 @@ PDF_COMING_SOON = [
     ("PDF para Word", "PDF to Word", "convert", 4),
     ("PDF para PowerPoint", "PDF to PowerPoint", "convert", 5),
     ("PDF para Excel", "PDF to Excel", "convert", 6),
-    ("Word para PDF", "Word to PDF", "convert", 7),
-    ("PowerPoint para PDF", "PowerPoint to PDF", "convert", 8),
-    ("Excel para PDF", "Excel to PDF", "convert", 9),
     ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
@@ -290,6 +288,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_extract_images(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-extract-images.html", {"request": request})
 
+    @app.get("/tools/office-to-pdf/{family}", include_in_schema=False)
+    async def office_to_pdf(request: Request, family: str):
+        labels = {
+            "word": ("Word", ".doc,.docx"),
+            "powerpoint": ("PowerPoint", ".ppt,.pptx"),
+            "excel": ("Excel", ".xls,.xlsx"),
+        }
+        if family not in labels:
+            raise HTTPException(status_code=404)
+        title, extensions = labels[family]
+        return TEMPLATES.TemplateResponse(
+            request, "office-to-pdf.html", {"request": request, "family": family,
+                                           "title": title, "extensions": extensions}
+        )
+
     @app.get("/tools/pdf-compare", include_in_schema=False)
     async def pdf_compare(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-compare.html", {"request": request})
@@ -445,6 +458,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         supported_operations = {
+            *FAMILIES,
             "image.convert",
             "image.resize",
             "image.compress",
@@ -549,7 +563,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.pdfa",
         }
-        if operation in single_pdf_operations and len(files) != 1:
+        if (operation in single_pdf_operations or operation in FAMILIES) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -972,6 +986,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
                 is_pdf_operation = operation.startswith("pdf.")
+                if operation in FAMILIES and extension not in FAMILIES[operation]:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={"error": {"code": "unsupported_format",
+                                          "message": "Formato de documento não suportado."}},
+                    )
                 is_watermark_image = (
                     (operation == "pdf.watermark" and watermark_kind == "image")
                     or (
@@ -993,6 +1013,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if (
                     not is_pdf_operation
                     and operation != "image.to_pdf"
+                    and operation not in FAMILIES
                     and extension not in accepted_extensions
                 ):
                     raise HTTPException(
@@ -1031,7 +1052,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 },
                             )
                         target.write(chunk)
-                if is_pdf_operation and not is_watermark_image:
+                if operation in FAMILIES:
+                    content_type = "application/octet-stream"
+                elif is_pdf_operation and not is_watermark_image:
                     try:
                         page_count = (
                             0

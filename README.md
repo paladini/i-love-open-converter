@@ -56,6 +56,7 @@ ZIP archive. Animated images are not supported.
 - Rotate every page by 90°, 180°, or 270°.
 - Optimize a PDF with local lossless structural compression.
 - Render each PDF page as a JPG image.
+- Convert Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) and Excel (`.xls`, `.xlsx`) documents to PDF using local LibreOffice.
 - Extract embedded PDF images as PNG files in a ZIP, preserving transparency. Repeated image objects are included once; inline images are included at each occurrence.
 - Turn images into a PDF with one page per image.
 - Add a text or image watermark to every page. Choose its position and
@@ -72,6 +73,7 @@ downloads as a ZIP archive.
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
 | Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, extract images, watermark, page numbers | PDF, HTML, JPG, or ZIP |
+| Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
 | Password-protected PDF | Unlock with the current password | PDF |
 | Static image | Images to PDF | PDF |
 
@@ -86,6 +88,10 @@ tracks the remaining stages.
 ## Quick start with Docker
 
 Requirements: Docker Engine and Docker Compose v2.
+
+Office conversion uses LibreOffice and Linux Landlock inside the worker. The supplied Compose configuration disables worker networking and explicitly enables Office processing only in that isolated worker. A standalone worker must be placed in an equivalent network namespace with no external interfaces and configured with `OFFICE_NETWORK_ISOLATED=1`; otherwise Office jobs fail closed. The setting is an operator attestation and does not itself isolate a process. Office conversion also requires a Linux kernel and container policy that permit Landlock. Password-protected documents are unsupported, and fonts, layout and spreadsheet pagination may differ from the original application.
+
+Office ZIP packages are limited to 64 MiB per expanded part and 256 MiB expanded in total. The converter has per-process memory, CPU and file-size limits; the supplied worker also limits memory, process count and temporary storage.
 
 ```sh
 git clone https://github.com/paladini/i-love-open-converter.git

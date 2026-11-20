@@ -15,7 +15,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends ghostscript fonts-urw-base35 default-jre-headless \
+RUN apt-get update && apt-get install -y --no-install-recommends ghostscript fonts-urw-base35 default-jre-headless libreoffice-writer libreoffice-calc libreoffice-impress \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=verapdf-installer /opt/verapdf /opt/verapdf
 ENV VERAPDF_BIN=/opt/verapdf/verapdf

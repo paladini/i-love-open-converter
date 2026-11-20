@@ -19,6 +19,7 @@ from .database import (
 )
 from .files import safe_stem
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
+from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import InvalidPdfError, NoEmbeddedImagesError, process_pdf
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,18 @@ def process_one_job(settings: Settings) -> bool:
     job_id = job["id"]
     job_dir = settings.jobs_dir / job_id
     try:
-        if job["operation"] in {
+        if job["operation"] in FAMILIES:
+            inputs = [item for item in job["artifacts"] if item["role"] == "input"]
+            if len(inputs) != 1:
+                raise OfficeConversionError
+            source = (settings.data_dir / inputs[0]["relative_path"]).resolve()
+            if not source.is_relative_to(settings.data_dir.resolve()):
+                raise OfficeConversionError
+            destination = convert_office(source, job_dir / "output")
+            output_name = destination.name
+            content_type = "application/pdf"
+            size_bytes = destination.stat().st_size
+        elif job["operation"] in {
             "image.convert",
             "image.resize",
             "image.compress",
@@ -139,6 +151,19 @@ def process_one_job(settings: Settings) -> bool:
             ],
             settings.job_retention_hours,
         )
+    except OfficeUnavailableError:
+        mark_failed(
+            settings.database_path, job_id, "office_unavailable",
+            "Conversor Office indisponível ou sem isolamento de rede e de arquivos.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except OfficeConversionError:
+        mark_failed(
+            settings.database_path, job_id, "office_failed",
+            "Não foi possível converter o documento Office.", settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
     except UnsupportedImageError:
         mark_failed(
             settings.database_path,
