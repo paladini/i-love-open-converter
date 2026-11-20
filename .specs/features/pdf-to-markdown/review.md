@@ -1,0 +1,18 @@
+# Independent review
+
+Verdict: changes required. The user's sentence requests continued implementation of the complete application and PRs; this feature is one step in that roadmap, not evidence of overall completion. The plan covers PDF-to-Markdown specifically.
+
+## Finding
+
+1. **P1 - A small PDF can exhaust the worker before the image limits run.** In `pdf_ops.py`, `document.to_markdown(use_ocr=False, embed_images=True, ...)` parses the entire document and renders figures before the code applies its 200-image/256 MiB limits. PyMuPDF's layout implementation uses `page.get_pixmap(..., dpi=150)` and keeps image bytes in its document model. I generated a 33,835-byte PDF with a 5,000 × 5,000-point page, a short text and a 100 × 100-pixel image stretched over most of the page, then called `process_pdf` in a network-disabled disposable container with 512 MiB memory and no swap. Docker reported exit code 137 and `OOMKilled=true`, not a handled job failure. The equivalent 3,000 × 3,000-point case succeeded in the same memory budget. The deployed worker limit is larger (3 GiB), but sufficiently large pages or many figures can likewise terminate it before the post-conversion limit, interrupting all work rather than returning a safe failure. Bound page rasterization and document/image processing before allocation or isolate the conversion in a resource-bounded subprocess whose termination the worker can handle; add a regression test. No current test exercises this case.
+
+## Criteria and tests
+
+1. The catalog link, bilingual upload form, polling and download control exist. I opened the initial page read-only in a throwaway local app instance. No captures or capture sizes are present or cited, so no capture comparison was possible. The tests check the route response but do not exercise browser states or switching languages.
+2. `test_pdf_to_markdown_packages_text_and_images` checks real conversion and ordering of two pages; it would fail for missing or reordered sample text. `test_pdf_to_markdown_includes_detectable_table` checks both cell strings and a pipe, but does not establish that the strings are in table rows or that a malformed table is rejected. I separately observed a synthetic large heading produce a Markdown `#` heading; no automated test asserts heading preservation.
+3. The same text/image test opens the ZIP and verifies an image name and a relative reference, so it detects wrong packaging for that example. It does not exercise more than one image, unusual image output, or server-path leakage across all assets.
+4. The multiple-file, malformed-PDF and encrypted-PDF test verifies HTTP 422 for those examples. No test forces a processing exception and checks that no download is published. The OOM finding shows that the process can die before a job-level failure is recorded.
+5. Code passes `use_ocr=False`; UI and READMEs disclose the OCR and layout limits. Compose disables worker networking and the package initialization sets ONNX telemetry opt-out. The current test mocks `disable_telemetry_events` to verify its invocation; it does not directly test the initialization environment or prove absence of network traffic.
+6. The existing test suite and amd64 conversion were reported by the builder. I did not independently repeat the full suite or ARM64 run; the ARM64 image build was still running during this review. This criterion needs the final build and runtime evidence for both architectures.
+
+The review used a synthetic PDF inside a disposable container and an isolated local app data directory; both were removed. No existing application data was changed.

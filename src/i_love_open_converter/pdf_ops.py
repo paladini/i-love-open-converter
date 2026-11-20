@@ -4,6 +4,8 @@ import base64
 import hashlib
 import html
 import re
+import subprocess
+import sys
 import tempfile
 from difflib import SequenceMatcher
 from io import BytesIO
@@ -23,6 +25,10 @@ class InvalidPdfError(Exception):
 
 class NoEmbeddedImagesError(Exception):
     """The PDF has no extractable embedded images."""
+
+
+class MarkdownConversionError(Exception):
+    """Markdown processing failed or exceeded a resource limit."""
 
 
 EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
@@ -795,6 +801,22 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.to_markdown":
+            try:
+                completed = subprocess.run(
+                    [sys.executable, "-m", "i_love_open_converter.markdown_worker",
+                     str(source.resolve()), str(output_dir.resolve())],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=180, check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise MarkdownConversionError from exc
+            destination = output_dir / "document.md"
+            if completed.returncode != 0 or not destination.is_file():
+                raise MarkdownConversionError
+            assets = sorted(output_dir.glob("image-*.png"))
+            return [destination, *assets], "text/markdown"
+
         if operation == "pdf.extract_images":
             seen: set[int] = set()
             paths: list[Path] = []
@@ -884,7 +906,7 @@ def process_pdf(
                 outputs.append(destination)
             return outputs, "image/jpeg"
 
-    except (InvalidPdfError, NoEmbeddedImagesError):
+    except (InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc

@@ -60,12 +60,17 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 - Renderizar cada página de um PDF como imagem JPG.
 - Converter documentos Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) e Excel (`.xls`, `.xlsx`) em PDF usando LibreOffice local.
 - Extrair imagens incorporadas do PDF em PNG dentro de um ZIP, preservando a transparência. Objetos de imagem repetidos são incluídos uma vez; imagens inline são incluídas em cada ocorrência.
+- Converter PDFs para Markdown com texto, tabelas e figuras extraídos localmente em um ZIP portátil. Páginas digitalizadas exigem OCR, que não faz parte desta conversão; layouts complexos podem não ser reconstruídos fielmente.
+
 - Transformar imagens em um PDF com uma página para cada imagem.
 - Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
   posição e opacidade; marcas de texto também permitem configurar fonte,
   tamanho e cor.
 - Numerar todas as páginas. Escolha posição no cabeçalho ou rodapé, formato,
   número inicial, fonte, tamanho e cor.
+
+A conversão de PDF para Markdown usa o mecanismo completo de layout do PyMuPDF e o ONNX Runtime local, sem GPU. A telemetria do ONNX é desativada antes da inicialização.
+Para limitar a memória de renderização, páginas que excedem 16 milhões de pixels a 150 DPI são recusadas; a conversão também está sujeita a limites de tempo e tamanho de saída.
 
 As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
 ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
@@ -75,7 +80,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
-| PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, extrair imagens, marca d'água, números de página | PDF, HTML, JPG ou ZIP |
+| PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG ou Markdown, extrair imagens, marca d'água, números de página | PDF, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |
 | Imagem estática | Imagens para PDF | PDF |
