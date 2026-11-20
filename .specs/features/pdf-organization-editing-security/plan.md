@@ -13,11 +13,11 @@ When this milestone ships, a visitor can organize, edit, secure, repair, compare
 
 ## Shape
 
-The milestone reuses the existing FastAPI job lifecycle, SQLite records, local file store, worker, PyMuPDF Lite pipeline and bilingual tool catalog. Validation and transformations run in the backend layers already reached by the repository's API and PDF tests.
+The milestone reuses the existing FastAPI job lifecycle, SQLite records, local file store, worker, PyMuPDF Lite pipeline and bilingual tool catalog. Validation and transformations run in the backend layers already reached by the repository's API and PDF tests. PDF/A adds local Ghostscript and veraPDF dependencies (AD-009).
 
 1. The visitor chooses an enabled PDF tool on the home catalog and selects PDF inputs and options in the tool form.
 2. `POST /api/jobs` (exists) validates tool options and PDF inputs, stores inputs locally and creates a `ConversionJob` (exists).
-3. `Worker` (exists) claims the job, dispatches the selected operation through `pdf_ops.py` (exists), and stores one PDF result or a comparison report as job artifacts.
+3. `Worker` (exists) claims the job, dispatches the selected operation through `pdf_ops.py` (exists), which invokes `Ghostscript` and `veraPDF` (door 2) for PDF/A, and stores one PDF result or a comparison report as job artifacts.
 4. `GET /api/jobs/{job_id}` and `/download` (exists) expose status and result; the UI (exists) displays safe errors and download controls.
 
 ```mermaid
@@ -28,12 +28,16 @@ sequenceDiagram
     participant F as Local file store
     participant W as Worker
     participant P as pdf_ops.py
+    participant G as Ghostscript
+    participant V as veraPDF
     U->>A: 1. Submit PDF tool, inputs and options
     A->>F: 2. Persist validated input artifacts
     A->>D: 2. Create ConversionJob
     W->>D: 3. Claim job
     W->>F: 3. Read inputs and save outputs
     W->>P: 3. Apply PDF operation
+    P->>G: 3. Convert PDF/A-2b
+    P->>V: 3. Validate PDF/A-2b
     P-->>W: 3. Return result
     W->>D: 3. Record success or safe failure
     U->>A: 4. Poll status and request download
@@ -68,6 +72,7 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 | `GET /tools/pdf-edit` (new) | none | upload-first PDF editing form with preview | `200` | anyone |
 | `GET /tools/pdf-sign`, `/tools/pdf-protect`, `/tools/pdf-unlock` (new) | none | upload-first signature and password tool forms | `200` | anyone |
 | `GET /tools/pdf-forms`, `/tools/pdf-redact` (new) | none | upload-first forms and redaction tools | `200` | anyone |
+| `GET /tools/pdf-repair`, `/tools/pdf-compare`, `/tools/pdf-pdfa` (new) | none | upload-first repair, comparison and archival tools | `200`; `503 service_unavailable` for PDF/A without installed dependencies | anyone |
 | `GET /api/jobs/{job_id}` (unchanged) | opaque job UUID | existing state, safe error, output metadata | `200`; `404 job_not_found` | anyone with the job ID |
 | `GET /api/jobs/{job_id}/download` (unchanged) | opaque job UUID | PDF or ZIP/report artifact | `200`; `404 job_not_found`; `409 job_not_ready` | anyone with the job ID |
 
@@ -78,12 +83,14 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 | Job operation identifiers and option JSON | Namespaced `pdf.organize`, `pdf.crop`, `pdf.edit`, `pdf.sign`, `pdf.protect`, `pdf.unlock`, `pdf.forms`, `pdf.redact`, `pdf.repair`, `pdf.compare`, and `pdf.pdfa`; typed JSON options validated before job creation | Multipurpose untyped payloads, because API validation and worker dispatch must agree on each operation |
 | PDF protection and redaction semantics | Protect encrypts with a user-supplied password; unlock requires the current password; redaction removes selected content permanently before saving | Password bypass or visual-only redaction, because neither meets the named security outcome |
 | Signature and form scope | Signature is a visual mark drawn or uploaded by the user, not a certificate-backed digital signature; forms fill existing fields only | Cryptographic signing and form authoring, because they require separate key trust and editing workflows |
+| Local PDF/A tools (door 2, AD-009) | Ghostscript converts to PDF/A-2b with an sRGB profile and base fonts; veraPDF CLI 1.30.3 checks the 2b profile. Fail on conversion or validation errors, page-count changes or extracted-text changes. | Claiming conformance from a metadata flag, because a validator must check the output independently. |
 
-- No new database column or external service is introduced. PDF/A implementation dependencies, if any, must be documented and pinned before adoption.
+- No new database column or external service is introduced. The container installs Ghostscript and Java, and pins veraPDF 1.30.3 with an installer checksum.
 - `pdf.crop` accepts `ranges` in the existing page-range syntax and `rectangle` as `[left, top, right, bottom]` fractions of each page's visible, rotated bounds. The same proportional rectangle applies to each selected page.
 - `pdf.edit` applies one text, image, outlined shape or free-text annotation per job to a chosen page, with a proportional rectangle in the same coordinates. Image mode accepts a second PNG, JPEG or WebP input; repeated edits can be made by uploading the downloaded result.
 - `pdf.sign` applies a visual image to a chosen page. `pdf.protect` uses AES-256; `pdf.unlock` requires a valid current password. The separate multipart `password` field is retained temporarily in the local job directory according to AD-008, not in job options.
 - `pdf.forms` accepts widget IDs and new values for text or checkbox fields. `pdf.redact` accepts up to 100 page and normalized rectangle pairs; it applies actual redactions, removes overlapping annotations and widgets, and saves a non-incremental file with garbage collection. Existing pending redaction annotations on a selected page cause a safe failure.
+- `pdf.repair` attempts a full local rewrite, including reconstruction when MuPDF can open the damaged file. `pdf.compare` produces a self-contained HTML report with visual page pairs and a summary; it does not compare metadata or invisible content. `pdf.pdfa` is enabled only when its tools and resources are installed.
 
 ## Criteria
 
@@ -179,3 +186,5 @@ Visitors attempt local repair, compare two PDFs, and convert a PDF to an archiva
 - `.specs/features/project-foundation/plan.md` - approved cumulative roadmap, catalog and privacy decisions.
 - `.specs/features/project-foundation/captures/ilovepdf-home.aria.yml` and `.specs/features/project-foundation/captures/iloveimg-home.aria.yml` - binding home catalog order and groupings.
 - iLovePDF and iLoveIMG are non-binding product inspiration, as the original request states.
+- [Ghostscript PDF/A documentation](https://ghostscript.readthedocs.io/en/latest/VectorDevices.html) - conversion levels, output intent and strict error policy.
+- [veraPDF CLI validation](https://docs.verapdf.org/cli/validation/) - explicit 2b validation and machine-readable verdict.

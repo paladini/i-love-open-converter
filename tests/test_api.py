@@ -24,6 +24,75 @@ def _multipart(filename: str, content: bytes, content_type: str = "image/jpeg"):
     return {"files": (filename, content, content_type)}
 
 
+def test_pdf_repair_recovers_cross_reference_and_handles_unreadable_file(settings, pdf_bytes):
+    import re
+
+    damaged = re.sub(rb"startxref\s+\d+", b"startxref\n0", pdf_bytes)
+    with pymupdf.open(stream=damaged, filetype="pdf") as document:
+        assert document.is_repaired
+    with TestClient(create_app(settings)) as client:
+        request = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.repair"},
+            files=_multipart("damaged.pdf", damaged, "application/pdf"),
+        )
+        assert request.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(request.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            assert not document.is_repaired
+            assert document[0].get_text().strip() == "Test page 1"
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.repair"},
+            files=_multipart("bad.pdf", b"not a pdf", "application/pdf"),
+        )
+        assert invalid.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(invalid.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "invalid_file"
+
+
+def test_pdf_compare_reports_changed_added_and_removed_pages(settings):
+    def make_pdf(pages):
+        document = pymupdf.open()
+        for text in pages:
+            page = document.new_page(width=200, height=100)
+            page.insert_text((20, 50), text)
+        data = document.tobytes()
+        document.close()
+        return data
+
+    first, second = make_pdf(["A", "B", "C", "D"]), make_pdf(["A", "B changed", "C", "E", "F"])
+    uploads = [
+        ("files", ("before.pdf", first, "application/pdf")),
+        ("files", ("after.pdf", second, "application/pdf")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compare"},
+            files=_multipart("one.pdf", first, "application/pdf"),
+        )
+        assert invalid.status_code == 422
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compare", "options": '{"language":"en"}'},
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        assert "text/html" in result.headers["content-type"]
+        assert "Unchanged: 2" in result.text
+        assert "Changed: 2" in result.text
+        assert "Added: 1" in result.text
+        assert "Removed: 0" in result.text
+        assert result.text.count('src="data:image/png;base64,') == 9
+
+
 def test_organize_pdf_pages_and_reject_invalid_selection(settings, pdf_bytes):
     with TestClient(create_app(settings)) as client:
         assert client.get("/tools/pdf-organize").status_code == 200

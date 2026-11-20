@@ -51,6 +51,7 @@ ZIP archive. Animated images are not supported.
 - Crop selected pages, or add text, an image, a shape, or a note to a page.
 - Add a drawn or uploaded visual signature, and protect or unlock PDFs with a password.
 - Fill existing text fields and checkboxes, and permanently redact selected page areas.
+- Attempt PDF repair, compare page appearance side by side, and convert and validate PDF/A-2b.
 - Split a PDF by page ranges.
 - Rotate every page by 90°, 180°, or 270°.
 - Optimize a PDF with local lossless structural compression.
@@ -69,7 +70,7 @@ downloads as a ZIP archive.
 | Input | Available operations | Output |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
-| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign visually, protect, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, JPG, or ZIP |
+| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, HTML, JPG, or ZIP |
 | Password-protected PDF | Unlock with the current password | PDF |
 | Static image | Images to PDF | PDF |
 
@@ -148,6 +149,7 @@ want to pin the deployment instead of following `latest`.
 
 ## Privacy and security
 
+- PDF comparison checks rendered page appearance; metadata and invisible content are not compared. PDF/A conversion verifies conformance, page count, and extracted text; review other layout and content in the result.
 - Redaction removes content in selected areas. Review other pages, metadata, attachments, and copies separately; the uploaded original remains on the server until its job expires.
 - Passwords for PDF jobs are temporarily kept in a local per-job file so the worker can process and retry them; the file is removed after processing. A crash can leave it until retry or job expiration. On systems that support it, the file is created with owner-only permissions.
 - Files are uploaded to and processed by the server where you run the app.

@@ -1,16 +1,162 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import html
 import re
+import tempfile
+from difflib import SequenceMatcher
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 import pymupdf
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageOps
+
+from .pdf_archive import convert_pdfa
 
 
 class InvalidPdfError(Exception):
     """The input is not a readable, unencrypted PDF."""
+
+
+def compare_pdfs(sources: list[tuple[Path, str]], output_dir: Path, language: str) -> Path:
+    if len(sources) != 2:
+        raise InvalidPdfError
+    labels = {
+        "pt-BR": {
+            "title": "Comparação de PDFs",
+            "same": "Sem alteração",
+            "changed": "Alterada",
+            "added": "Adicionada",
+            "removed": "Removida",
+            "page": "Página",
+            "empty": "Sem página correspondente",
+            "scope": (
+                "Comparação visual com até 1000 pixels por lado; metadados, campos e conteúdo "
+                "não visível não são comparados. Detalhes pequenos podem passar despercebidos."
+            ),
+        },
+        "en": {
+            "title": "PDF comparison",
+            "same": "Unchanged",
+            "changed": "Changed",
+            "added": "Added",
+            "removed": "Removed",
+            "page": "Page",
+            "empty": "No corresponding page",
+            "scope": (
+                "Visual comparison at up to 1000 pixels per side; metadata, fields and invisible "
+                "content are not compared. Small details may be missed."
+            ),
+        },
+    }[language]
+    try:
+        with tempfile.TemporaryDirectory(dir=output_dir) as directory:
+            rendered: list[list[tuple[str, Path]]] = [[], []]
+            for side, (source, _) in enumerate(sources):
+                with _open_pdf(source) as document:
+                    for number, page in enumerate(document):
+                        scale = min(1.0, 1000 / max(page.rect.width, page.rect.height))
+                        pixmap = page.get_pixmap(
+                            matrix=pymupdf.Matrix(scale, scale),
+                            colorspace=pymupdf.csRGB,
+                            alpha=False,
+                        )
+                        pixels = pixmap.tobytes("png")
+                        path = Path(directory) / f"{side}-{number}.png"
+                        path.write_bytes(pixels)
+                        rendered[side].append((hashlib.sha256(pixels).hexdigest(), path))
+            left, right = rendered
+            matcher = SequenceMatcher(
+                None, [x[0] for x in left], [x[0] for x in right], autojunk=False
+            )
+            rows: list[tuple[str, int | None, int | None]] = []
+            for tag, a0, a1, b0, b1 in matcher.get_opcodes():
+                if tag == "equal":
+                    rows.extend(
+                        ("same", a, b) for a, b in zip(range(a0, a1), range(b0, b1), strict=True)
+                    )
+                elif tag == "replace":
+                    paired = min(a1 - a0, b1 - b0)
+                    rows.extend(("changed", a0 + i, b0 + i) for i in range(paired))
+                    rows.extend(("removed", a, None) for a in range(a0 + paired, a1))
+                    rows.extend(("added", None, b) for b in range(b0 + paired, b1))
+                elif tag == "delete":
+                    rows.extend(("removed", a, None) for a in range(a0, a1))
+                else:
+                    rows.extend(("added", None, b) for b in range(b0, b1))
+            counts = {
+                key: sum(1 for kind, _, _ in rows if kind == key)
+                for key in ("same", "changed", "added", "removed")
+            }
+            destination = output_dir / "comparison.html"
+            with destination.open("w", encoding="utf-8") as report:
+                report.write(
+                    '<!doctype html><html lang="'
+                    + html.escape(language)
+                    + '"><meta charset="utf-8"><meta name="viewport" '
+                    + 'content="width=device-width,initial-scale=1">'
+                    + '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '
+                    + "img-src data:; style-src 'unsafe-inline'\"><title>"
+                    + labels["title"]
+                    + "</title><style>body{font:16px sans-serif;max-width:1200px;"
+                    + "margin:auto;padding:1rem}"
+                    + "section{border-top:1px solid #ccc;padding:1rem 0}.pair{display:grid;"
+                    + "grid-template-columns:1fr 1fr;gap:1rem}"
+                    + "img{max-width:100%;border:1px solid #ddd}"
+                    + "@media(max-width:600px){.pair{grid-template-columns:1fr}}</style><h1>"
+                    + labels["title"]
+                    + "</h1>"
+                )
+                report.write(
+                    '<p id="summary">'
+                    + " · ".join(f"{labels[key]}: {value}" for key, value in counts.items())
+                    + "</p>"
+                )
+                report.write("<p>" + labels["scope"] + "</p>")
+                report.write(
+                    "<p>" + html.escape(sources[0][1]) + " → " + html.escape(sources[1][1]) + "</p>"
+                )
+                for kind, first, second in rows:
+                    report.write("<section><h2>" + labels[kind] + '</h2><div class="pair">')
+                    difference = None
+                    if kind == "changed" and first is not None and second is not None:
+                        with (
+                            Image.open(left[first][1]) as before,
+                            Image.open(right[second][1]) as after,
+                        ):
+                            if before.size == after.size:
+                                difference = ImageChops.difference(before, after).getbbox()
+                    for side, index in enumerate((first, second)):
+                        if index is None:
+                            report.write("<div>" + labels["empty"] + "</div>")
+                        else:
+                            path = rendered[side][index][1]
+                            if difference:
+                                with Image.open(path) as original:
+                                    marked = original.copy()
+                                    ImageDraw.Draw(marked).rectangle(
+                                        difference, outline="red", width=2
+                                    )
+                                    buffer = BytesIO()
+                                    marked.save(buffer, format="PNG")
+                                    image_bytes = buffer.getvalue()
+                            else:
+                                image_bytes = path.read_bytes()
+                            image = base64.b64encode(image_bytes).decode("ascii")
+                            report.write(
+                                f"<div><p>{labels['page']} {index + 1}</p>"
+                                f'<img alt="{labels["page"]} {index + 1}" '
+                                f'src="data:image/png;base64,{image}"></div>'
+                            )
+                    report.write("</div></section>")
+                report.write("</html>")
+        return destination
+    except InvalidPdfError:
+        raise
+    except Exception as exc:
+        raise InvalidPdfError from exc
 
 
 def validate_crop_options(options: dict[str, Any], page_count: int) -> list[int]:
@@ -446,6 +592,29 @@ def process_pdf(
 ) -> tuple[list[Path], str]:
     """Run one PDF operation; returned paths are ready-to-download artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    if operation == "pdf.pdfa":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        destination = output_dir / "archival.pdf"
+        convert_pdfa(sources[0][0], destination)
+        return [destination], "application/pdf"
+    if operation == "pdf.compare":
+        return [compare_pdfs(sources, output_dir, options["language"])], "text/html; charset=utf-8"
+    if operation == "pdf.repair":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        try:
+            with pymupdf.open(sources[0][0]) as document:
+                if not document.is_pdf or document.needs_pass or document.page_count < 1:
+                    raise InvalidPdfError
+                destination = output_dir / "repaired.pdf"
+                document.save(destination, garbage=4, deflate=True)
+            inspect_pdf(destination)
+        except InvalidPdfError:
+            raise
+        except Exception as exc:
+            raise InvalidPdfError from exc
+        return [destination], "application/pdf"
     if operation in {"pdf.protect", "pdf.unlock"}:
         if len(sources) != 1 or not secret:
             raise InvalidPdfError

@@ -26,6 +26,7 @@ from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
 from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
+from .pdf_archive import pdfa_available
 from .pdf_ops import (
     InvalidPdfError,
     inspect_pdf,
@@ -50,10 +51,8 @@ PDF_COMING_SOON = [
     ("Excel para PDF", "Excel to PDF", "convert", 9),
     ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
-    ("Reparar PDF", "Repair PDF", "organize", 21),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
     ("OCR PDF", "OCR PDF", "intelligence", 24),
-    ("Comparar PDF", "Compare PDF", "edit", 25),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
     ("PDF para Markdown", "PDF to Markdown", "convert", 31),
@@ -223,7 +222,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             {
                 "request": request,
                 "max_file_size_mb": settings.max_file_size_mb,
-                "pdf_coming_soon": PDF_COMING_SOON,
+                "pdf_coming_soon": [
+                    item for item in PDF_COMING_SOON if item[3] != 20 or not pdfa_available()
+                ],
+                "pdfa_available": pdfa_available(),
                 "image_coming_soon": IMAGE_COMING_SOON,
             },
         )
@@ -279,6 +281,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/tools/pdf-forms", include_in_schema=False)
     async def pdf_forms(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-forms.html", {"request": request})
+
+    @app.get("/tools/pdf-repair", include_in_schema=False)
+    async def pdf_repair(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-repair.html", {"request": request})
+
+    @app.get("/tools/pdf-compare", include_in_schema=False)
+    async def pdf_compare(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-compare.html", {"request": request})
+
+    @app.get("/tools/pdf-pdfa", include_in_schema=False)
+    async def pdf_pdfa(request: Request):
+        if not pdfa_available():
+            raise HTTPException(
+                status_code=503,
+                detail={"error": {"code": "service_unavailable", "message": "PDF/A indisponível."}},
+            )
+        return TEMPLATES.TemplateResponse(request, "pdf-pdfa.html", {"request": request})
 
     @app.get("/tools/pdf-{action}", include_in_schema=False)
     async def pdf_password_tool(request: Request, action: str):
@@ -442,6 +461,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.unlock",
             "pdf.redact",
             "pdf.forms",
+            "pdf.repair",
+            "pdf.compare",
+            "pdf.pdfa",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -518,6 +540,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.unlock",
             "pdf.redact",
             "pdf.forms",
+            "pdf.repair",
+            "pdf.pdfa",
         }
         if operation in single_pdf_operations and len(files) != 1:
             raise HTTPException(
@@ -535,6 +559,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         validated_options: dict[str, Any] = {}
+        if operation == "pdf.pdfa" and not pdfa_available():
+            raise HTTPException(
+                status_code=503,
+                detail={"error": {"code": "service_unavailable", "message": "PDF/A indisponível."}},
+            )
+        if operation == "pdf.compare":
+            language = parsed_options.get("language", "pt-BR")
+            if len(files) != 2 or language not in ("pt-BR", "en"):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Selecione dois PDFs."}
+                    },
+                )
+            validated_options["language"] = language
         secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
         if operation in {"pdf.protect", "pdf.unlock"} and (
             not isinstance(secret, str)
@@ -989,7 +1028,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if is_pdf_operation and not is_watermark_image:
                     try:
                         page_count = (
-                            inspect_protected_pdf(destination, secret)
+                            0
+                            if operation == "pdf.repair"
+                            else inspect_protected_pdf(destination, secret)
                             if operation == "pdf.unlock"
                             else inspect_pdf(destination)
                         )
