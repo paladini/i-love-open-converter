@@ -36,11 +36,14 @@ services:
     image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-latest}
     init: true
     restart: unless-stopped
+    network_mode: none
     command:
       - /app/.venv/bin/python
       - -m
       - i_love_open_converter.worker
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      OFFICE_NETWORK_ISOLATED: "1"
     volumes:
       - ./data:/data
     user: "${PUID:-1000}:${PGID:-1000}"

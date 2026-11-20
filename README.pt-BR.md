@@ -58,6 +58,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 - Girar todas as páginas em 90°, 180° ou 270°.
 - Otimizar PDFs com compressão estrutural local sem perdas.
 - Renderizar cada página de um PDF como imagem JPG.
+- Converter documentos Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) e Excel (`.xls`, `.xlsx`) em PDF usando LibreOffice local.
 - Extrair imagens incorporadas do PDF em PNG dentro de um ZIP, preservando a transparência. Objetos de imagem repetidos são incluídos uma vez; imagens inline são incluídas em cada ocorrência.
 - Transformar imagens em um PDF com uma página para cada imagem.
 - Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
@@ -75,6 +76,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, extrair imagens, marca d'água, números de página | PDF, HTML, JPG ou ZIP |
+| Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |
 | Imagem estática | Imagens para PDF | PDF |
 
@@ -91,6 +93,8 @@ próximas etapas.
 ## Início rápido com Docker
 
 Requisitos: Docker Engine e Docker Compose v2.
+
+A conversão Office usa LibreOffice e Linux Landlock no worker. O Compose fornecido desativa a rede do worker e habilita o conversor nesse ambiente isolado. Um worker executado separadamente precisa estar em um namespace de rede equivalente, sem interfaces externas, e receber `OFFICE_NETWORK_ISOLATED=1`; caso contrário, as tarefas Office falham sem conversão. Essa variável é uma declaração do administrador e não isola o processo por si só. A conversão Office também requer um kernel Linux e uma política de contêiner que permitam o Landlock. Arquivos protegidos por senha não são suportados, e fontes, layout e paginação de planilhas podem diferir do aplicativo original.
 
 ```sh
 git clone https://github.com/paladini/i-love-open-converter.git
