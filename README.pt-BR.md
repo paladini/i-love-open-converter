@@ -49,6 +49,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 ### PDF
 
 - Mesclar PDFs na ordem escolhida.
+- Reordenar ou remover páginas e inserir páginas de um segundo PDF.
 - Dividir um PDF por intervalos de páginas.
 - Girar todas as páginas em 90°, 180° ou 270°.
 - Otimizar PDFs com compressão estrutural local sem perdas.
@@ -68,7 +69,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
-| PDF sem criptografia | Mesclar, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, JPG ou ZIP |
+| PDF sem criptografia | Mesclar, organizar páginas, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, JPG ou ZIP |
 | Imagem estática | Imagens para PDF | PDF |
 
 Por padrão, cada arquivo pode ter até 100 MB, cada requisição pode enviar até

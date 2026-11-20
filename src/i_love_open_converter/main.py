@@ -5,6 +5,7 @@ import logging
 import mimetypes
 import re
 import shutil
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -39,7 +40,6 @@ PDF_COMING_SOON = [
     ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("Desbloquear PDF", "Unlock PDF", "security", 17),
     ("Proteger PDF", "Protect PDF", "security", 18),
-    ("Organizar PDF", "Organize PDF", "organize", 19),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
     ("Reparar PDF", "Repair PDF", "organize", 21),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
@@ -246,6 +246,31 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
 
+    @app.get("/tools/pdf-organize", include_in_schema=False)
+    async def pdf_organize(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-organize.html", {"request": request})
+
+    @app.post("/api/pdf/pages")
+    async def pdf_pages(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            if len(files) != 1 or not isinstance(files[0], UploadFile):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_file"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                try:
+                    count = inspect_pdf(path)
+                except InvalidPdfError as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+            return {"page_count": count}
+        finally:
+            await form.close()
+
     @app.get("/healthz")
     async def health() -> dict[str, str]:
         try:
@@ -300,6 +325,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_image",
             "pdf.watermark",
             "pdf.page_numbers",
+            "pdf.organize",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -658,6 +684,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["ranges"] = ranges
+        if operation == "pdf.organize":
+            pages = parsed_options.get("pages")
+            if (
+                not isinstance(pages, list)
+                or not pages
+                or len(files) > 2
+                or any(
+                    not isinstance(item, list)
+                    or len(item) != 2
+                    or any(type(value) is not int or value < 1 for value in item)
+                    for item in pages
+                )
+                or len({tuple(item) for item in pages}) != len(pages)
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Páginas inválidas."}},
+                )
+            validated_options["pages"] = pages
         if operation == "image.compress" or (
             operation in image_operations and output_format in {"JPEG", "JPG", "WEBP"}
         ):
@@ -678,6 +723,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         input_dir = job_dir / "input"
         input_dir.mkdir(parents=True, exist_ok=False)
         stored: list[dict[str, Any]] = []
+        pdf_page_counts: list[int] = []
         total_size = 0
         try:
             if len(files) > settings.max_files_per_job:
@@ -754,6 +800,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if is_pdf_operation and not is_watermark_image:
                     try:
                         page_count = inspect_pdf(destination)
+                        pdf_page_counts.append(page_count)
                         content_type = "application/pdf"
                     except InvalidPdfError as exc:
                         raise HTTPException(
@@ -820,6 +867,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         "content_type": content_type,
                         "size_bytes": file_size,
                     }
+                )
+            if operation == "pdf.organize" and any(
+                file_number > len(pdf_page_counts) or page > pdf_page_counts[file_number - 1]
+                for file_number, page in validated_options["pages"]
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Páginas inválidas."}},
                 )
             create_job(
                 settings.database_path,

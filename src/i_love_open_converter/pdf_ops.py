@@ -193,6 +193,23 @@ def process_pdf(
 ) -> tuple[list[Path], str]:
     """Run one PDF operation; returned paths are ready-to-download artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    if operation == "pdf.organize":
+        documents = []
+        output = pymupdf.open()
+        try:
+            for source, _ in sources:
+                documents.append(_open_pdf(source))
+            for file_number, page_number in options["pages"]:
+                output.insert_pdf(
+                    documents[file_number - 1], from_page=page_number - 1, to_page=page_number - 1
+                )
+            destination = output_dir / "organized.pdf"
+            output.save(destination, garbage=3, deflate=True, use_objstms=True)
+        finally:
+            output.close()
+            for document in documents:
+                document.close()
+        return [destination], "application/pdf"
     if operation == "pdf.merge":
         merged = pymupdf.open()
         try:

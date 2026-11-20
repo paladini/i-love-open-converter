@@ -24,6 +24,45 @@ def _multipart(filename: str, content: bytes, content_type: str = "image/jpeg"):
     return {"files": (filename, content, content_type)}
 
 
+def test_organize_pdf_pages_and_reject_invalid_selection(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/tools/pdf-organize").status_code == 200
+        inspected = client.post(
+            "/api/pdf/pages", files=_multipart("a.pdf", pdf_bytes, "application/pdf")
+        )
+        assert inspected.json() == {"page_count": 2}
+        uploads = [
+            ("files", ("a.pdf", pdf_bytes, "application/pdf")),
+            ("files", ("b.pdf", pdf_bytes, "application/pdf")),
+        ]
+        for pages in ([], [[1, 3]], [[3, 1]], [[1, 1], [1, 1]], [[True, 1]]):
+            response = client.post(
+                "/api/jobs",
+                data={"operation": "pdf.organize", "options": json.dumps({"pages": pages})},
+                files=uploads,
+            )
+            assert response.status_code == 422
+            assert response.json()["error"]["code"] == "invalid_options"
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.organize",
+                "options": json.dumps({"pages": [[1, 2], [2, 1], [1, 1]]}),
+            },
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(response.json()["status_url"] + "/download")
+        assert download.status_code == 200
+        with pymupdf.open(stream=download.content, filetype="pdf") as document:
+            assert [page.get_text().strip() for page in document] == [
+                "Test page 2",
+                "Test page 1",
+                "Test page 1",
+            ]
+
+
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")

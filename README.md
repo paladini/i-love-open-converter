@@ -47,6 +47,7 @@ ZIP archive. Animated images are not supported.
 ### PDF
 
 - Merge PDFs in the order you choose.
+- Reorder or remove pages and insert pages from a second PDF.
 - Split a PDF by page ranges.
 - Rotate every page by 90°, 180°, or 270°.
 - Optimize a PDF with local lossless structural compression.
@@ -65,7 +66,7 @@ downloads as a ZIP archive.
 | Input | Available operations | Output |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
-| Unencrypted PDF | Merge, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, JPG, or ZIP |
+| Unencrypted PDF | Merge, organize pages, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, JPG, or ZIP |
 | Static image | Images to PDF | PDF |
 
 Default limits are 100 MB per file, 500 MB total per request, and 10 files per
