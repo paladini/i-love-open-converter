@@ -3,7 +3,7 @@
 **Approved**: 2026-11-19 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none
 **Review:** sent at 76f23e7
-**Fix pass:** done - reject tagged or marked content during redaction to avoid retained accessibility text; preserve multiline form values; embed licensed Unicode fonts and reject unsupported glyphs; orient inserted text and images on rotated pages; block submission until the selected page preview loads; support owner-password restrictions; add source range and insertion position controls; restore catalog navigation order; add regression tests. Docker image build remains unverified because the daemon did not respond.
+**Fix pass:** done - reject tagged or marked content during redaction to avoid retained accessibility text; preserve multiline form values; embed licensed Unicode fonts and reject unsupported glyphs; orient inserted text and images on rotated pages; block submission until the selected page preview loads; support owner-password restrictions; add source range and insertion position controls; restore catalog navigation order; add regression tests. On 2026-11-20 the AMD64 and emulated ARM64 Docker images were built and each produced a validated PDF/A-2b with preserved text without external network access; the AMD64 web, worker and download flow was also verified.
 
 ## Problem
 
