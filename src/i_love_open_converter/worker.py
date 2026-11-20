@@ -81,6 +81,9 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.organize",
             "pdf.crop",
             "pdf.edit",
+            "pdf.sign",
+            "pdf.protect",
+            "pdf.unlock",
             "image.to_pdf",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
@@ -91,7 +94,14 @@ def process_one_job(settings: Settings) -> bool:
                     raise InvalidPdfError
                 sources.append((source, artifact["name"]))
             output_dir = job_dir / "output"
-            paths, content_type = process_pdf(job["operation"], sources, job["options"], output_dir)
+            secret = (
+                (job_dir / "secret").read_text(encoding="utf-8")
+                if job["operation"] in {"pdf.protect", "pdf.unlock"}
+                else None
+            )
+            paths, content_type = process_pdf(
+                job["operation"], sources, job["options"], output_dir, secret
+            )
             if len(paths) > 1 or job["operation"] in {"pdf.split", "pdf.to_image"}:
                 output_name = "converted-files.zip"
                 destination = output_dir / output_name
@@ -147,7 +157,10 @@ def process_one_job(settings: Settings) -> bool:
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except Exception:
-        logger.exception("Unexpected processing failure for job %s", job_id)
+        if job["operation"] in {"pdf.protect", "pdf.unlock"}:
+            logger.error("Unexpected processing failure for password-protected job %s", job_id)
+        else:
+            logger.exception("Unexpected processing failure for job %s", job_id)
         mark_failed(
             settings.database_path,
             job_id,
@@ -156,6 +169,12 @@ def process_one_job(settings: Settings) -> bool:
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
+    finally:
+        if job["operation"] in {"pdf.protect", "pdf.unlock"}:
+            try:
+                (job_dir / "secret").unlink(missing_ok=True)
+            except OSError:
+                logger.error("Could not remove temporary secret for job %s", job_id)
     return True
 
 

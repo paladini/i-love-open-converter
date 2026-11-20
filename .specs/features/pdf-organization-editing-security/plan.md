@@ -65,6 +65,7 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 | `GET /tools/pdf-organize` (new) | none | upload-first page organization form | `200` | anyone |
 | `GET /tools/pdf-crop` (new) | none | upload-first PDF crop form with preview | `200` | anyone |
 | `GET /tools/pdf-edit` (new) | none | upload-first PDF editing form with preview | `200` | anyone |
+| `GET /tools/pdf-sign`, `/tools/pdf-protect`, `/tools/pdf-unlock` (new) | none | upload-first signature and password tool forms | `200` | anyone |
 | `GET /api/jobs/{job_id}` (unchanged) | opaque job UUID | existing state, safe error, output metadata | `200`; `404 job_not_found` | anyone with the job ID |
 | `GET /api/jobs/{job_id}/download` (unchanged) | opaque job UUID | PDF or ZIP/report artifact | `200`; `404 job_not_found`; `409 job_not_ready` | anyone with the job ID |
 
@@ -79,6 +80,7 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 - No new database column or external service is introduced. PDF/A implementation dependencies, if any, must be documented and pinned before adoption.
 - `pdf.crop` accepts `ranges` in the existing page-range syntax and `rectangle` as `[left, top, right, bottom]` fractions of each page's visible, rotated bounds. The same proportional rectangle applies to each selected page.
 - `pdf.edit` applies one text, image, outlined shape or free-text annotation per job to a chosen page, with a proportional rectangle in the same coordinates. Image mode accepts a second PNG, JPEG or WebP input; repeated edits can be made by uploading the downloaded result.
+- `pdf.sign` applies a visual image to a chosen page. `pdf.protect` uses AES-256; `pdf.unlock` requires a valid current password. The separate multipart `password` field is retained temporarily in the local job directory according to AD-008, not in job options.
 
 ## Criteria
 

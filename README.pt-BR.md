@@ -51,6 +51,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 - Mesclar PDFs na ordem escolhida.
 - Reordenar ou remover páginas e inserir páginas de um segundo PDF.
 - Recortar páginas selecionadas ou adicionar texto, imagem, forma ou anotação a uma página.
+- Adicionar uma assinatura visual desenhada ou enviada e proteger ou desbloquear PDFs com senha.
 - Dividir um PDF por intervalos de páginas.
 - Girar todas as páginas em 90°, 180° ou 270°.
 - Otimizar PDFs com compressão estrutural local sem perdas.
@@ -70,7 +71,8 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
-| PDF sem criptografia | Mesclar, organizar, recortar, editar, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, JPG ou ZIP |
+| PDF sem criptografia | Mesclar, organizar, recortar, editar, assinar visualmente, proteger, dividir, girar, otimizar, PDF para JPG, marca d'água, números de página | PDF, JPG ou ZIP |
+| PDF protegido por senha | Desbloquear com a senha atual | PDF |
 | Imagem estática | Imagens para PDF | PDF |
 
 Por padrão, cada arquivo pode ter até 100 MB, cada requisição pode enviar até
@@ -150,6 +152,7 @@ para fixar o deployment em vez de acompanhar `latest`.
 
 ## Privacidade e segurança
 
+- Senhas de jobs de PDF ficam temporariamente em um arquivo local do job para que o worker possa processá-las e retomar o trabalho; o arquivo é removido após o processamento. Uma interrupção pode mantê-lo até uma nova tentativa ou a expiração do job. Em sistemas compatíveis, o arquivo é criado com permissão apenas para o proprietário.
 - Os arquivos são enviados e processados pelo servidor onde o aplicativo foi
   instalado.
 - A interface usa recursos estáticos locais e não carrega fontes, scripts,

@@ -49,6 +49,7 @@ ZIP archive. Animated images are not supported.
 - Merge PDFs in the order you choose.
 - Reorder or remove pages and insert pages from a second PDF.
 - Crop selected pages, or add text, an image, a shape, or a note to a page.
+- Add a drawn or uploaded visual signature, and protect or unlock PDFs with a password.
 - Split a PDF by page ranges.
 - Rotate every page by 90°, 180°, or 270°.
 - Optimize a PDF with local lossless structural compression.
@@ -67,7 +68,8 @@ downloads as a ZIP archive.
 | Input | Available operations | Output |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
-| Unencrypted PDF | Merge, organize, crop, edit, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, JPG, or ZIP |
+| Unencrypted PDF | Merge, organize, crop, edit, sign visually, protect, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, JPG, or ZIP |
+| Password-protected PDF | Unlock with the current password | PDF |
 | Static image | Images to PDF | PDF |
 
 Default limits are 100 MB per file, 500 MB total per request, and 10 files per
@@ -145,6 +147,7 @@ want to pin the deployment instead of following `latest`.
 
 ## Privacy and security
 
+- Passwords for PDF jobs are temporarily kept in a local per-job file so the worker can process and retry them; the file is removed after processing. A crash can leave it until retry or job expiration. On systems that support it, the file is created with owner-only permissions.
 - Files are uploaded to and processed by the server where you run the app.
 - The interface uses local static assets and does not load third-party fonts,
   scripts, analytics, or telemetry.

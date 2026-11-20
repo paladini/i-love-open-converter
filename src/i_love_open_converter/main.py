@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import os
 import re
 import shutil
 import tempfile
@@ -28,6 +29,7 @@ from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, 
 from .pdf_ops import (
     InvalidPdfError,
     inspect_pdf,
+    inspect_protected_pdf,
     validate_crop_options,
     validate_edit_options,
     validate_page_ranges,
@@ -43,10 +45,7 @@ PDF_COMING_SOON = [
     ("Word para PDF", "Word to PDF", "convert", 7),
     ("PowerPoint para PDF", "PowerPoint to PDF", "convert", 8),
     ("Excel para PDF", "Excel to PDF", "convert", 9),
-    ("Assinar PDF", "Sign PDF", "security", 13),
     ("HTML para PDF", "HTML to PDF", "convert", 16),
-    ("Desbloquear PDF", "Unlock PDF", "security", 17),
-    ("Proteger PDF", "Protect PDF", "security", 18),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
     ("Reparar PDF", "Repair PDF", "organize", 21),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
@@ -91,7 +90,7 @@ class LimitedMultiPartParser(MultiPartParser):
         max_total_bytes: int,
     ) -> None:
         super().__init__(
-            headers, stream, max_files=max_files, max_fields=2, max_part_size=1024 * 1024
+            headers, stream, max_files=max_files, max_fields=3, max_part_size=1024 * 1024
         )
         self.max_file_bytes = max_file_bytes
         self.max_total_bytes = max_total_bytes
@@ -262,7 +261,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/tools/pdf-edit", include_in_schema=False)
     async def pdf_edit(request: Request):
-        return TEMPLATES.TemplateResponse(request, "pdf-edit.html", {"request": request})
+        return TEMPLATES.TemplateResponse(
+            request, "pdf-edit.html", {"request": request, "sign": False}
+        )
+
+    @app.get("/tools/pdf-sign", include_in_schema=False)
+    async def pdf_sign(request: Request):
+        return TEMPLATES.TemplateResponse(
+            request, "pdf-edit.html", {"request": request, "sign": True}
+        )
+
+    @app.get("/tools/pdf-{action}", include_in_schema=False)
+    async def pdf_password_tool(request: Request, action: str):
+        if action not in {"protect", "unlock"}:
+            raise HTTPException(status_code=404, detail="Not found")
+        return TEMPLATES.TemplateResponse(
+            request, "pdf-password.html", {"request": request, "action": action}
+        )
 
     @app.post("/api/pdf/pages")
     async def pdf_pages(request: Request):
@@ -390,6 +405,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.organize",
             "pdf.crop",
             "pdf.edit",
+            "pdf.sign",
+            "pdf.protect",
+            "pdf.unlock",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -462,6 +480,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_image",
             "pdf.page_numbers",
             "pdf.crop",
+            "pdf.protect",
+            "pdf.unlock",
         }
         if operation in single_pdf_operations and len(files) != 1:
             raise HTTPException(
@@ -479,6 +499,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         validated_options: dict[str, Any] = {}
+        secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
+        if operation in {"pdf.protect", "pdf.unlock"} and (
+            not isinstance(secret, str)
+            or not secret
+            or "\0" in secret
+            or len(secret.encode("utf-8")) > 40
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "invalid_options" if operation == "pdf.protect" else "invalid_file",
+                        "message": "Senha inválida.",
+                    }
+                },
+            )
         watermark_kind: str | None = None
         if operation == "pdf.watermark":
             watermark_kind = parsed_options.get("kind")
@@ -773,7 +809,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "rectangle": parsed_options.get("rectangle"),
                 "ranges": parsed_options.get("ranges"),
             }
-        if operation == "pdf.edit":
+        if operation in {"pdf.edit", "pdf.sign"}:
             validated_options = {
                 key: parsed_options.get(key)
                 for key in (
@@ -788,6 +824,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
             }
             expected = 2 if validated_options["kind"] == "image" else 1
+            if operation == "pdf.sign" and validated_options["kind"] != "image":
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Assinatura inválida."}
+                    },
+                )
             if (
                 len(files) != expected
                 or Path(files[0].filename or "").suffix.lower() != ".pdf"
@@ -847,7 +890,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 is_watermark_image = (
                     (operation == "pdf.watermark" and watermark_kind == "image")
                     or (
-                        operation == "pdf.edit"
+                        operation in {"pdf.edit", "pdf.sign"}
                         and validated_options["kind"] == "image"
                         and index == 1
                     )
@@ -905,7 +948,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         target.write(chunk)
                 if is_pdf_operation and not is_watermark_image:
                     try:
-                        page_count = inspect_pdf(destination)
+                        page_count = (
+                            inspect_protected_pdf(destination, secret)
+                            if operation == "pdf.unlock"
+                            else inspect_pdf(destination)
+                        )
                         pdf_page_counts.append(page_count)
                         content_type = "application/pdf"
                     except InvalidPdfError as exc:
@@ -944,7 +991,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     }
                                 },
                             ) from exc
-                    if operation == "pdf.edit":
+                    if operation in {"pdf.edit", "pdf.sign"}:
                         try:
                             validate_edit_options(validated_options, page_count)
                         except InvalidPdfError as exc:
@@ -1008,6 +1055,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     status_code=422,
                     detail={"error": {"code": "invalid_options", "message": "Páginas inválidas."}},
                 )
+            if secret is not None:
+                descriptor = os.open(
+                    job_dir / "secret", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+                )
+                with os.fdopen(descriptor, "w", encoding="utf-8") as secret_file:
+                    secret_file.write(secret)
             create_job(
                 settings.database_path,
                 job_id=job_id,

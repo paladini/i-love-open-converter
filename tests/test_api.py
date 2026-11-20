@@ -235,6 +235,113 @@ def test_pdf_edit_accepts_webp_with_transparency(settings, pdf_bytes):
             assert document[0].get_images()[0][1] != 0
 
 
+def test_password_protection_and_unlock_do_not_store_password_in_job_options(
+    settings, pdf_bytes, caplog
+):
+    password = "long secret 123"
+    with TestClient(create_app(settings)) as client:
+        request = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.protect", "password": password},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert request.status_code == 202
+        job_id = request.json()["job_id"]
+        with sqlite3.connect(settings.database_path) as connection:
+            options = connection.execute(
+                "SELECT options_json FROM conversion_jobs WHERE id = ?", (job_id,)
+            ).fetchone()[0]
+        assert password not in options
+        assert process_one_job(settings)
+        assert not (settings.jobs_dir / job_id / "secret").exists()
+        protected = client.get(request.json()["status_url"] + "/download")
+        assert protected.status_code == 200
+        with pymupdf.open(stream=protected.content, filetype="pdf") as document:
+            assert document.needs_pass
+            assert not document.authenticate("wrong")
+            assert document.authenticate(password)
+            assert document.page_count == 2
+        wrong = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.unlock", "password": "wrong"},
+            files=_multipart("protected.pdf", protected.content, "application/pdf"),
+        )
+        assert wrong.status_code == 422
+        assert wrong.json()["error"]["code"] == "invalid_file"
+        unlocked = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.unlock", "password": password},
+            files=_multipart("protected.pdf", protected.content, "application/pdf"),
+        )
+        assert unlocked.status_code == 202
+        assert process_one_job(settings)
+        output = client.get(unlocked.json()["status_url"] + "/download")
+        with pymupdf.open(stream=output.content, filetype="pdf") as document:
+            assert not document.needs_pass
+            assert document[0].get_text().strip() == "Test page 1"
+        assert password not in caplog.text
+
+
+def test_visual_signature_adds_an_image_to_selected_page(settings, pdf_bytes, jpeg_bytes):
+    options = {"kind": "image", "page": 2, "rectangle": [0.1, 0.1, 0.9, 0.7], "color": "#000000"}
+    uploads = [
+        ("files", ("source.pdf", pdf_bytes, "application/pdf")),
+        ("files", ("signature.jpg", jpeg_bytes, "image/jpeg")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/tools/pdf-sign")
+        assert page.status_code == 200
+        assert "signature" in page.text and "certificado digital" in page.text
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.sign", "options": json.dumps(options)},
+            files=uploads,
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with pymupdf.open(stream=result.content, filetype="pdf") as document:
+            assert not document[0].get_images()
+            assert len(document[1].get_images()) == 1
+
+
+@pytest.mark.parametrize(
+    "operation,password,code",
+    [
+        ("pdf.protect", "", "invalid_options"),
+        ("pdf.protect", "a" * 41, "invalid_options"),
+        ("pdf.unlock", "", "invalid_file"),
+    ],
+)
+def test_password_job_rejects_missing_or_oversized_password(
+    settings, pdf_bytes, operation, password, code
+):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": operation, "password": password},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == code
+
+
+def test_password_job_recovers_after_interruption(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.protect", "password": "recovery-pass"},
+            files=_multipart("a.pdf", pdf_bytes, "application/pdf"),
+        )
+        job_id = submitted.json()["job_id"]
+        assert claim_next_job(settings.database_path)["id"] == job_id
+        assert recover_interrupted_jobs(settings) == 1
+        assert process_one_job(settings)
+        assert not (settings.jobs_dir / job_id / "secret").exists()
+        assert client.get(submitted.json()["status_url"]).json()["state"] == "succeeded"
+
+
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")

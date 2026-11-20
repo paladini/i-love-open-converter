@@ -130,6 +130,24 @@ def inspect_pdf(path: Path) -> int:
         raise InvalidPdfError from exc
 
 
+def inspect_protected_pdf(path: Path, password: str) -> int:
+    try:
+        with pymupdf.open(path) as document:
+            if (
+                not document.is_pdf
+                or not document.needs_pass
+                or not document.authenticate(password)
+                or document.is_repaired
+                or document.page_count < 1
+            ):
+                raise InvalidPdfError
+            return document.page_count
+    except InvalidPdfError:
+        raise
+    except Exception as exc:
+        raise InvalidPdfError from exc
+
+
 def _open_pdf(path: Path):
     document = pymupdf.open(path)
     if (
@@ -301,10 +319,40 @@ def process_pdf(
     sources: list[tuple[Path, str]],
     options: dict[str, Any],
     output_dir: Path,
+    secret: str | None = None,
 ) -> tuple[list[Path], str]:
     """Run one PDF operation; returned paths are ready-to-download artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    if operation == "pdf.edit":
+    if operation in {"pdf.protect", "pdf.unlock"}:
+        if len(sources) != 1 or not secret:
+            raise InvalidPdfError
+        if operation == "pdf.unlock":
+            inspect_protected_pdf(sources[0][0], secret)
+            document = pymupdf.open(sources[0][0])
+            document.authenticate(secret)
+        else:
+            document = _open_pdf(sources[0][0])
+        try:
+            destination = output_dir / (
+                "protected.pdf" if operation == "pdf.protect" else "unlocked.pdf"
+            )
+            if operation == "pdf.protect":
+                document.save(
+                    destination,
+                    encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                    owner_pw=secret,
+                    user_pw=secret,
+                    garbage=3,
+                    deflate=True,
+                )
+            else:
+                document.save(
+                    destination, encryption=pymupdf.PDF_ENCRYPT_NONE, garbage=3, deflate=True
+                )
+        finally:
+            document.close()
+        return [destination], "application/pdf"
+    if operation in {"pdf.edit", "pdf.sign"}:
         document = _open_pdf(sources[0][0])
         try:
             validate_edit_options(options, document.page_count)
