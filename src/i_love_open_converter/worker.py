@@ -89,6 +89,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.compress",
             "pdf.to_image",
             "pdf.extract_images",
+            "pdf.to_markdown",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -124,6 +125,7 @@ def process_one_job(settings: Settings) -> bool:
                 "pdf.split",
                 "pdf.to_image",
                 "pdf.extract_images",
+                "pdf.to_markdown",
             }:
                 output_name = "converted-files.zip"
                 destination = output_dir / output_name

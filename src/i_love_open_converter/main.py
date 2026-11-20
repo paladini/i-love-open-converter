@@ -53,7 +53,6 @@ PDF_COMING_SOON = [
     ("OCR PDF", "OCR PDF", "intelligence", 24),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
-    ("PDF para Markdown", "PDF to Markdown", "convert", 31),
 ]
 IMAGE_COMING_SOON = [
     ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
@@ -288,6 +287,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_extract_images(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-extract-images.html", {"request": request})
 
+    @app.get("/tools/pdf-to-markdown", include_in_schema=False)
+    async def pdf_to_markdown(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-to-markdown.html", {"request": request})
+
     @app.get("/tools/office-to-pdf/{family}", include_in_schema=False)
     async def office_to_pdf(request: Request, family: str):
         labels = {
@@ -470,6 +473,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.compress",
             "pdf.to_image",
             "pdf.extract_images",
+            "pdf.to_markdown",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -554,6 +558,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.compress",
             "pdf.to_image",
             "pdf.extract_images",
+            "pdf.to_markdown",
             "pdf.page_numbers",
             "pdf.crop",
             "pdf.protect",

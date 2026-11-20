@@ -795,6 +795,36 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.to_markdown":
+            import onnxruntime
+
+            onnxruntime.disable_telemetry_events()
+            markdown = document.to_markdown(use_ocr=False, embed_images=True, filename="document")
+            if not isinstance(markdown, str):
+                raise InvalidPdfError
+            assets: list[Path] = []
+            total_image_bytes = 0
+
+            def store_image(match: re.Match[str]) -> str:
+                nonlocal total_image_bytes
+                raw = base64.b64decode(match.group(2), validate=True)
+                total_image_bytes += len(raw)
+                if len(assets) >= 200 or total_image_bytes > 256 * 1024 * 1024:
+                    raise InvalidPdfError
+                path = output_dir / f"image-{len(assets) + 1:03d}.png"
+                path.write_bytes(raw)
+                assets.append(path)
+                return f"![{match.group(1)}]({path.name})"
+
+            markdown = re.sub(
+                r"!\[([^\]]*)\]\(data:image/png;base64,([A-Za-z0-9+/=]+)\)",
+                store_image,
+                markdown,
+            )
+            destination = output_dir / "document.md"
+            destination.write_text(markdown, encoding="utf-8")
+            return [destination, *assets], "text/markdown"
+
         if operation == "pdf.extract_images":
             seen: set[int] = set()
             paths: list[Path] = []
