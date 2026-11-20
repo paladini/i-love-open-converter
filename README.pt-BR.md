@@ -70,6 +70,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
   número inicial, fonte, tamanho e cor.
 
 A conversão de PDF para Markdown usa o mecanismo completo de layout do PyMuPDF e o ONNX Runtime local, sem GPU. A telemetria do ONNX é desativada antes da inicialização.
+Para limitar a memória de renderização, páginas que excedem 16 milhões de pixels a 150 DPI são recusadas; a conversão também está sujeita a limites de tempo e tamanho de saída.
 
 As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
 ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.

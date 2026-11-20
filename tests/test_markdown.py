@@ -9,9 +9,7 @@ from i_love_open_converter.main import create_app
 from i_love_open_converter.worker import process_one_job
 
 
-def test_pdf_to_markdown_packages_text_and_images(settings, monkeypatch):
-    disabled = []
-    monkeypatch.setattr("onnxruntime.disable_telemetry_events", lambda: disabled.append(True))
+def test_pdf_to_markdown_packages_text_and_images(settings):
     image = BytesIO()
     Image.new("RGB", (80, 80), "red").save(image, "PNG")
     document = pymupdf.open()
@@ -29,7 +27,6 @@ def test_pdf_to_markdown_packages_text_and_images(settings, monkeypatch):
         )
         assert response.status_code == 202
         assert process_one_job(settings)
-        assert disabled == [True]
         result = client.get(response.json()["status_url"] + "/download")
         assert result.status_code == 200
         with ZipFile(BytesIO(result.content)) as archive:
@@ -91,3 +88,43 @@ def test_pdf_to_markdown_includes_detectable_table(settings):
         with ZipFile(BytesIO(result.content)) as archive:
             markdown = archive.read("document.md").decode("utf-8")
             assert "Apples" in markdown and "Three" in markdown and "|" in markdown
+
+
+def test_pdf_to_markdown_rejects_extreme_page_without_download(settings):
+    document = pymupdf.open()
+    document.new_page(width=5000, height=5000).insert_text((72, 72), "Large page")
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_markdown"},
+            files={"files": ("large.pdf", source, "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"]).json()
+        assert status["state"] == "failed"
+        assert status["error"]["code"] == "markdown_failed"
+        assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_pdf_to_markdown_preserves_detectable_heading(settings):
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((72, 72), "A Large Heading", fontsize=24)
+    page.insert_text((72, 120), "Body paragraph follows.", fontsize=11)
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_markdown"},
+            files={"files": ("heading.pdf", source, "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(response.json()["status_url"] + "/download")
+        with ZipFile(BytesIO(result.content)) as archive:
+            markdown = archive.read("document.md").decode("utf-8")
+            assert any(
+                line.startswith("#") and "A Large Heading" in line for line in markdown.splitlines()
+            )

@@ -20,7 +20,7 @@ from .database import (
 from .files import safe_stem
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
-from .pdf_ops import InvalidPdfError, NoEmbeddedImagesError, process_pdf
+from .pdf_ops import InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError, process_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +190,13 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "no_images",
             "O PDF não contém imagens extraíveis.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except MarkdownConversionError:
+        mark_failed(
+            settings.database_path, job_id, "markdown_failed",
+            "A conversão Markdown falhou ou excedeu os limites de processamento.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

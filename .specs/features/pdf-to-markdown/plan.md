@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-20 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at 8b37423
+**Fix pass:** done - bounded page raster dimensions before rendering, processed one page at a time in a separate time- and memory-limited child, limited ONNX thread pools, and added oversized-page and heading regressions. Verified safe failure in a 512 MiB container and conversion on AMD64 and emulated ARM64.
 
 ## Problem
 

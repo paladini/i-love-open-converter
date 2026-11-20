@@ -2,7 +2,7 @@ const file = document.querySelector('#file'), form = document.querySelector('#fo
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
 let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
 let statusKey = null;
-const words = {'pt-BR':{queued:'Na fila…',working:'Convertendo…',done:'Seu Markdown está pronto.',error:'Não foi possível converter o PDF. Confira se ele é válido e não está protegido por senha.'},en:{queued:'Queued…',working:'Converting…',done:'Your Markdown is ready.',error:'Could not convert the PDF. Check that it is valid and not password-protected.'}};
+const words = {'pt-BR':{queued:'Na fila…',working:'Convertendo…',done:'Seu Markdown está pronto.',error:'Não foi possível converter o PDF. Confira o arquivo e os limites de processamento.'},en:{queued:'Queued…',working:'Converting…',done:'Your Markdown is ready.',error:'Could not convert the PDF. Check the file and processing limits.'}};
 function setStatus(key) {statusKey = key; message.textContent = key ? words[lang][key] : '';}
 function translate() {document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;}); setStatus(statusKey);}
 language.addEventListener('change', () => {lang = language.value; localStorage.setItem('i-love-open-converter-language',lang); translate();});

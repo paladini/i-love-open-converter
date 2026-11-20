@@ -4,6 +4,8 @@ import base64
 import hashlib
 import html
 import re
+import subprocess
+import sys
 import tempfile
 from difflib import SequenceMatcher
 from io import BytesIO
@@ -23,6 +25,10 @@ class InvalidPdfError(Exception):
 
 class NoEmbeddedImagesError(Exception):
     """The PDF has no extractable embedded images."""
+
+
+class MarkdownConversionError(Exception):
+    """Markdown processing failed or exceeded a resource limit."""
 
 
 EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
@@ -796,33 +802,19 @@ def process_pdf(
     document = _open_pdf(source)
     try:
         if operation == "pdf.to_markdown":
-            import onnxruntime
-
-            onnxruntime.disable_telemetry_events()
-            markdown = document.to_markdown(use_ocr=False, embed_images=True, filename="document")
-            if not isinstance(markdown, str):
-                raise InvalidPdfError
-            assets: list[Path] = []
-            total_image_bytes = 0
-
-            def store_image(match: re.Match[str]) -> str:
-                nonlocal total_image_bytes
-                raw = base64.b64decode(match.group(2), validate=True)
-                total_image_bytes += len(raw)
-                if len(assets) >= 200 or total_image_bytes > 256 * 1024 * 1024:
-                    raise InvalidPdfError
-                path = output_dir / f"image-{len(assets) + 1:03d}.png"
-                path.write_bytes(raw)
-                assets.append(path)
-                return f"![{match.group(1)}]({path.name})"
-
-            markdown = re.sub(
-                r"!\[([^\]]*)\]\(data:image/png;base64,([A-Za-z0-9+/=]+)\)",
-                store_image,
-                markdown,
-            )
+            try:
+                completed = subprocess.run(
+                    [sys.executable, "-m", "i_love_open_converter.markdown_worker",
+                     str(source.resolve()), str(output_dir.resolve())],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=180, check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                raise MarkdownConversionError from exc
             destination = output_dir / "document.md"
-            destination.write_text(markdown, encoding="utf-8")
+            if completed.returncode != 0 or not destination.is_file():
+                raise MarkdownConversionError
+            assets = sorted(output_dir.glob("image-*.png"))
             return [destination, *assets], "text/markdown"
 
         if operation == "pdf.extract_images":
@@ -914,7 +906,7 @@ def process_pdf(
                 outputs.append(destination)
             return outputs, "image/jpeg"
 
-    except (InvalidPdfError, NoEmbeddedImagesError):
+    except (InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc
