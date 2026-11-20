@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import resource
 import sys
 from pathlib import Path
 
@@ -64,7 +65,10 @@ def restrict(root: Path) -> None:
 
 if __name__ == "__main__":
     try:
+        resource.setrlimit(resource.RLIMIT_AS, (2 * 1024**3, 2 * 1024**3))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (256 * 1024**2, 256 * 1024**2))
+        resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
         restrict(Path(sys.argv[1]))
-    except OSError:
+    except (OSError, ValueError):
         sys.exit(77)
     os.execv(sys.argv[2], sys.argv[2:])

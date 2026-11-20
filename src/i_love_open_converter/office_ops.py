@@ -43,6 +43,8 @@ DOCUMENT_PARTS = {".docx": "word/document.xml", ".pptx": "ppt/presentation.xml",
                   ".xlsx": "xl/workbook.xml"}
 LEGACY_PARTS = {".doc": {"WordDocument"}, ".ppt": {"PowerPoint Document"},
                 ".xls": {"Workbook", "Book"}}
+MAX_PART_BYTES = 64 * 1024 * 1024
+MAX_EXPANDED_BYTES = 256 * 1024 * 1024
 
 
 def validate_office(source: Path) -> None:
@@ -55,6 +57,8 @@ def validate_office(source: Path) -> None:
                 names = [item.filename for item in entries]
                 if (len(entries) > 10000 or len(names) != len(set(names))
                         or any(item.flag_bits & 1 for item in entries)
+                        or any(item.file_size > MAX_PART_BYTES for item in entries)
+                        or sum(item.file_size for item in entries) > MAX_EXPANDED_BYTES
                         or "[Content_Types].xml" not in names
                         or DOCUMENT_PARTS[extension] not in names):
                     raise OfficeConversionError

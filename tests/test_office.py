@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import subprocess
 from io import BytesIO
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import pymupdf
 import pytest
@@ -82,3 +83,49 @@ def test_office_rejects_mismatched_and_invalid_container(tmp_path):
     source.write_bytes(b"plain text masquerading as a Word document")
     with pytest.raises(office_ops.OfficeConversionError):
         office_ops.validate_office(source)
+
+
+def test_office_rejects_excessive_uncompressed_package(tmp_path, monkeypatch):
+    monkeypatch.setattr(office_ops, "MAX_PART_BYTES", 1024)
+    source = tmp_path / "large.docx"
+    with ZipFile(source, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", "types")
+        archive.writestr("word/document.xml", "x" * 2048)
+    assert source.stat().st_size < 1024
+    with pytest.raises(office_ops.OfficeConversionError):
+        office_ops.validate_office(source)
+    monkeypatch.setattr(office_ops, "MAX_PART_BYTES", 4096)
+    monkeypatch.setattr(office_ops, "MAX_EXPANDED_BYTES", 1024)
+    with pytest.raises(office_ops.OfficeConversionError):
+        office_ops.validate_office(source)
+
+
+def test_office_timeout_kills_the_process_group(tmp_path, monkeypatch):
+    source = tmp_path / "valid.docx"
+    with ZipFile(source, "w") as archive:
+        archive.writestr("[Content_Types].xml", "types")
+        archive.writestr("word/document.xml", "document")
+    killed = []
+
+    class SlowProcess:
+        pid = 1234
+
+        def __init__(self):
+            self.calls = 0
+
+        def wait(self, timeout=None):
+            self.calls += 1
+            if self.calls == 1:
+                raise subprocess.TimeoutExpired("soffice", timeout)
+
+    monkeypatch.setattr(office_ops, "office_isolated", lambda: True)
+    monkeypatch.setattr(office_ops.shutil, "which", lambda _: "/usr/bin/soffice")
+    monkeypatch.setattr(office_ops.subprocess, "Popen", lambda *a, **kw: SlowProcess())
+    monkeypatch.setattr(
+        office_ops.os, "killpg", lambda pid, sig: killed.append((pid, sig)), raising=False
+    )
+    monkeypatch.setattr(office_ops.signal, "SIGKILL", 9, raising=False)
+    with pytest.raises(office_ops.OfficeConversionError):
+        office_ops.convert_office(source, tmp_path / "out")
+    assert killed == [(1234, office_ops.signal.SIGKILL)]
+    assert not (tmp_path / "out" / "converted.pdf").exists()

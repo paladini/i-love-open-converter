@@ -58,3 +58,13 @@ with tempfile.TemporaryDirectory() as folder:
     )
     assert result.returncode != 0 and b"other job data" not in result.stdout
     print("other-job read denied", flush=True)
+
+    result = subprocess.run(
+        ["/app/.venv/bin/python", str(module_path.with_name("office_sandbox.py")),
+         str(confined), "/usr/local/bin/python3", "-c",
+         "import resource; print(resource.getrlimit(resource.RLIMIT_AS)[0], "
+         "resource.getrlimit(resource.RLIMIT_FSIZE)[0])"],
+        capture_output=True, timeout=10, check=True,
+    )
+    assert result.stdout.strip() == b"2147483648 268435456"
+    print("resource limits enforced", flush=True)

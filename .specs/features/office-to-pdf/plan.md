@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-20 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at e1042b1
+**Fix pass:** done - bounded OOXML expansion, converter address space, CPU and individual files, and worker memory, process count and temporary storage; added expansion and timeout tests and verified resource limits in the container probe.
 
 ## Problem
 

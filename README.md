@@ -91,6 +91,8 @@ Requirements: Docker Engine and Docker Compose v2.
 
 Office conversion uses LibreOffice and Linux Landlock inside the worker. The supplied Compose configuration disables worker networking and explicitly enables Office processing only in that isolated worker. A standalone worker must be placed in an equivalent network namespace with no external interfaces and configured with `OFFICE_NETWORK_ISOLATED=1`; otherwise Office jobs fail closed. The setting is an operator attestation and does not itself isolate a process. Office conversion also requires a Linux kernel and container policy that permit Landlock. Password-protected documents are unsupported, and fonts, layout and spreadsheet pagination may differ from the original application.
 
+Office ZIP packages are limited to 64 MiB per expanded part and 256 MiB expanded in total. The converter has per-process memory, CPU and file-size limits; the supplied worker also limits memory, process count and temporary storage.
+
 ```sh
 git clone https://github.com/paladini/i-love-open-converter.git
 cd i-love-open-converter

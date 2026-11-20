@@ -37,6 +37,10 @@ services:
     init: true
     restart: unless-stopped
     network_mode: none
+    mem_limit: 3g
+    pids_limit: 256
+    tmpfs:
+      - /tmp:size=768m,mode=1777
     command:
       - /app/.venv/bin/python
       - -m
