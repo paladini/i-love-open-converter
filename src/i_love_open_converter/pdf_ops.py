@@ -14,10 +14,15 @@ import pymupdf
 from PIL import Image, ImageChops, ImageDraw, ImageOps
 
 from .pdf_archive import convert_pdfa
+from .pdf_image_order import image_order
 
 
 class InvalidPdfError(Exception):
     """The input is not a readable, unencrypted PDF."""
+
+
+class NoEmbeddedImagesError(Exception):
+    """The PDF has no extractable embedded images."""
 
 
 EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
@@ -790,6 +795,36 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.extract_images":
+            seen: set[int] = set()
+            paths: list[Path] = []
+            ordered = image_order(source)
+            if len(ordered) != document.page_count:
+                raise InvalidPdfError
+            for page, references in zip(document, ordered, strict=True):
+                blocks = [block for block in page.get_text("dict")["blocks"] if block["type"] == 1]
+                if len(references) != len(blocks):
+                    raise InvalidPdfError
+                for xref, block in zip(references, blocks, strict=True):
+                    if xref and xref in seen:
+                        continue
+                    if xref:
+                        seen.add(xref)
+                    base = pymupdf.Pixmap(block["image"])
+                    mask = block.get("mask")
+                    if mask:
+                        base = pymupdf.Pixmap(base, pymupdf.Pixmap(mask))
+                    if base.colorspace is None:
+                        continue
+                    if base.colorspace.n not in (1, 3):
+                        base = pymupdf.Pixmap(pymupdf.csRGB, base)
+                    destination = output_dir / f"image-{len(paths) + 1:03d}.png"
+                    base.save(destination)
+                    paths.append(destination)
+            if not paths:
+                raise NoEmbeddedImagesError
+            return paths, "image/png"
+
         if operation == "pdf.forms":
             fill_form(document, options["updates"])
             destination = output_dir / "filled.pdf"
@@ -849,7 +884,7 @@ def process_pdf(
                 outputs.append(destination)
             return outputs, "image/jpeg"
 
-    except InvalidPdfError:
+    except (InvalidPdfError, NoEmbeddedImagesError):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc

@@ -56,6 +56,7 @@ ZIP archive. Animated images are not supported.
 - Rotate every page by 90°, 180°, or 270°.
 - Optimize a PDF with local lossless structural compression.
 - Render each PDF page as a JPG image.
+- Extract embedded PDF images as PNG files in a ZIP, preserving transparency. Repeated image objects are included once; inline images are included at each occurrence.
 - Turn images into a PDF with one page per image.
 - Add a text or image watermark to every page. Choose its position and
   opacity; text watermarks also support font, size, and color options.
@@ -70,7 +71,7 @@ downloads as a ZIP archive.
 | Input | Available operations | Output |
 | --- | --- | --- |
 | JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
-| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, watermark, page numbers | PDF, HTML, JPG, or ZIP |
+| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, extract images, watermark, page numbers | PDF, HTML, JPG, or ZIP |
 | Password-protected PDF | Unlock with the current password | PDF |
 | Static image | Images to PDF | PDF |
 

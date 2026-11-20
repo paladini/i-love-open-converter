@@ -286,6 +286,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_repair(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-repair.html", {"request": request})
 
+    @app.get("/tools/pdf-extract-images", include_in_schema=False)
+    async def pdf_extract_images(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-extract-images.html", {"request": request})
+
     @app.get("/tools/pdf-compare", include_in_schema=False)
     async def pdf_compare(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-compare.html", {"request": request})
@@ -451,6 +455,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.rotate",
             "pdf.compress",
             "pdf.to_image",
+            "pdf.extract_images",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -534,6 +539,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.rotate",
             "pdf.compress",
             "pdf.to_image",
+            "pdf.extract_images",
             "pdf.page_numbers",
             "pdf.crop",
             "pdf.protect",
