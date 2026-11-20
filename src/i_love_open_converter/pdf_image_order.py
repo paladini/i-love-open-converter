@@ -45,11 +45,29 @@ def image_order(source: Path) -> list[list[int]]:
                     result.extend(walk(obj, nested_resources, stack | {identifier}, depth + 1))
         return result
 
+    def page_images(page: Any) -> list[int]:
+        result = walk(page.get_contents(), page.get("/Resources"), frozenset(), 0)
+        for reference in page.get("/Annots", []):
+            annotation = reference.get_object()
+            if int(annotation.get("/F", 0)) & (1 | 2 | 32):
+                continue
+            appearances = annotation.get("/AP")
+            if not appearances:
+                continue
+            appearance = appearances.get_object().get("/N")
+            if not appearance:
+                continue
+            appearance = appearance.get_object()
+            if appearance.get("/Subtype") != "/Form":
+                appearance = appearance.get(annotation.get("/AS"))
+                if not appearance:
+                    continue
+                appearance = appearance.get_object()
+            result.extend(walk(appearance, appearance.get("/Resources"), frozenset(), 0))
+        return result
+
     try:
-        return [
-            walk(page.get_contents(), page.get("/Resources"), frozenset(), 0)
-            for page in reader.pages
-        ]
+        return [page_images(page) for page in reader.pages]
     except ImageOrderError:
         raise
     except Exception as exc:

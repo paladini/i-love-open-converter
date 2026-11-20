@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-20 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at 4845194
+**Fix pass:** done - include visible annotation appearance streams in image order, cover the reported case, and translate the active status when the language changes.
 
 ## Problem
 

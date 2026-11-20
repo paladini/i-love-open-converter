@@ -58,6 +58,38 @@ def test_extract_images_deduplicates_and_preserves_transparency(settings, pdf_by
         assert status["state"] == "failed" and status["error"]["code"] == "no_images"
 
 
+def test_extracts_image_in_annotation_appearance(settings):
+    image = BytesIO()
+    Image.new("RGB", (4, 4), "red").save(image, "PNG")
+    document = pymupdf.open()
+    page = document.new_page()
+    image_xref = page.insert_image(pymupdf.Rect(10, 10, 50, 50), stream=image.getvalue())
+    content = page.get_contents()[0]
+    annotation = page.add_stamp_annot(pymupdf.Rect(20, 20, 120, 120))
+    appearance = int(document.xref_get_key(annotation.xref, "AP/N")[1].split()[0])
+    document.update_object(
+        appearance,
+        f"<< /Type /XObject /Subtype /Form /BBox [0 0 100 100] "
+        f"/Resources << /XObject << /Im {image_xref} 0 R >> >> >>",
+    )
+    document.update_stream(appearance, b"q 100 0 0 100 0 0 cm /Im Do Q")
+    document.update_stream(content, b"")
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs", data={"operation": "pdf.extract_images"},
+            files=_multipart("annotation.pdf", source, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        result = client.get(submitted.json()["status_url"] + "/download")
+        assert result.status_code == 200
+        with ZipFile(BytesIO(result.content)) as archive:
+            with Image.open(BytesIO(archive.read("image-001.png"))) as extracted:
+                assert extracted.convert("RGB").getpixel((0, 0)) == (255, 0, 0)
+
+
 def test_extracts_inline_pdf_image(settings):
     document = pymupdf.open()
     page = document.new_page()
