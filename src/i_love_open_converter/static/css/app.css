@@ -281,6 +281,11 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.045em; font-weight: 720; }
 .pdf-upload strong { font-size: 18px; }
 .pdf-upload span:not(.large-upload-icon), .pdf-upload small { color: var(--muted); font-size: 13px; }
 .picked-file { margin: 12px 0 0; color: #53596b; font-size: 13px; overflow-wrap: anywhere; }
+#pages { max-height: 24rem; overflow-y: auto; padding-left: 2rem; }
+#pages li { padding: .5rem 0; overflow-wrap: anywhere; }
+#pages li span { display: block; margin-bottom: .35rem; }
+#pages li button { margin: 0 .35rem .35rem 0; padding: .4rem .65rem; border: 1px solid #d9dbe3; border-radius: .4rem; background: #fff; cursor: pointer; }
+#pages li button:disabled { opacity: .45; cursor: default; }
 .pdf-tool-card .primary-button { display: inline-flex; width: auto; min-width: 210px; min-height: 48px; margin: 18px auto 0; }
 .pdf-tool-card .primary-button { background: #ef5964; box-shadow: 0 7px 16px rgba(239,89,100,.2); }
 .pdf-tool-card .primary-button:hover { background: #df4856; }

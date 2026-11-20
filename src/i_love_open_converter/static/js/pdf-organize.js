@@ -26,7 +26,16 @@ function render() {
       const button = document.createElement('button'); button.type = 'button'; button.textContent = words[lang][key];
       button.setAttribute('aria-label', `${words[lang][key]} ${label.textContent}`);
       button.disabled = (delta === -1 && index === 0) || (delta === 1 && index === pages.length - 1);
-      button.addEventListener('click', () => { if (delta) [pages[index],pages[index+delta]] = [pages[index+delta],pages[index]]; else pages.splice(index,1); download.hidden = true; render(); });
+      button.addEventListener('click', () => {
+        const nextIndex = delta ? index + delta : Math.min(index, pages.length - 2);
+        if (delta) [pages[index],pages[nextIndex]] = [pages[nextIndex],pages[index]];
+        else pages.splice(index,1);
+        download.hidden = true; message.textContent = ''; render();
+        const row = list.children[nextIndex];
+        const nextButton = row?.querySelectorAll('button')[delta ? (delta < 0 ? 0 : 1) : 2];
+        if (nextButton && !nextButton.disabled) nextButton.focus();
+        else row?.querySelector('button:not(:disabled)')?.focus();
+      });
       li.append(button);
     }
     list.append(li);
@@ -45,7 +54,7 @@ async function addFile(file, isPrimary) {
     if (!isPrimary) { pages = pages.filter(p => p[0] === 1); files = files.slice(0,1); }
     files.push(file); for (let n=1;n<=result.page_count;n++) pages.push([files.length,n]);
     editor.hidden = false; message.textContent = ''; render();
-  } catch { if (current === revision) message.textContent = words[lang].error; }
+  } catch { if (current === revision) { message.textContent = words[lang].error; if (!isPrimary) secondary.value = ''; } }
   finally { if (current === revision) submit.disabled = false; }
 }
 primary.addEventListener('change', () => addFile(primary.files[0],true));
@@ -53,10 +62,12 @@ secondary.addEventListener('change', () => addFile(secondary.files[0],false));
 submit.addEventListener('click', async () => {
   if (!pages.length) { message.textContent = words[lang].empty; return; }
   const body = new FormData(); body.append('operation','pdf.organize'); body.append('options',JSON.stringify({pages})); files.forEach(file => body.append('files',file));
-  submit.disabled = true; download.hidden = true; message.textContent = words[lang].queued;
+  submit.disabled = true; primary.disabled = true; secondary.disabled = true; language.disabled = true;
+  list.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  download.hidden = true; message.textContent = words[lang].queued;
   try {
     const response = await fetch('/api/jobs',{method:'POST',body}); const job = await response.json(); if (!response.ok) throw new Error();
     while (true) { await new Promise(resolve => setTimeout(resolve,800)); const result = await fetch(job.status_url); const state = await result.json(); if (!result.ok || state.state === 'failed') throw new Error(); if (state.state === 'succeeded') { download.href = state.download_url; download.hidden = false; message.textContent = words[lang].done; break; } }
-  } catch { message.textContent = words[lang].error; } finally { submit.disabled = false; }
+  } catch { message.textContent = words[lang].error; } finally { submit.disabled = false; primary.disabled = false; secondary.disabled = false; language.disabled = false; render(); }
 });
 localize();

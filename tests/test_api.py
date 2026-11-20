@@ -63,6 +63,22 @@ def test_organize_pdf_pages_and_reject_invalid_selection(settings, pdf_bytes):
             ]
 
 
+def test_pdf_page_inspection_rejects_non_pdf_content(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        inspected = client.post(
+            "/api/pdf/pages", files=_multipart("fake.pdf", jpeg_bytes, "application/pdf")
+        )
+        assert inspected.status_code == 422
+        assert inspected.json()["error"]["code"] == "invalid_file"
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.organize", "options": '{"pages": [[1, 1]]}'},
+            files=_multipart("fake.pdf", jpeg_bytes, "application/pdf"),
+        )
+        assert submitted.status_code == 422
+        assert submitted.json()["error"]["code"] == "invalid_file"
+
+
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")

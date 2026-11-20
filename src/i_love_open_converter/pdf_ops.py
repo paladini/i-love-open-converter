@@ -15,7 +15,12 @@ class InvalidPdfError(Exception):
 def inspect_pdf(path: Path) -> int:
     try:
         with pymupdf.open(path) as document:
-            if document.needs_pass or document.is_repaired or document.page_count < 1:
+            if (
+                not document.is_pdf
+                or document.needs_pass
+                or document.is_repaired
+                or document.page_count < 1
+            ):
                 raise InvalidPdfError
             return document.page_count
     except InvalidPdfError:
@@ -26,7 +31,12 @@ def inspect_pdf(path: Path) -> int:
 
 def _open_pdf(path: Path):
     document = pymupdf.open(path)
-    if document.needs_pass or document.is_repaired or document.page_count < 1:
+    if (
+        not document.is_pdf
+        or document.needs_pass
+        or document.is_repaired
+        or document.page_count < 1
+    ):
         document.close()
         raise InvalidPdfError
     return document
