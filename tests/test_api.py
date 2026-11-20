@@ -79,6 +79,162 @@ def test_pdf_page_inspection_rejects_non_pdf_content(settings, jpeg_bytes):
         assert submitted.json()["error"]["code"] == "invalid_file"
 
 
+def test_pdf_preview_renders_selected_page_and_rejects_invalid_input(
+    settings, pdf_bytes, jpeg_bytes
+):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/pdf/preview",
+            data={"page": "2"},
+            files=_multipart("document.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+        with Image.open(BytesIO(response.content)) as preview:
+            assert preview.size == (240, 120)
+        for number in ("0", "3", "-1", "1.5"):
+            result = client.post(
+                "/api/pdf/preview",
+                data={"page": number},
+                files=_multipart("document.pdf", pdf_bytes, "application/pdf"),
+            )
+            assert result.status_code == 422
+        invalid = client.post(
+            "/api/pdf/preview", files=_multipart("fake.pdf", jpeg_bytes, "application/pdf")
+        )
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "invalid_file"
+
+
+def test_crop_preserves_unselected_pages_and_respects_rotation(settings):
+    source = pymupdf.open()
+    page = source.new_page(width=300, height=200)
+    page.insert_text((70, 70), "inside")
+    page.set_cropbox(pymupdf.Rect(20, 10, 280, 190))
+    page.set_rotation(90)
+    source.new_page(width=300, height=200)
+    pdf = source.tobytes()
+    source.close()
+    with TestClient(create_app(settings)) as client:
+        for rectangle, ranges in [
+            ([0, 0, 0, 1], "1"),
+            ([0, 0, 2, 1], "1"),
+            ([0, 0, 1, True], "1"),
+            ([0, 0, 1, 1], "3"),
+        ]:
+            result = client.post(
+                "/api/jobs",
+                data={
+                    "operation": "pdf.crop",
+                    "options": json.dumps({"rectangle": rectangle, "ranges": ranges}),
+                },
+                files=_multipart("a.pdf", pdf, "application/pdf"),
+            )
+            assert result.status_code == 422
+            assert result.json()["error"]["code"] == "invalid_options"
+        result = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.crop",
+                "options": json.dumps({"rectangle": [0, 0, 0.5, 1], "ranges": "1"}),
+            },
+            files=_multipart("a.pdf", pdf, "application/pdf"),
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(result.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            assert document[0].rotation == 90
+            assert document[0].rect.width == pytest.approx(90)
+            assert document[0].rect.height == pytest.approx(260)
+            assert document[0].cropbox == pymupdf.Rect(20, 100, 280, 190)
+            assert document[1].rect == pymupdf.Rect(0, 0, 300, 200)
+
+
+def test_pdf_preview_limits_large_page_dimensions(settings):
+    document = pymupdf.open()
+    document.new_page(width=3000, height=1500)
+    source = document.tobytes()
+    document.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/pdf/preview", files=_multipart("large.pdf", source, "application/pdf")
+        )
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        with Image.open(BytesIO(response.content)) as preview:
+            assert preview.size == (1000, 500)
+
+
+@pytest.mark.parametrize("kind", ["text", "image", "shape", "note"])
+def test_pdf_edit_adds_requested_content(settings, pdf_bytes, jpeg_bytes, kind):
+    options = {
+        "kind": kind,
+        "page": 1,
+        "rectangle": [0.1, 0.1, 0.9, 0.9],
+        "color": "#ff0000",
+        "font": "helv",
+        "font_size": 12,
+        "text": "Example note",
+        "shape": "ellipse",
+    }
+    uploads = [("files", ("a.pdf", pdf_bytes, "application/pdf"))]
+    if kind == "image":
+        uploads.append(("files", ("photo.jpg", jpeg_bytes, "image/jpeg")))
+    with TestClient(create_app(settings)) as client:
+        invalid = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.edit",
+                "options": json.dumps({**options, "rectangle": [0, 0, 2, 1]}),
+            },
+            files=uploads,
+        )
+        assert invalid.status_code == 422
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=uploads,
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(result.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            page = document[0]
+            if kind == "text":
+                assert "Example note" in page.get_text()
+            elif kind == "image":
+                assert len(page.get_images()) == 1
+            elif kind == "shape":
+                assert len(page.get_drawings()) == 1
+            else:
+                assert list(page.annots())[0].info["content"] == "Example note"
+
+
+def test_pdf_edit_accepts_webp_with_transparency(settings, pdf_bytes):
+    image = BytesIO()
+    Image.new("RGBA", (16, 16), (255, 0, 0, 80)).save(image, "WEBP", lossless=True)
+    options = {"kind": "image", "page": 1, "rectangle": [0.1, 0.1, 0.9, 0.9], "color": "#000000"}
+    uploads = [
+        ("files", ("a.pdf", pdf_bytes, "application/pdf")),
+        ("files", ("a.webp", image.getvalue(), "image/webp")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        result = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.edit", "options": json.dumps(options)},
+            files=uploads,
+        )
+        assert result.status_code == 202
+        assert process_one_job(settings)
+        response = client.get(result.json()["status_url"] + "/download")
+        assert response.status_code == 200
+        with pymupdf.open(stream=response.content, filetype="pdf") as document:
+            assert document[0].get_images()[0][1] != 0
+
+
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,106 @@ from PIL import Image, ImageOps
 
 class InvalidPdfError(Exception):
     """The input is not a readable, unencrypted PDF."""
+
+
+def validate_crop_options(options: dict[str, Any], page_count: int) -> list[int]:
+    rectangle = options.get("rectangle")
+    if (
+        not isinstance(rectangle, list)
+        or len(rectangle) != 4
+        or any(type(value) not in (int, float) or not 0 <= value <= 1 for value in rectangle)
+    ):
+        raise InvalidPdfError
+    x0, y0, x1, y1 = rectangle
+    if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+        raise InvalidPdfError
+    ranges = options.get("ranges")
+    if not isinstance(ranges, str):
+        raise InvalidPdfError
+    return [
+        page
+        for first, last in validate_page_ranges(ranges, page_count)
+        for page in range(first, last + 1)
+    ]
+
+
+def crop_page(page: pymupdf.Page, rectangle: list[float]) -> None:
+    visible = page.rect
+    x0, y0, x1, y1 = rectangle
+    selected = pymupdf.Rect(
+        x0 * visible.width, y0 * visible.height, x1 * visible.width, y1 * visible.height
+    )
+    unrotated = selected * page.derotation_matrix
+    origin = page.cropbox_position
+    unrotated += (origin.x, origin.y, origin.x, origin.y)
+    page.set_cropbox(unrotated)
+
+
+def validate_edit_options(options: dict[str, Any], page_count: int) -> None:
+    page = options.get("page")
+    kind = options.get("kind")
+    if type(page) is not int or not 1 <= page <= page_count:
+        raise InvalidPdfError
+    validate_crop_options({"rectangle": options.get("rectangle"), "ranges": str(page)}, page_count)
+    if kind not in ("text", "image", "shape", "note"):
+        raise InvalidPdfError
+    color = options.get("color")
+    if not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        raise InvalidPdfError
+    if kind in ("text", "note"):
+        value = options.get("text")
+        if not isinstance(value, str) or not value.strip() or len(value) > 500:
+            raise InvalidPdfError
+    if kind == "text":
+        size = options.get("font_size")
+        if (
+            type(size) is not int
+            or not 8 <= size <= 72
+            or options.get("font") not in ("helv", "tiro", "cour")
+        ):
+            raise InvalidPdfError
+    if kind == "shape" and options.get("shape") not in ("rectangle", "ellipse"):
+        raise InvalidPdfError
+
+
+def edit_page(page: pymupdf.Page, options: dict[str, Any], image_path: Path | None) -> None:
+    x0, y0, x1, y1 = options["rectangle"]
+    rect = (
+        pymupdf.Rect(
+            x0 * page.rect.width, y0 * page.rect.height, x1 * page.rect.width, y1 * page.rect.height
+        )
+        * page.derotation_matrix
+    )
+    color = _rgb_color(options["color"])
+    kind = options["kind"]
+    if kind == "text":
+        if (
+            page.insert_textbox(
+                rect,
+                options["text"],
+                fontsize=options["font_size"],
+                fontname=options["font"],
+                color=color,
+            )
+            < 0
+        ):
+            raise InvalidPdfError("Text does not fit in the selected area")
+    elif kind == "image":
+        if image_path is None:
+            raise InvalidPdfError
+        with Image.open(image_path) as source_image:
+            prepared = ImageOps.exif_transpose(source_image).convert("RGBA")
+            output = BytesIO()
+            prepared.save(output, format="PNG")
+        page.insert_image(rect, stream=output.getvalue(), keep_proportion=True)
+    elif kind == "shape":
+        if options["shape"] == "ellipse":
+            page.draw_oval(rect, color=color, width=2)
+        else:
+            page.draw_rect(rect, color=color, width=2)
+    else:
+        annotation = page.add_freetext_annot(rect, options["text"], text_color=color, fontsize=12)
+        annotation.update()
 
 
 def inspect_pdf(path: Path) -> int:
@@ -203,6 +304,18 @@ def process_pdf(
 ) -> tuple[list[Path], str]:
     """Run one PDF operation; returned paths are ready-to-download artifacts."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    if operation == "pdf.edit":
+        document = _open_pdf(sources[0][0])
+        try:
+            validate_edit_options(options, document.page_count)
+            edit_page(
+                document[options["page"] - 1], options, sources[1][0] if len(sources) > 1 else None
+            )
+            destination = output_dir / "edited.pdf"
+            document.save(destination, garbage=3, deflate=True, use_objstms=True)
+        finally:
+            document.close()
+        return [destination], "application/pdf"
     if operation == "pdf.organize":
         documents = []
         output = pymupdf.open()
@@ -297,6 +410,13 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.crop":
+            for page_number in validate_crop_options(options, document.page_count):
+                crop_page(document[page_number], options["rectangle"])
+            destination = output_dir / "cropped.pdf"
+            document.save(destination, garbage=3, deflate=True, use_objstms=True)
+            return [destination], "application/pdf"
+
         if operation == "pdf.rotate":
             degrees = int(options["degrees"])
             for page in document:

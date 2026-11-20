@@ -7,13 +7,15 @@ import re
 import shutil
 import tempfile
 from contextlib import asynccontextmanager
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
+import pymupdf
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import FormData, Headers, UploadFile
@@ -23,7 +25,13 @@ from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
 from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
-from .pdf_ops import InvalidPdfError, inspect_pdf, validate_page_ranges
+from .pdf_ops import (
+    InvalidPdfError,
+    inspect_pdf,
+    validate_crop_options,
+    validate_edit_options,
+    validate_page_ranges,
+)
 
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,7 +43,6 @@ PDF_COMING_SOON = [
     ("Word para PDF", "Word to PDF", "convert", 7),
     ("PowerPoint para PDF", "PowerPoint to PDF", "convert", 8),
     ("Excel para PDF", "Excel to PDF", "convert", 9),
-    ("Editar PDF", "Edit PDF", "edit", 10),
     ("Assinar PDF", "Sign PDF", "security", 13),
     ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("Desbloquear PDF", "Unlock PDF", "security", 17),
@@ -46,7 +53,6 @@ PDF_COMING_SOON = [
     ("OCR PDF", "OCR PDF", "intelligence", 24),
     ("Comparar PDF", "Compare PDF", "edit", 25),
     ("Ocultar PDF", "Redact PDF", "security", 26),
-    ("Recortar PDF", "Crop PDF", "edit", 27),
     ("Formulários PDF", "PDF forms", "edit", 28),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
@@ -250,6 +256,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_organize(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-organize.html", {"request": request})
 
+    @app.get("/tools/pdf-crop", include_in_schema=False)
+    async def pdf_crop(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-crop.html", {"request": request})
+
+    @app.get("/tools/pdf-edit", include_in_schema=False)
+    async def pdf_edit(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-edit.html", {"request": request})
+
     @app.post("/api/pdf/pages")
     async def pdf_pages(request: Request):
         form = await parse_limited_upload_form(request, settings)
@@ -268,6 +282,54 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         status_code=422, detail={"error": {"code": "invalid_file"}}
                     ) from exc
             return {"page_count": count}
+        finally:
+            await form.close()
+
+    @app.post("/api/pdf/preview")
+    async def pdf_preview(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            page_value = form.get("page", "1")
+            if (
+                len(files) != 1
+                or not isinstance(files[0], UploadFile)
+                or not isinstance(page_value, str)
+                or not page_value.isascii()
+                or not page_value.isdecimal()
+                or len(page_value) > 9
+                or int(page_value) < 1
+            ):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_options"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                try:
+                    count = inspect_pdf(path)
+                    page_number = int(page_value)
+                    if page_number > count:
+                        raise HTTPException(
+                            status_code=422, detail={"error": {"code": "invalid_options"}}
+                        )
+                    with pymupdf.open(path) as document:
+                        page = document[page_number - 1]
+                        scale = min(1.0, 1000 / max(page.rect.width, page.rect.height))
+                        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
+                        image = BytesIO(pixmap.tobytes("png"))
+                except InvalidPdfError as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+                except (RuntimeError, ValueError, ZeroDivisionError) as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+            return Response(
+                content=image.getvalue(),
+                media_type="image/png",
+                headers={"Cache-Control": "no-store"},
+            )
         finally:
             await form.close()
 
@@ -326,6 +388,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
+            "pdf.crop",
+            "pdf.edit",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -397,6 +461,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.compress",
             "pdf.to_image",
             "pdf.page_numbers",
+            "pdf.crop",
         }
         if operation in single_pdf_operations and len(files) != 1:
             raise HTTPException(
@@ -703,6 +768,44 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     detail={"error": {"code": "invalid_options", "message": "Páginas inválidas."}},
                 )
             validated_options["pages"] = pages
+        if operation == "pdf.crop":
+            validated_options = {
+                "rectangle": parsed_options.get("rectangle"),
+                "ranges": parsed_options.get("ranges"),
+            }
+        if operation == "pdf.edit":
+            validated_options = {
+                key: parsed_options.get(key)
+                for key in (
+                    "kind",
+                    "page",
+                    "rectangle",
+                    "color",
+                    "text",
+                    "font",
+                    "font_size",
+                    "shape",
+                )
+            }
+            expected = 2 if validated_options["kind"] == "image" else 1
+            if (
+                len(files) != expected
+                or Path(files[0].filename or "").suffix.lower() != ".pdf"
+                or (
+                    expected == 2
+                    and Path(files[1].filename or "").suffix.lower()
+                    not in {".png", ".jpg", ".jpeg", ".webp"}
+                )
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Selecione os arquivos necessários.",
+                        }
+                    },
+                )
         if operation == "image.compress" or (
             operation in image_operations and output_format in {"JPEG", "JPG", "WEBP"}
         ):
@@ -742,10 +845,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
                 is_pdf_operation = operation.startswith("pdf.")
                 is_watermark_image = (
-                    operation == "pdf.watermark"
-                    and watermark_kind == "image"
-                    and extension in {".png", ".jpg", ".jpeg", ".webp"}
-                )
+                    (operation == "pdf.watermark" and watermark_kind == "image")
+                    or (
+                        operation == "pdf.edit"
+                        and validated_options["kind"] == "image"
+                        and index == 1
+                    )
+                ) and extension in {".png", ".jpg", ".jpeg", ".webp"}
                 if is_pdf_operation and extension != ".pdf" and not is_watermark_image:
                     raise HTTPException(
                         status_code=415,
@@ -822,6 +928,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     "error": {
                                         "code": "invalid_options",
                                         "message": "Intervalos de páginas inválidos para este PDF.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.crop":
+                        try:
+                            validate_crop_options(validated_options, page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Recorte inválido.",
+                                    }
+                                },
+                            ) from exc
+                    if operation == "pdf.edit":
+                        try:
+                            validate_edit_options(validated_options, page_count)
+                        except InvalidPdfError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Edição inválida.",
                                     }
                                 },
                             ) from exc

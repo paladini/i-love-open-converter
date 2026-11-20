@@ -1,0 +1,37 @@
+const $ = selector => document.querySelector(selector);
+const file = $('#file'), editor = $('#editor'), language = $('#language'), message = $('#message');
+const preview = $('#preview'), selection = $('#edit-selection'), image = $('#image'), download = $('#download');
+const controls = ['left','top','right','bottom'].map(id => $(`#${id}`));
+let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let page = 1, count = 0, generation = 0, imageUrl = null, overlayUrl = null;
+const words = {'pt-BR':{loading:'Carregando prévia…',error:'Não foi possível processar o PDF. Confira o arquivo, a área e as opções.',invalid:'Preencha os campos e escolha uma área com largura e altura maiores que zero.',working:'Processando…',done:'Seu PDF está pronto.',page:'Página',of:'de',alt:'Prévia da página PDF',note:'Anotação'},en:{loading:'Loading preview…',error:'Could not process the PDF. Check the file, area and options.',invalid:'Complete the fields and choose an area with positive width and height.',working:'Processing…',done:'Your PDF is ready.',page:'Page',of:'of',alt:'PDF page preview',note:'Note'}};
+function translate() { document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;}); preview.alt = words[lang].alt; showPage(); draw(); }
+function showPage() { $('#page-label').textContent = `${words[lang].page} ${page} ${words[lang].of} ${count}`; $('#previous').disabled = page <= 1; $('#next').disabled = page >= count; }
+language.addEventListener('change', () => {lang = language.value; localStorage.setItem('i-love-open-converter-language',lang); translate();});
+function rectangle() { return controls.map(input => Number(input.value)); }
+function draw() {
+  const [left,top,right,bottom] = rectangle(), kind = $('#kind').value, color = $('#color').value;
+  const valid = controls.every(el => el.validity.valid && el.value !== '') && left < right && top < bottom;
+  selection.hidden = !valid; if (!valid) return false;
+  Object.assign(selection.style,{left:`${left}%`,top:`${top}%`,width:`${right-left}%`,height:`${bottom-top}%`,borderColor:color,borderRadius:kind === 'shape' && $('#shape').value === 'ellipse' ? '50%' : '0',color});
+  const text = $('#edit-preview-text'); text.textContent = ['text','note'].includes(kind) ? $('#text').value : '';
+  text.style.fontFamily = {helv:'Arial',tiro:'Times New Roman',cour:'Courier New'}[$('#font').value];
+  text.style.fontSize = `${$('#font-size').value}px`;
+  $('#edit-preview-image').hidden = kind !== 'image' || !overlayUrl;
+  return true;
+}
+function mode() { const kind = $('#kind').value; $('#text-field').hidden = !['text','note'].includes(kind); $('#image-field').hidden = kind !== 'image'; $('#shape-field').hidden = kind !== 'shape'; $('#font-field').hidden = kind !== 'text'; $('#size-field').hidden = kind !== 'text'; draw(); }
+editor.addEventListener('input', () => {download.hidden = true; mode();});
+image.addEventListener('change', () => {if (overlayUrl) URL.revokeObjectURL(overlayUrl); overlayUrl = image.files.length ? URL.createObjectURL(image.files[0]) : null; $('#edit-preview-image').src = overlayUrl || ''; mode();});
+async function showPreview(current) { message.textContent = words[lang].loading; const body = new FormData(); body.append('files',file.files[0]); body.append('page',String(page)); try {const response = await fetch('/api/pdf/preview',{method:'POST',body}); if (!response.ok) throw new Error(); const blob = await response.blob(); if (current !== generation) return; if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = URL.createObjectURL(blob); preview.src = imageUrl; message.textContent = ''; showPage();} catch {if (current === generation) message.textContent = words[lang].error;} }
+file.addEventListener('change', async () => {const current = ++generation; editor.hidden = true; download.hidden = true; page = 1; count = 0; if (imageUrl) {URL.revokeObjectURL(imageUrl); imageUrl = null; preview.removeAttribute('src');} if (!file.files.length) return; message.textContent = words[lang].loading; const body = new FormData(); body.append('files',file.files[0]); try {const response = await fetch('/api/pdf/pages',{method:'POST',body}); const data = await response.json(); if (!response.ok) throw new Error(); if (current !== generation) return; count = data.page_count; $('#filename').textContent = file.files[0].name; editor.hidden = false; mode(); await showPreview(current);} catch {if (current === generation) message.textContent = words[lang].error;} });
+for (const [id,delta] of [['previous',-1],['next',1]]) $(`#${id}`).addEventListener('click', () => {page += delta; showPage(); showPreview(++generation);});
+editor.addEventListener('submit', async event => {
+  event.preventDefault(); const kind = $('#kind').value;
+  if (!draw() || (['text','note'].includes(kind) && !$('#text').value.trim()) || (kind === 'image' && !image.files.length) || (kind === 'text' && !$('#font-size').validity.valid)) {message.textContent = words[lang].invalid; return;}
+  const options = {kind,page,rectangle:rectangle().map(n => n/100),color:$('#color').value,text:$('#text').value,font:$('#font').value,font_size:Number($('#font-size').value),shape:$('#shape').value};
+  const body = new FormData(); body.append('files',file.files[0]); if (kind === 'image') body.append('files',image.files[0]); body.append('operation','pdf.edit'); body.append('options',JSON.stringify(options));
+  file.disabled = true; language.disabled = true; editor.querySelectorAll('input,select,button').forEach(el => {el.disabled = true;}); download.hidden = true; message.textContent = words[lang].working;
+  try {const response = await fetch('/api/jobs',{method:'POST',body}); const job = await response.json(); if (!response.ok) throw new Error(); while (true) {await new Promise(resolve => setTimeout(resolve,800)); const response = await fetch(job.status_url); const state = await response.json(); if (!response.ok || state.state === 'failed') throw new Error(); if (state.state === 'succeeded') {download.href = state.download_url; download.hidden = false; message.textContent = words[lang].done; break;}}} catch {message.textContent = words[lang].error;} finally {file.disabled = false; language.disabled = false; editor.querySelectorAll('input,select,button').forEach(el => {el.disabled = false;}); showPage();}
+});
+translate(); mode();
