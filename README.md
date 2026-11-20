@@ -150,7 +150,7 @@ want to pin the deployment instead of following `latest`.
 ## Privacy and security
 
 - PDF comparison checks rendered page appearance; metadata and invisible content are not compared. PDF/A conversion verifies conformance, page count, and extracted text; review other layout and content in the result.
-- Redaction removes content in selected areas. Review other pages, metadata, attachments, and copies separately; the uploaded original remains on the server until its job expires.
+- Redaction removes content in selected areas. PDFs containing tagged or marked content are rejected because accessibility text may retain sensitive information. Review other pages, metadata, attachments, and copies separately; the uploaded original remains on the server until its job expires.
 - Passwords for PDF jobs are temporarily kept in a local per-job file so the worker can process and retry them; the file is removed after processing. A crash can leave it until retry or job expiration. On systems that support it, the file is created with owner-only permissions.
 - Files are uploaded to and processed by the server where you run the app.
 - The interface uses local static assets and does not load third-party fonts,

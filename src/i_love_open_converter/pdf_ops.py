@@ -20,6 +20,10 @@ class InvalidPdfError(Exception):
     """The input is not a readable, unencrypted PDF."""
 
 
+EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
+FONT_DIR = Path(__file__).resolve().parent / "static" / "fonts"
+
+
 def compare_pdfs(sources: list[tuple[Path, str]], output_dir: Path, language: str) -> Path:
     if len(sources) != 2:
         raise InvalidPdfError
@@ -207,8 +211,31 @@ def validate_redactions(options: dict[str, Any], page_count: int) -> None:
         )
 
 
+def _reject_accessibility_text(document) -> None:
+    """Fail closed when PDF accessibility structures could retain redacted content."""
+    forbidden = re.compile(rb"/(?:ActualText|Alt|StructTreeRoot)\b")
+
+    def contains_forbidden(data: bytes) -> bool:
+        decoded = re.sub(rb"#([0-9a-fA-F]{2})", lambda match: bytes([int(match[1], 16)]), data)
+        return bool(forbidden.search(decoded))
+
+    for xref in range(1, document.xref_length()):
+        if contains_forbidden(document.xref_object(xref).encode("utf-8")):
+            raise InvalidPdfError("Accessibility content requires a different redaction method")
+        if document.xref_is_stream(xref):
+            subtype = document.xref_get_key(xref, "Subtype")
+            if subtype == ("name", "/Image"):
+                continue
+            stream = document.xref_stream(xref) or b""
+            if contains_forbidden(stream) or re.search(
+                rb"(?<![A-Za-z])(?:BDC|BMC)(?![A-Za-z])", stream
+            ):
+                raise InvalidPdfError("Accessibility content requires a different redaction method")
+
+
 def redact_pages(document, options: dict[str, Any]) -> None:
     validate_redactions(options, document.page_count)
+    _reject_accessibility_text(document)
     areas: dict[int, list[pymupdf.Rect]] = {}
     for region in options["regions"]:
         number = region["page"] - 1
@@ -269,6 +296,10 @@ def list_form_fields(document) -> list[dict[str, Any]]:
                     "name": widget.field_label or widget.field_name or f"Field {widget.xref}",
                     "type": field_type,
                     "value": value,
+                    "multiline": bool(
+                        field_type == "text"
+                        and widget.field_flags & pymupdf.PDF_TX_FIELD_IS_MULTILINE
+                    ),
                     "max_length": widget.text_maxlen if field_type == "text" else 0,
                 }
             )
@@ -338,6 +369,11 @@ def validate_edit_options(options: dict[str, Any], page_count: int) -> None:
             or options.get("font") not in ("helv", "tiro", "cour")
         ):
             raise InvalidPdfError
+        font = pymupdf.Font(fontfile=str(FONT_DIR / EDIT_FONTS[options["font"]]))
+        if any(char not in "\n\r\t" and not font.has_glyph(ord(char)) for char in value):
+            raise InvalidPdfError
+    if kind == "note" and any(ord(char) > 255 for char in value):
+        raise InvalidPdfError
     if kind == "shape" and options.get("shape") not in ("rectangle", "ellipse"):
         raise InvalidPdfError
 
@@ -358,8 +394,10 @@ def edit_page(page: pymupdf.Page, options: dict[str, Any], image_path: Path | No
                 rect,
                 options["text"],
                 fontsize=options["font_size"],
-                fontname=options["font"],
+                fontname="OpenConverterFont",
+                fontfile=str(FONT_DIR / EDIT_FONTS[options["font"]]),
                 color=color,
+                rotate=page.rotation,
             )
             < 0
         ):
@@ -371,7 +409,9 @@ def edit_page(page: pymupdf.Page, options: dict[str, Any], image_path: Path | No
             prepared = ImageOps.exif_transpose(source_image).convert("RGBA")
             output = BytesIO()
             prepared.save(output, format="PNG")
-        page.insert_image(rect, stream=output.getvalue(), keep_proportion=True)
+        page.insert_image(
+            rect, stream=output.getvalue(), keep_proportion=True, rotate=page.rotation
+        )
     elif kind == "shape":
         if options["shape"] == "ellipse":
             page.draw_oval(rect, color=color, width=2)
@@ -404,7 +444,7 @@ def inspect_protected_pdf(path: Path, password: str) -> int:
         with pymupdf.open(path) as document:
             if (
                 not document.is_pdf
-                or not document.needs_pass
+                or document.xref_get_key(-1, "Encrypt")[0] == "null"
                 or not document.authenticate(password)
                 or document.is_repaired
                 or document.page_count < 1

@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-19 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at 76f23e7
+**Fix pass:** done - reject tagged or marked content during redaction to avoid retained accessibility text; preserve multiline form values; embed licensed Unicode fonts and reject unsupported glyphs; orient inserted text and images on rotated pages; block submission until the selected page preview loads; support owner-password restrictions; add source range and insertion position controls; restore catalog navigation order; add regression tests. Docker image build remains unverified because the daemon did not respond.
 
 ## Problem
 
@@ -89,7 +89,7 @@ New: nothing - existing `ConversionJob` and `JobArtifact` records represent all 
 - `pdf.crop` accepts `ranges` in the existing page-range syntax and `rectangle` as `[left, top, right, bottom]` fractions of each page's visible, rotated bounds. The same proportional rectangle applies to each selected page.
 - `pdf.edit` applies one text, image, outlined shape or free-text annotation per job to a chosen page, with a proportional rectangle in the same coordinates. Image mode accepts a second PNG, JPEG or WebP input; repeated edits can be made by uploading the downloaded result.
 - `pdf.sign` applies a visual image to a chosen page. `pdf.protect` uses AES-256; `pdf.unlock` requires a valid current password. The separate multipart `password` field is retained temporarily in the local job directory according to AD-008, not in job options.
-- `pdf.forms` accepts widget IDs and new values for text or checkbox fields. `pdf.redact` accepts up to 100 page and normalized rectangle pairs; it applies actual redactions, removes overlapping annotations and widgets, and saves a non-incremental file with garbage collection. Existing pending redaction annotations on a selected page cause a safe failure.
+- `pdf.forms` accepts widget IDs and new values for text or checkbox fields. `pdf.redact` accepts up to 100 page and normalized rectangle pairs; it applies actual redactions, removes overlapping annotations and widgets, and saves a non-incremental file with garbage collection. Existing pending redaction annotations on a selected page and documents with tagged or marked content cause a safe failure (AD-010).
 - `pdf.repair` attempts a full local rewrite, including reconstruction when MuPDF can open the damaged file. `pdf.compare` produces a self-contained HTML report with visual page pairs and a summary; it does not compare metadata or invisible content. `pdf.pdfa` is enabled only when its tools and resources are installed.
 
 ## Criteria

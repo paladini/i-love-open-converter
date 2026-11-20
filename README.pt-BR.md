@@ -155,7 +155,7 @@ para fixar o deployment em vez de acompanhar `latest`.
 ## Privacidade e segurança
 
 - A comparação verifica a aparência renderizada das páginas, sem comparar metadados ou conteúdo invisível. A conversão PDF/A verifica conformidade, número de páginas e texto extraído; confira o layout e os demais elementos do resultado.
-- A ocultação remove conteúdo das áreas selecionadas. Confira separadamente outras páginas, metadados, anexos e cópias; o original enviado permanece no servidor até o job expirar.
+- A ocultação remove conteúdo das áreas selecionadas. PDFs com conteúdo marcado ou estruturas de acessibilidade são rejeitados, pois podem manter informações sensíveis. Confira separadamente outras páginas, metadados, anexos e cópias; o original enviado permanece no servidor até o job expirar.
 - Senhas de jobs de PDF ficam temporariamente em um arquivo local do job para que o worker possa processá-las e retomar o trabalho; o arquivo é removido após o processamento. Uma interrupção pode mantê-lo até uma nova tentativa ou a expiração do job. Em sistemas compatíveis, o arquivo é criado com permissão apenas para o proprietário.
 - Os arquivos são enviados e processados pelo servidor onde o aplicativo foi
   instalado.
