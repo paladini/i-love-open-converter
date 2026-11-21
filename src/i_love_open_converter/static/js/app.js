@@ -8,7 +8,7 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
-    imageGroup: "Imagens", imageCount: "14 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    imageGroup: "Imagens", imageCount: "15 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
@@ -18,6 +18,7 @@ const messages = {
     imageToPdfHint: "Uma página para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
     memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme",
     upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).",
+    removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -50,7 +51,7 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
-    imageGroup: "Images", imageCount: "14 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    imageGroup: "Images", imageCount: "15 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
@@ -60,6 +61,7 @@ const messages = {
     imageToPdfHint: "One page for each image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
     memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme",
     upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
+    removeBackgroundTitle: "Remove background", removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP.", removeBackgroundNote: "The model runs locally. Results depend on the image and may not remove every edge perfectly.",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -167,6 +169,7 @@ const operationTitles = {
   "image.rotate": "rotateImageTitle",
   "image.meme": "memeTitle",
   "image.upscale": "upscaleTitle",
+  "image.remove_background": "removeBackgroundTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
@@ -185,6 +188,7 @@ function selectTool(operation) {
   currentOperation = operation;
   if (operation === "image.meme") outputFormat.value = "JPEG";
   if (operation === "image.upscale") outputFormat.value = "PNG";
+  if (operation === "image.remove_background") outputFormat.value = "PNG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -205,10 +209,11 @@ function selectTool(operation) {
   if (operation === "image.meme") submitButton.querySelector("[data-i18n]").textContent = t("memeButton");
   document.querySelector('[data-option="upscale-scale"]').hidden = operation !== "image.upscale";
   document.querySelector('[data-option="upscale-limit"]').hidden = operation !== "image.upscale";
-  formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
+  document.querySelector('[data-option="remove-background-note"]').hidden = operation !== "image.remove_background";
+  formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf" || operation === "image.remove_background";
   const isPdf = operation.startsWith("pdf.");
   fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && !["image.meme", "image.upscale"].includes(operation));
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && !["image.meme", "image.upscale", "image.remove_background"].includes(operation));
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
   fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
@@ -226,10 +231,10 @@ const categoryOperations = {
   edit: ["pdf.watermark", "pdf.page_numbers"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale"],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-create": ["image.meme", "image.upscale"],
-  "img-edit": [],
+  "img-edit": ["image.remove_background"],
   "img-convert": ["image.convert"],
   "img-security": [],
 };

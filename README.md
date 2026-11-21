@@ -43,6 +43,10 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 - Upscale one image by 2x or 4x with local Lanczos resampling and light
   sharpening. This interpolation does not reconstruct details absent from the
   original; outputs are capped at 40 megapixels.
+- Remove the background from one image locally with the U2NetP model and return
+  a transparent PNG. The source is capped at 40 megapixels; edge quality depends
+  on the image and is not guaranteed. Docker builds include the CPU model so the
+  network-isolated worker needs no model download at runtime.
 - Create a meme from one uploaded image with optional top and bottom captions,
   rendered locally in JPEG, PNG, or WebP. Captions wrap and scale to fit; on
   small images, captions that still do not fit end with an ellipsis. JPEG output
@@ -50,6 +54,11 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 
 You can process multiple images in one job. Multi-file results download as a
 ZIP archive. Animated images are not supported.
+
+Background removal uses rembg (MIT), ONNX Runtime (MIT) and U2NetP weights
+(Apache-2.0). See [third-party notices](THIRD_PARTY_NOTICES.md). When running
+directly from a development environment instead of Compose, rembg downloads the
+small U2NetP model into its local cache on first use.
 
 ### PDF
 
