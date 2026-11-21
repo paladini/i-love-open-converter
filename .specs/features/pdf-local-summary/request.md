@@ -4,5 +4,5 @@
 
 > “Você pode prosseguir aplicando o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) para continuar criando essa aplicação que é uma cópia free e open-source, simples e direta, do ILoveIMG e ILovePDF chamada "i-love-open-converter"?”
 
-**Review:** changes requested - one P2 ranking finding; see `review.md`.
+**Review:** sent at c650d46 - one P2 ranking finding; see `review.md`.
 **Fix pass:** done - corrected the damping weights and covered topical ranking.

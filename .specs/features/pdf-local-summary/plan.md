@@ -2,7 +2,7 @@
 
 **Approved:** 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o tlc-spec-lean até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none.
-**Review:** changes requested - independent review identified a P2 TextRank damping issue, recorded in `review.md`.
+**Review:** sent at c650d46 - the independent review found one P2 TextRank damping issue, recorded in `review.md`.
 **Fix pass:** done - corrected PageRank weights and added a regression case for central sentence ranking; validation passed.
 
 ## Problem
