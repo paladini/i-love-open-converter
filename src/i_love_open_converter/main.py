@@ -34,10 +34,12 @@ from .image_ops import (
     EDITOR_SIZES,
     EDITOR_STICKERS,
     INPUT_FORMATS,
+    MAX_UPSCALE_PIXELS,
     InvalidImageError,
     InvalidImageOptionsError,
     UnsupportedImageError,
     inspect_image,
+    inspect_image_dimensions,
     validate_image_crop_options,
 )
 from .office_ops import FAMILIES
@@ -67,7 +69,6 @@ PDF_COMING_SOON = [
 IMAGE_COMING_SOON = [
     ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
     ("Converter de JPG", "Convert from JPG", "img-convert", 5),
-    ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
     ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
     ("Desfocar cara", "Blur faces", "img-security", 13),
@@ -504,6 +505,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.compress",
             "image.rotate",
             "image.meme",
+            "image.upscale",
             "image.editor",
             "image.crop",
             "image.watermark",
@@ -694,6 +696,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.compress",
             "image.rotate",
             "image.meme",
+            "image.upscale",
             "image.editor",
             "image.from_jpg",
             "image.crop",
@@ -733,7 +736,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if (
             operation in single_pdf_operations
             or operation in FAMILIES
-            or operation in {"html.to_pdf", "html.to_image", "image.meme"}
+            or operation in {"html.to_pdf", "html.to_image", "image.meme", "image.upscale"}
         ) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
@@ -1133,6 +1136,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     detail={"error": {"code": "invalid_options", "message": "Ângulo inválido."}},
                 )
             validated_options["degrees"] = int(degrees)
+        if operation == "image.upscale":
+            scale = parsed_options.get("scale", 2)
+            if isinstance(scale, bool) or str(scale) not in {"2", "4"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Escala inválida."}},
+                )
+            validated_options["scale"] = int(scale)
         if operation == "image.meme":
             captions = {}
             for name in ("top_text", "bottom_text"):
@@ -1504,6 +1515,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 }
                             },
                         )
+                    if operation == "image.upscale":
+                        try:
+                            width, height = inspect_image_dimensions(destination)
+                        except InvalidImageError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={"error": {"code": "invalid_file"}},
+                            ) from exc
+                        scale = validated_options["scale"]
+                        if width * scale * height * scale > MAX_UPSCALE_PIXELS:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "Saída acima do limite de 40 MP.",
+                                    }
+                                },
+                            )
                 stored.append(
                     {
                         "name": original_name,

@@ -1044,6 +1044,8 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'data-category="workflows"' in response.text
     assert 'data-category="img-optimize"' in response.text
     assert 'data-tool="image.meme"' in response.text
+    assert 'data-tool="image.upscale"' in response.text
+    assert 'id="upscale-dimensions"' in response.text
     assert 'id="meme-top-text"' in response.text
     assert 'memeTitle: "Criar meme"' in script
     assert 'memeTitle: "Create meme"' in script
@@ -1052,6 +1054,16 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'memeBottomLabel: "Texto inferior"' in script
     assert 'memeBottomLabel: "Bottom text"' in script
     assert 'operation !== "image.meme"' in script
+    assert 'upscaleTitle: "Melhorar imagem"' in script
+    assert 'upscaleTitle: "Upscale image"' in script
+    assert 'upscaleScaleLabel: "Escala"' in script
+    assert 'upscaleScaleLabel: "Scale"' in script
+    assert 'upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP)."' in script
+    assert (
+        'upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP)."' in script
+    )
+    assert "createImageBitmap(currentFiles[0])" in script
+    assert 'document.querySelector("#upscale-scale").addEventListener("change"' in script
 
 
 def test_meme_generator_creates_local_jpeg_and_rejects_invalid_requests(settings, jpeg_bytes):
@@ -1131,6 +1143,95 @@ def test_meme_worker_failure_has_no_partial_download(settings, jpeg_bytes, monke
         submitted = client.post(
             "/api/jobs",
             data={"operation": "image.meme", "options": json.dumps({"top_text": "MEME"})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"])
+        download = client.get(f"{submitted.json()['status_url']}/download")
+
+    assert status.json()["state"] == "failed"
+    assert download.status_code == 409
+    assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
+
+
+def test_upscale_job_uses_selected_scale_and_rejects_bad_options(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.upscale", "options": json.dumps({"scale": 4})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(f"/api/jobs/{submitted.json()['job_id']}/download")
+
+        invalid_scale = client.post(
+            "/api/jobs",
+            data={"operation": "image.upscale", "options": json.dumps({"scale": 3})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        invalid_format = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.upscale",
+                "options": json.dumps({"scale": 2, "format": "BMP"}),
+            },
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        multiple = client.post(
+            "/api/jobs",
+            data={"operation": "image.upscale", "options": json.dumps({"scale": 2})},
+            files=[
+                ("files", ("one.jpg", jpeg_bytes, "image/jpeg")),
+                ("files", ("two.jpg", jpeg_bytes, "image/jpeg")),
+            ],
+        )
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "image/png"
+    with Image.open(BytesIO(download.content)) as upscaled:
+        assert upscaled.size == (64, 48)
+    for name, response in (
+        ("scale", invalid_scale),
+        ("format", invalid_format),
+        ("multiple", multiple),
+    ):
+        assert response.status_code == 422, f"{name}: {response.text}"
+        assert response.json()["error"]["code"] == "invalid_options"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 1
+
+
+def test_upscale_rejects_output_over_40_megapixels_before_queue(settings, jpeg_bytes, monkeypatch):
+    from i_love_open_converter import main
+
+    monkeypatch.setattr(main, "inspect_image_dimensions", lambda _path: (5000, 5000))
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.upscale", "options": json.dumps({"scale": 2})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_options"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_upscale_worker_failure_has_no_partial_download(settings, jpeg_bytes, monkeypatch):
+    from i_love_open_converter import worker
+    from i_love_open_converter.image_ops import InvalidImageError
+
+    def fail_processing(*_args, **_kwargs):
+        raise InvalidImageError
+
+    monkeypatch.setattr(worker, "process_image", fail_processing)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.upscale", "options": json.dumps({"scale": 2})},
             files=_multipart("photo.jpg", jpeg_bytes),
         )
         assert submitted.status_code == 202

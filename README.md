@@ -41,6 +41,9 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 - Compress JPEG and WebP output with a quality setting.
 - Convert one or more JPG images to PNG or combine them into an animated GIF.
 - Rotate images by 90°, 180°, or 270°.
+- Upscale one image by 2x or 4x with local Lanczos resampling and light
+  sharpening. This interpolation does not reconstruct details absent from the
+  original; outputs are capped at 40 megapixels.
 - Create a meme from one uploaded image with optional top and bottom captions,
   rendered locally in JPEG, PNG, or WebP. Captions wrap and scale to fit; on
   small images, captions that still do not fit end with an ellipsis. JPEG output
