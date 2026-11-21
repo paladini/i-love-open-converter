@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import base64
+import io
 import tempfile
 from pathlib import Path
+from zipfile import ZipFile
 
 import pymupdf
 from PIL import Image
@@ -12,6 +14,7 @@ from PIL import Image
 from i_love_open_converter.html_ops import (
     HtmlExternalResourceError,
     convert_html,
+    convert_html_to_images,
 )
 
 with tempfile.TemporaryDirectory(prefix="html-pdf-smoke-") as temporary:
@@ -35,6 +38,22 @@ with tempfile.TemporaryDirectory(prefix="html-pdf-smoke-") as temporary:
         if not document[0].get_images():
             raise RuntimeError("Embedded data URI image was not rendered")
 
+    for image_format in ("jpg", "svg"):
+        result = convert_html_to_images(source, output, image_format)
+        with ZipFile(result) as archive:
+            if archive.namelist() != [f"page-001.{image_format}"]:
+                raise RuntimeError(f"Unexpected {image_format} page names: {archive.namelist()}")
+            page_bytes = archive.read(archive.namelist()[0])
+            if image_format == "jpg":
+                with Image.open(io.BytesIO(page_bytes)) as page_image:
+                    if page_image.format != "JPEG" or page_image.info.get("dpi", (0,))[0] < 140:
+                        raise RuntimeError("JPG page was not rendered at the requested resolution")
+            elif not (
+                page_bytes.lstrip().startswith(b"<?xml")
+                or page_bytes.lstrip().startswith(b"<svg")
+            ):
+                raise RuntimeError("SVG page did not start with an SVG document")
+
     for resource in (
         "http://example.invalid/image.png",
         "https://example.invalid/image.png",
@@ -51,6 +70,6 @@ with tempfile.TemporaryDirectory(prefix="html-pdf-smoke-") as temporary:
             raise RuntimeError(f"Blocked resource was not rejected: {resource}")
 
 print(
-    "HTML_TO_PDF_SMOKE_OK: selectable text and data URI rendered; HTTP, HTTPS, FTP, file, "
-    "and relative resources blocked"
+    "HTML_RENDERING_SMOKE_OK: PDF, JPG and SVG rendered; embedded data URI accepted; HTTP, "
+    "HTTPS, FTP, file and relative resources blocked"
 )

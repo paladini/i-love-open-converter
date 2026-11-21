@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import math
 import os
 import resource
 import sys
 from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from .office_sandbox import restrict
 
 
-def main(root: Path, source: Path, destination: Path) -> int:
+def main(root: Path, source: Path, destination: Path, output_format: str = "pdf") -> int:
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["OPENBLAS_NUM_THREADS"] = "1"
     try:
@@ -24,7 +26,13 @@ def main(root: Path, source: Path, destination: Path) -> int:
     from weasyprint import HTML
     from weasyprint.urls import FatalURLFetchingError, URLFetcher
 
-    from .html_ops import MAX_HTML_PAGES, allowed_html_resource
+    from .html_ops import (
+        HTML_IMAGE_DPI,
+        MAX_HTML_IMAGE_OUTPUT_BYTES,
+        MAX_HTML_PAGE_PIXELS,
+        MAX_HTML_PAGES,
+        allowed_html_resource,
+    )
 
     class DataOnlyFetcher(URLFetcher):
         def fetch(self, url: str, headers: dict[str, str] | None = None):
@@ -36,7 +44,40 @@ def main(root: Path, source: Path, destination: Path) -> int:
         document = HTML(filename=str(source), url_fetcher=DataOnlyFetcher()).render()
         if not 1 <= len(document.pages) <= MAX_HTML_PAGES:
             return 2
-        document.write_pdf(str(destination))
+        if output_format == "pdf":
+            document.write_pdf(str(destination))
+        elif output_format in {"jpg", "svg"}:
+            pdf_path = root / "rendered.pdf"
+            document.write_pdf(str(pdf_path))
+            import pymupdf
+
+            with pymupdf.open(pdf_path) as pdf, ZipFile(
+                destination, "w", ZIP_DEFLATED, compresslevel=6
+            ) as archive:
+                total_bytes = 0
+                for index, page in enumerate(pdf, start=1):
+                    name = f"page-{index:03d}.{output_format}"
+                    width = math.ceil(page.rect.width * HTML_IMAGE_DPI / 72)
+                    height = math.ceil(page.rect.height * HTML_IMAGE_DPI / 72)
+                    if width <= 0 or height <= 0 or width * height > MAX_HTML_PAGE_PIXELS:
+                        return 2
+                    if output_format == "jpg":
+                        image_path = root / name
+                        page.get_pixmap(dpi=HTML_IMAGE_DPI, alpha=False).save(image_path)
+                        size = image_path.stat().st_size
+                        if total_bytes + size > MAX_HTML_IMAGE_OUTPUT_BYTES:
+                            return 2
+                        total_bytes += size
+                        archive.write(image_path, arcname=name)
+                        image_path.unlink()
+                    else:
+                        svg = page.get_svg_image(text_as_path=True).encode("utf-8")
+                        if total_bytes + len(svg) > MAX_HTML_IMAGE_OUTPUT_BYTES:
+                            return 2
+                        total_bytes += len(svg)
+                        archive.writestr(name, svg)
+        else:
+            return 2
     except FatalURLFetchingError:
         return 4
     except Exception:
@@ -45,4 +86,5 @@ def main(root: Path, source: Path, destination: Path) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])))
+    output_format = sys.argv[4] if len(sys.argv) > 4 else "pdf"
+    raise SystemExit(main(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), output_format))

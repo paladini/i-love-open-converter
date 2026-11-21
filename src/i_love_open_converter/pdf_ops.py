@@ -19,7 +19,7 @@ from xml.etree import ElementTree
 import pymupdf
 from PIL import Image, ImageChops, ImageDraw, ImageOps
 
-from .html_ops import HtmlConversionError, convert_html
+from .html_ops import HtmlConversionError, convert_html, convert_html_to_images
 from .pdf_archive import convert_pdfa
 from .pdf_image_order import image_order
 
@@ -689,6 +689,13 @@ def process_pdf(
             raise HtmlConversionError
         source, _ = sources[0]
         return [convert_html(source, output_dir)], "application/pdf"
+    if operation == "html.to_image":
+        if len(sources) != 1:
+            raise HtmlConversionError
+        source, _ = sources[0]
+        return [convert_html_to_images(source, output_dir, options.get("format"))], (
+            "application/zip"
+        )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     if operation == "pdf.pdfa":

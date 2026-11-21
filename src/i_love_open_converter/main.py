@@ -306,6 +306,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def html_to_pdf(request: Request):
         return TEMPLATES.TemplateResponse(request, "html-to-pdf.html", {"request": request})
 
+    @app.get("/tools/html-to-image", include_in_schema=False)
+    async def html_to_image(request: Request):
+        return TEMPLATES.TemplateResponse(request, "html-to-image.html", {"request": request})
+
     @app.get("/tools/office-to-pdf/{family}", include_in_schema=False)
     async def office_to_pdf(request: Request, family: str):
         labels = {
@@ -493,6 +497,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_powerpoint",
             "pdf.to_excel",
             "html.to_pdf",
+            "html.to_image",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -591,7 +596,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.pdfa",
         }
         if (operation in single_pdf_operations or operation in FAMILIES
-                or operation == "html.to_pdf") and len(files) != 1:
+                or operation in {"html.to_pdf", "html.to_image"}) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -627,6 +632,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
             )
+        if operation == "html.to_image":
+            image_format = parsed_options.get("format")
+            if set(parsed_options) != {"format"} or image_format not in {"jpg", "svg"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Escolha JPG ou SVG."}},
+                )
+            validated_options["format"] = image_format
         secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
         if operation in {"pdf.protect", "pdf.unlock"} and (
             not isinstance(secret, str)
@@ -1019,7 +1032,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
                 is_pdf_operation = operation.startswith("pdf.")
-                is_html_operation = operation == "html.to_pdf"
+                is_html_operation = operation in {"html.to_pdf", "html.to_image"}
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(
                         status_code=415,

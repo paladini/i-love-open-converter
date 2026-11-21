@@ -5,6 +5,15 @@
 **Review:** pending
 **Fix pass:** pending
 
+## Build evidence
+
+- `uv run pytest -q` - passed.
+- `uv run ruff check .` - passed.
+- `node --check src/i_love_open_converter/static/js/html-to-image.js` - passed.
+- `docker compose config` - passed; worker retains `network_mode: none` and `OFFICE_NETWORK_ISOLATED=1`.
+- Docker Linux smoke as UID 1000 with `--network none` - passed; local HTML rendered to PDF, JPG at 144 DPI and SVG, while HTTP, HTTPS, FTP, `file:` and relative resources were rejected.
+- Browser review at 360 x 800 - PT-BR and English pages usable with no horizontal overflow.
+
 ## Problem
 
 The catalog includes HTML-to-image conversion but does not offer an implemented flow. Public URL rendering introduces SSRF and subresource-fetch risks; the local HTML-to-PDF stage already establishes a secure single-file boundary.
