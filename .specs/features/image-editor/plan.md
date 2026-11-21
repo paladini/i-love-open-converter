@@ -1,8 +1,8 @@
 # Edit images
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações de acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
-**Settled mid-build:** Start with a local single-image editor with text, filters, frames and built-in vector stickers, following the recommended scope after 30 seconds without a narrower preference.
-**Review:** pending implementation
+**Settled mid-build:** none
+**Review:** sent at 7e988c5
 **Fix pass:** pending review
 
 ## Problem
