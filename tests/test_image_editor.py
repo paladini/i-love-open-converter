@@ -161,18 +161,6 @@ def test_editor_combines_filter_frame_and_text(settings):
         "frame_color": "red",
     }
     frame = _run(settings, common, base)
-    text = _run(
-        settings,
-        {
-            **common,
-            "text": "EDIT",
-            "text_position": "top_left",
-            "text_size": "large",
-            "text_color": "green",
-            "opacity": 100,
-        },
-        base,
-    )
     combined = _run(
         settings,
         {
@@ -186,16 +174,23 @@ def test_editor_combines_filter_frame_and_text(settings):
         base,
     )
 
-    assert frame.size == text.size == combined.size == (80, 80)
+    assert frame.size == combined.size == (80, 80)
     assert frame.getpixel((0, 40))[:3] == (220, 53, 69)
     assert combined.getpixel((40, 40))[:3] == (235, 175, 55)
+    frame_overlays = [
+        (x, y, combined.getpixel((x, y))[:3])
+        for y in range(80)
+        for x in range(80)
+        if frame.getpixel((x, y))[:3] == (220, 53, 69)
+        and combined.getpixel((x, y))[:3] != (220, 53, 69)
+    ]
+    assert frame_overlays, frame_overlays[:20]
     assert any(
         combined.getpixel((x, y)) != frame.getpixel((x, y))
         for y in range(4, 24)
         for x in range(4, 76)
     )
     frame.close()
-    text.close()
     combined.close()
 
 
