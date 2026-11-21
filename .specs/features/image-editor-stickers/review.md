@@ -35,4 +35,3 @@ The author added tests that compare legacy default pixels with explicit `sticker
 The review's 360 px visual check could not be repeated because the available in-app browser did not change viewport size through browser zoom. The earlier independent `.specs/features/image-editor/review.md` reviewed the same S2 sticker controls in the live app at 360 px and reported no horizontal page overflow; this stage restores that same UI and renderer from the reviewed commit, plus explicit selection of the existing default. No feature-specific capture files are present, so there is no captured state to compare.
 
 Verification after the fix pass: `uv run pytest -q`, `uv run ruff check src/i_love_open_converter tests`, `node --check src/i_love_open_converter/static/js/app.js`, and `git diff --check` all passed.
-

@@ -398,6 +398,9 @@ def process_image(
         elif operation == "image.rotate":
             degrees = int(options["degrees"])
             image = image.rotate(-degrees, expand=True)
+        elif operation == "image.meme":
+            image = image.convert("RGBA")
+            _draw_meme_captions(image, options)
         elif operation == "image.editor":
             image = _apply_editor(image, options)
         elif operation == "image.watermark":
@@ -437,6 +440,95 @@ def process_image(
     return content_type, destination.stat().st_size
 
 
+def _draw_meme_captions(image: Image.Image, options: dict[str, Any]) -> None:
+    draw = ImageDraw.Draw(image)
+    inset = min(4, round(min(image.size) * 0.025), max(0, min(image.size) // 8))
+    max_width = max(1, image.width - inset * 2)
+    base_font_size = max(1, min(96, image.width // 8, image.height // 5))
+    captions = (
+        (str(options.get("top_text", "")).strip(), "top"),
+        (str(options.get("bottom_text", "")).strip(), "bottom"),
+    )
+
+    for caption, position in captions:
+        if not caption:
+            continue
+        max_height = max(1, (image.height - inset * 2) // 2)
+        chosen_font, lines, line_height = _fit_meme_caption(
+            draw, caption, max_width, max_height, base_font_size
+        )
+        block_height = line_height * len(lines)
+        y = inset if position == "top" else max(inset, image.height - inset - block_height)
+        for line in lines:
+            stroke_width = max(2, chosen_font.size // 14)
+            bounds = draw.textbbox((0, 0), line, font=chosen_font, stroke_width=stroke_width)
+            text_width = bounds[2] - bounds[0]
+            x = (image.width - text_width - 1) // 2 - bounds[0]
+            draw.text(
+                (x, y),
+                line,
+                font=chosen_font,
+                fill="white",
+                stroke_width=stroke_width,
+                stroke_fill="black",
+            )
+            # Pillow's bundled Aileron font is regular. A one-pixel white overdraw
+            # thickens the glyphs while preserving the dark stroke around them.
+            draw.text((x + 1, y), line, font=chosen_font, fill="white")
+            y += line_height
+
+
+def _fit_meme_caption(
+    draw: ImageDraw.ImageDraw,
+    caption: str,
+    max_width: int,
+    max_height: int,
+    base_font_size: int,
+) -> tuple[ImageFont.ImageFont, list[str], int]:
+    font_size = base_font_size
+    font = ImageFont.load_default(size=font_size)
+    lines = _wrap_caption(draw, caption, font, max_width)
+    line_height = max(1, font_size + max(1, font_size // 8))
+    while font_size > 1 and len(lines) * line_height > max_height:
+        font_size -= 1
+        font = ImageFont.load_default(size=font_size)
+        lines = _wrap_caption(draw, caption, font, max_width)
+        line_height = max(1, font_size + max(1, font_size // 8))
+
+    max_lines = max(1, max_height // line_height)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        last = lines[-1]
+        while last and draw.textlength(f"{last}…", font=font) > max_width:
+            last = last[:-1]
+        lines[-1] = f"{last}…" if last else "…"
+    return font, lines, line_height
+
+
+def _wrap_caption(
+    draw: ImageDraw.ImageDraw, caption: str, font: ImageFont.ImageFont, max_width: int
+) -> list[str]:
+    words = caption.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if draw.textlength(candidate, font=font) <= max_width:
+            current = candidate
+            continue
+        if current:
+            lines.append(current)
+            current = ""
+        for character in word:
+            candidate = current + character
+            if current and draw.textlength(candidate, font=font) > max_width:
+                lines.append(current)
+                current = character
+            else:
+                current = candidate
+    if current:
+        lines.append(current)
+    return lines
 def create_animated_gif(sources: list[Path], destination: Path) -> tuple[str, int]:
     if not sources:
         raise InvalidImageError

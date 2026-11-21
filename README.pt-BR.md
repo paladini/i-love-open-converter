@@ -43,6 +43,10 @@ futuras do projeto.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Converter JPG para PNG ou combinar várias imagens em um GIF animado.
 - Girar imagens em 90°, 180° ou 270°.
+- Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
+  e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
+  à imagem; em imagens pequenas, o texto que não couber termina com reticências.
+  No JPEG, áreas transparentes viram brancas.
 - Editar uma imagem com texto, filtros locais, molduras simples e stickers vetoriais.
 - Recortar imagens por coordenadas e dimensões em pixels após aplicar a orientação EXIF.
 - Adicionar marcas d'água de texto ou imagem em lotes, com controles de posição e opacidade.

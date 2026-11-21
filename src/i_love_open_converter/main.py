@@ -69,7 +69,6 @@ IMAGE_COMING_SOON = [
     ("Converter de JPG", "Convert from JPG", "img-convert", 5),
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
-    ("Gerador de memes", "Meme generator", "img-create", 10),
     ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
     ("Desfocar cara", "Blur faces", "img-security", 13),
 ]
@@ -504,6 +503,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.meme",
             "image.editor",
             "image.crop",
             "image.watermark",
@@ -693,6 +693,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.meme",
             "image.editor",
             "image.from_jpg",
             "image.crop",
@@ -729,8 +730,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.pdfa",
         }
-        if (operation in single_pdf_operations or operation in FAMILIES
-                or operation in {"html.to_pdf", "html.to_image"}) and len(files) != 1:
+        if (
+            operation in single_pdf_operations
+            or operation in FAMILIES
+            or operation in {"html.to_pdf", "html.to_image", "image.meme"}
+        ) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -1074,7 +1078,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         output_format = "PNG"
         if operation in image_operations:
-            output_format = str(parsed_options.get("format", "PNG")).upper()
+            default_format = "JPEG" if operation == "image.meme" else "PNG"
+            output_format = str(parsed_options.get("format", default_format)).upper()
             allowed_formats = {"PNG", "GIF"} if operation == "image.from_jpg" else {
                 "JPEG", "JPG", "PNG", "WEBP"
             }
@@ -1128,6 +1133,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     detail={"error": {"code": "invalid_options", "message": "Ângulo inválido."}},
                 )
             validated_options["degrees"] = int(degrees)
+        if operation == "image.meme":
+            captions = {}
+            for name in ("top_text", "bottom_text"):
+                value = parsed_options.get(name, "")
+                if not isinstance(value, str) or len(value) > 300:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Texto inválido."}},
+                    )
+                captions[name] = value
+            if not any(value.strip() for value in captions.values()):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Informe ao menos uma legenda.",
+                        }
+                    },
+                )
+            validated_options.update(captions)
         if operation == "pdf.rotate":
             degrees = parsed_options.get("degrees")
             if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
@@ -1258,6 +1284,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 }
                 if operation == "image.from_jpg":
                     accepted_extensions = {".jpg", ".jpeg"}
+                elif operation == "image.meme":
+                    accepted_extensions.discard(".gif")
                 is_pdf_operation = operation.startswith("pdf.")
                 is_html_operation = operation in {"html.to_pdf", "html.to_image"}
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
