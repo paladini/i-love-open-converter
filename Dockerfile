@@ -19,7 +19,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends ghostscript fonts-urw-base35 default-jre-headless libreoffice-writer libreoffice-calc libreoffice-impress tesseract-ocr tesseract-ocr-eng tesseract-ocr-por \
+RUN apt-get update && apt-get install -y --no-install-recommends ghostscript fonts-urw-base35 libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 default-jre-headless libreoffice-writer libreoffice-calc libreoffice-impress tesseract-ocr tesseract-ocr-eng tesseract-ocr-por \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=verapdf-installer /opt/verapdf /opt/verapdf
 COPY --from=verapdf-installer /opt/u2net /opt/u2net

@@ -1037,7 +1037,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert "PDF" in response.text
     assert "image.convert" in response.text
     assert "https://" not in response.text
-    assert response.text.count('class="tool-card"') + response.text.count('class="tool-card ') == 44
+    assert response.text.count('class="tool-card"') + response.text.count('class="tool-card ') == 49
     assert "Fluxos de trabalho" in response.text
     assert "PDF para Markdown" in response.text
     assert "Desfocar cara" in response.text
@@ -1065,10 +1065,10 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'removeBackgroundTitle: "Remove background"' in script
     assert 'blurFacesTitle: "Desfocar cara"' in script
     assert 'blurFacesTitle: "Blur faces"' in script
-    assert 'blurFacesHint: "Desfoque local de rostos frontais e de perfil; até 40 MP."' in script
+    assert 'blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP."' in script
     assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
     assert 'data-option="blur-faces-note"' in response.text
-    assert 'imageCount: "14 available"' in script
+    assert 'imageCount: "16 available"' in script
     assert 'removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP."' in script
     assert 'removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP."' in script
     assert '"image.remove_background": "removeBackgroundTitle"' in script
