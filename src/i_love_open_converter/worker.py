@@ -21,9 +21,12 @@ from .files import safe_stem
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import (
+    ExcelConversionError,
+    ExcelUnavailableError,
     InvalidPdfError,
     MarkdownConversionError,
     NoEmbeddedImagesError,
+    NoSpreadsheetDataError,
     PowerPointConversionError,
     PowerPointUnavailableError,
     WordConversionError,
@@ -101,6 +104,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.to_markdown",
             "pdf.to_word",
             "pdf.to_powerpoint",
+            "pdf.to_excel",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -221,6 +225,27 @@ def process_one_job(settings: Settings) -> bool:
         mark_failed(
             settings.database_path, job_id, "powerpoint_failed",
             "A conversão para PowerPoint falhou ou excedeu os limites de processamento.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except ExcelUnavailableError:
+        mark_failed(
+            settings.database_path, job_id, "excel_unavailable",
+            "PDF para Excel exige um worker Linux isolado da rede.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoSpreadsheetDataError:
+        mark_failed(
+            settings.database_path, job_id, "no_extractable_data",
+            "O PDF não contém tabelas detectadas nem texto selecionável.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except ExcelConversionError:
+        mark_failed(
+            settings.database_path, job_id, "excel_failed",
+            "A extração para Excel falhou ou excedeu os limites de processamento.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
