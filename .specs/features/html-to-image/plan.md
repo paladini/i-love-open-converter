@@ -2,7 +2,7 @@
 
 **Approved**: 2026-11-21 - user authorized implementation of the complete free, open-source converter roadmap: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
-**Review:** pending
+**Review:** sent at a845b67
 **Fix pass:** pending
 
 ## Build evidence
