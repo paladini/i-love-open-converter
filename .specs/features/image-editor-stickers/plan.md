@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”; user separately selected “Editor simples local (Recomendado)” and deferred stickers to a separate stage.
 **Settled mid-build:** none
 **Review:** sent at 2d826ed
-**Fix pass:** pending
+**Fix pass:** done - explicitly select the no-sticker default and add regressions for legacy pixel equivalence, all nine sticker anchors, each sticker size and a selected palette color, sticker placement after EXIF orientation, sticker-enabled output formats, and cleanup after a partial write. Full pytest, Ruff, JavaScript syntax, and diff checks pass. The current exact editor layout with stickers was previously inspected at 360 px in `.specs/features/image-editor/review.md`; no feature-specific capture exists for comparison.
 
 ## Problem
 
@@ -111,4 +111,4 @@ The original request's sticker capability was deferred from the simple first edi
 - `uv run pytest -q` passed after restoring the sticker stage; the suite covers all six shapes, chosen anchor/size/color, invalid settings before job creation, layer order, dimensions, output formats, and failed-job cleanup.
 - `uv run ruff check src/i_love_open_converter tests` passed.
 - `node --check src/i_love_open_converter/static/js/app.js` passed.
-- Browser inspection at 127.0.0.1:8798 showed the localized sticker controls and six choices in the editor. The available browser surface used its default 1280 px viewport; the existing responsive controls use wrapping, while 360 px visual verification remains for independent review.
+- Browser inspection at 127.0.0.1:8798 showed localized sticker controls, six choices, and the `none` default in the editor. The available browser surface stayed at its default viewport; `.specs/features/image-editor/review.md` records the prior 360 px visual inspection of this exact editor layout with stickers.

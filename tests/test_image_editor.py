@@ -62,6 +62,24 @@ def test_editor_preserves_transparent_pixels_through_filter(settings):
         assert result.getpixel((16, 12))[3] == 0
 
 
+def test_editor_none_sticker_matches_legacy_default_pixels(settings):
+    source = _image_bytes((96, 64), (17, 83, 201, 255))
+    legacy_options = {"filter": "sepia", "frame": "double", "frame_color": "blue"}
+    with _run(settings, legacy_options, source) as legacy:
+        legacy_pixels = legacy.convert("RGBA").tobytes()
+    with _run(
+        settings,
+        {
+            "filter": "sepia",
+            "frame": "double",
+            "frame_color": "blue",
+            "sticker": "none",
+        },
+        source,
+    ) as explicit_none:
+        assert explicit_none.convert("RGBA").tobytes() == legacy_pixels
+
+
 def test_editor_draws_solid_and_double_frames_with_bounded_width(settings):
     with _run(
         settings,
@@ -149,6 +167,41 @@ def test_editor_text_is_positioned_after_exif_orientation(settings):
         ]
         assert any(x < 35 and y < 20 for x, y in changed)
         assert not any(x >= 45 and y < 20 for x, y in changed)
+    oriented.close()
+
+
+def test_editor_sticker_is_positioned_after_exif_orientation(settings):
+    source_buffer = BytesIO()
+    source_image = Image.new("RGB", (40, 80), (0, 0, 255))
+    exif = Image.Exif()
+    exif[274] = 6
+    source_image.save(source_buffer, format="JPEG", exif=exif)
+    source_image.close()
+    source = source_buffer.getvalue()
+    with Image.open(BytesIO(source)) as opened:
+        oriented = ImageOps.exif_transpose(opened).convert("RGBA")
+
+    with _run(
+        settings,
+        {
+            "sticker": "star",
+            "sticker_position": "top_left",
+            "sticker_size": "large",
+            "sticker_color": "red",
+        },
+        source,
+    ) as result:
+        changed = [
+            (x, y)
+            for y in range(result.height)
+            for x in range(result.width)
+            if result.getpixel((x, y)) != oriented.getpixel((x, y))
+        ]
+        assert result.size == (80, 40)
+        assert changed
+        assert max(x for x, _ in changed) < 24
+        assert max(y for _, y in changed) < 24
+        assert any(result.getpixel(point)[:3] == (220, 53, 69) for point in changed)
     oriented.close()
 
 
@@ -249,6 +302,72 @@ def test_editor_draws_each_builtin_sticker_at_selected_position(settings, sticke
 
 
 @pytest.mark.parametrize(
+    ("position", "expected_region"),
+    [
+        ("top_left", (0, 0, 100, 100)),
+        ("top_center", (100, 0, 200, 100)),
+        ("top_right", (200, 0, 300, 100)),
+        ("center_left", (0, 100, 100, 200)),
+        ("center", (100, 100, 200, 200)),
+        ("center_right", (200, 100, 300, 200)),
+        ("bottom_left", (0, 200, 100, 300)),
+        ("bottom_center", (100, 200, 200, 300)),
+        ("bottom_right", (200, 200, 300, 300)),
+    ],
+)
+def test_editor_sticker_uses_each_selected_anchor(position, expected_region):
+    from i_love_open_converter.image_ops import _apply_editor_sticker
+
+    image = Image.new("RGBA", (300, 300), (20, 80, 200, 255))
+    _apply_editor_sticker(
+        image,
+        {
+            "sticker": "star",
+            "sticker_position": position,
+            "sticker_size": "medium",
+            "sticker_color": "yellow",
+        },
+    )
+    x0, y0, x1, y1 = expected_region
+    assert image.getbbox() == (0, 0, 300, 300)
+    changed = [
+        (x, y)
+        for y in range(300)
+        for x in range(300)
+        if image.getpixel((x, y))[:3] != (20, 80, 200)
+    ]
+    assert changed
+    assert all(x0 <= x < x1 and y0 <= y < y1 for x, y in changed)
+    image.close()
+
+
+@pytest.mark.parametrize(("size", "expected"), [("small", 24), ("medium", 36), ("large", 54)])
+def test_editor_sticker_uses_selected_size_and_palette_color(size, expected):
+    from i_love_open_converter.image_ops import _apply_editor_sticker
+
+    image = Image.new("RGBA", (300, 300), (20, 80, 200, 255))
+    _apply_editor_sticker(
+        image,
+        {
+            "sticker": "star",
+            "sticker_position": "center",
+            "sticker_size": size,
+            "sticker_color": "red",
+        },
+    )
+    assert image.getpixel((150, 150))[:3] == (220, 53, 69)
+    changed = [
+        (x, y)
+        for y in range(300)
+        for x in range(300)
+        if image.getpixel((x, y))[:3] != (20, 80, 200)
+    ]
+    assert changed
+    assert max(x for x, _ in changed) - min(x for x, _ in changed) == expected - 2
+    image.close()
+
+
+@pytest.mark.parametrize(
     ("format_name", "content_type"),
     [("PNG", "image/png"), ("JPEG", "image/jpeg"), ("WEBP", "image/webp")],
 )
@@ -257,7 +376,13 @@ def test_editor_returns_selected_output_format(settings, format_name, content_ty
         response = _submit(
             client,
             [("photo.png", _image_bytes(), "image/png")],
-            {"format": format_name, "filter": "invert"},
+            {
+                "format": format_name,
+                "filter": "invert",
+                "sticker": "star",
+                "sticker_position": "top_left",
+                "sticker_color": "yellow",
+            },
         )
         assert response.status_code == 202
         assert process_one_job(settings)
@@ -341,7 +466,9 @@ def test_editor_rejects_multiple_sources(settings):
 
 
 def test_editor_worker_failure_has_no_downloadable_partial_file(settings, monkeypatch):
-    def fail_process(*args, **kwargs):
+    def fail_process(source, destination, operation, options):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"partial sticker output")
         raise worker.InvalidImageError
 
     monkeypatch.setattr(worker, "process_image", fail_process)
@@ -388,10 +515,15 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
     assert "editorTitle" in page.text
     assert 'id="file-input"' in page.text
     assert 'type="file"' in page.text
+    assert '<option value="none" selected data-i18n="editorNoSticker">' in page.text
     assert 'editorSticker: "Sticker vetorial"' in script
     assert 'editorSticker: "Vector sticker"' in script
     assert 'editorStickerPosition: "Posição do sticker"' in script
     assert 'editorStickerPosition: "Sticker position"' in script
+    assert 'editorStickerSize: "Tamanho do sticker"' in script
+    assert 'editorStickerSize: "Sticker size"' in script
+    assert 'editorStickerColor: "Cor do sticker"' in script
+    assert 'editorStickerColor: "Sticker color"' in script
     assert 'fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation)' in script
     assert 'operation.startsWith("image.") && operation !== "image.editor"' in script
     assert ".operation-options { display: flex; flex-wrap: wrap;" in css
