@@ -2,7 +2,7 @@
 
 **Approved**: 2026-11-21 - user delegated completing the application roadmap and implementation choices under tlc-spec-lean.
 **Settled mid-build:** none
-**Review:** pending
+**Review:** sent at cc2e4bc
 **Fix pass:** pending review
 
 ## Problem
