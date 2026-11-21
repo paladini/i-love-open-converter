@@ -105,6 +105,8 @@ A conversão de PDF para Excel usa a detecção de tabelas do PyMuPDF e XlsxWrit
 HTML para PDF usa WeasyPrint 70.0. Aceita um HTML local de até 10 MiB, renderiza no máximo 100 páginas e limita o processo filho a 120 segundos, 2 GiB de memória virtual e 256 MiB de saída. Apenas recursos incorporados como `data:` são carregados; o fetcher bloqueia URLs remotas e arquivos locais. Exige worker Linux sem rede externa e com Landlock; ambientes incompatíveis falham fechados. JavaScript não é executado e o suporte a CSS pode diferir de um navegador.
 HTML para imagem usa o mesmo renderizador isolado. Exporta cada página como JPG a 144 DPI ou SVG em um ZIP. Os limites são 100 páginas, 40 megapixels por página JPG e 256 MiB de saída; apenas conteúdo incorporado e recursos `data:` são aceitos.
 
+O OCR usa OCRmyPDF e Tesseract instalados na imagem Docker com os dados de português e inglês incluídos. O worker não baixa modelos ou idiomas e permanece sem acesso à rede. Cada job aceita até 20 páginas, um processo por vez e até 600 segundos; PDFs com texto selecionável são preservados. O reconhecimento pode falhar em imagens desfocadas, inclinadas, pequenas ou com baixo contraste.
+
 As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
 ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 

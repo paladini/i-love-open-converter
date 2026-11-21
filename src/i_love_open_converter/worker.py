@@ -28,6 +28,7 @@ from .image_ops import (
     inspect_image,
     process_image,
 )
+from .ocr_ops import NoOcrTextError, OcrProcessingError
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import (
     ExcelConversionError,
@@ -168,6 +169,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.repair",
             "pdf.compare",
             "pdf.pdfa",
+            "pdf.ocr",
             "image.to_pdf",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
@@ -263,6 +265,24 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "no_faces_detected",
             "Nenhum rosto foi detectado. Revise a imagem e tente novamente.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoOcrTextError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "ocr_no_text",
+            "Nenhum texto foi reconhecido. Confira a qualidade do documento.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except OcrProcessingError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "ocr_failed",
+            "Não foi possível reconhecer o PDF dentro dos limites de processamento.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

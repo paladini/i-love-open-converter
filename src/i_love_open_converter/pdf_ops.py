@@ -20,6 +20,7 @@ import pymupdf
 from PIL import Image, ImageChops, ImageDraw, ImageOps
 
 from .html_ops import HtmlConversionError, convert_html, convert_html_to_images
+from .ocr_ops import NoOcrTextError, OcrProcessingError, make_searchable_pdf
 from .pdf_archive import convert_pdfa
 from .pdf_image_order import image_order
 
@@ -977,6 +978,11 @@ def process_pdf(
             assets = sorted(output_dir.glob("image-*.png"))
             return [destination, *assets], "text/markdown"
 
+        if operation == "pdf.ocr":
+            destination = output_dir / "searchable.pdf"
+            make_searchable_pdf(source, destination, options["language"])
+            return [destination], "application/pdf"
+
         if operation == "pdf.extract_images":
             seen: set[int] = set()
             paths: list[Path] = []
@@ -1066,8 +1072,9 @@ def process_pdf(
                 outputs.append(destination)
             return outputs, "image/jpeg"
 
-    except (InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError, WordConversionError,
-            PowerPointConversionError, ExcelConversionError):
+    except (InvalidPdfError, NoOcrTextError, OcrProcessingError, MarkdownConversionError,
+            NoEmbeddedImagesError, WordConversionError, PowerPointConversionError,
+            ExcelConversionError):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc

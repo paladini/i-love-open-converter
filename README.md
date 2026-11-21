@@ -102,6 +102,8 @@ PDF-to-Excel uses PyMuPDF table detection and XlsxWriter. Detected tables and ot
 HTML-to-PDF uses WeasyPrint 70.0. It accepts one local HTML file up to 10 MiB, renders at most 100 pages, and limits the child to 120 seconds, 2 GiB of address space and 256 MiB of output. Only embedded `data:` resources are loaded; the custom URL fetcher rejects remote and local-file references. It requires a Linux worker with no external network and Landlock; unsupported environments fail closed. JavaScript is not executed and CSS support may differ from a browser.
 HTML-to-image uses the same isolated renderer. It exports every page as JPG at 144 DPI or SVG in a ZIP. Documents are limited to 100 pages, 40 megapixels per JPG page and 256 MiB of output; only inline content and embedded `data:` resources are supported.
 
+OCR uses OCRmyPDF and Tesseract installed in the Docker image with Portuguese and English language data bundled. The worker downloads no models or languages and has no network access. Each job accepts up to 20 pages, uses one process, and is limited to 600 seconds; pages with selectable text are preserved. Recognition may fail on blurry, skewed, small, or low-contrast scans.
+
 PDF tools accept unencrypted PDFs. A split or multi-page PDF-to-JPG result
 downloads as a ZIP archive.
 
