@@ -45,6 +45,12 @@ from .pdf_ops import (
     WordUnavailableError,
     process_pdf,
 )
+from .pdf_translation import (
+    NoTranslationTextError,
+    TranslationLimitError,
+    TranslationPageOverflowError,
+    TranslationUnavailableError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +163,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.to_powerpoint",
             "pdf.to_excel",
             "pdf.summary",
+            "pdf.translate",
             "html.to_pdf",
             "html.to_image",
             "pdf.watermark",
@@ -295,6 +302,42 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "summary_too_large",
             "O PDF excede os limites do resumo local.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoTranslationTextError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "translation_no_text",
+            "O PDF não contém texto selecionável. Execute OCR antes de traduzir.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except TranslationLimitError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "translation_too_large",
+            "O PDF excede os limites da tradução local.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except TranslationPageOverflowError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "translation_page_overflow",
+            "O texto traduzido não cabe na página com tamanho legível.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except TranslationUnavailableError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "translation_unavailable",
+            "Os modelos locais de tradução não estão disponíveis.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

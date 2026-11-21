@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traduzir PDF localmente · I Love Open Converter</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script defer src="/static/js/pdf-translate.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">I Love <strong>Open Converter</strong></a>
+    <label class="language-picker"><span class="sr-only">Idioma / Language</span><select id="language"><option value="pt-BR">PT</option><option value="en">EN</option></select></label>
+  </header>
+  <main class="pdf-tool">
+    <nav class="breadcrumbs"><a href="/" data-pt="Todas as ferramentas" data-en="All tools">Todas as ferramentas</a></nav>
+    <section class="pdf-tool-heading">
+      <span class="pdf-tool-icon">A↔文</span>
+      <h1 data-pt="Traduzir PDF localmente" data-en="Translate PDF locally">Traduzir PDF localmente</h1>
+      <p data-pt="Traduza PDFs com texto selecionável entre português do Brasil e inglês. O novo PDF contém apenas texto traduzido, mantendo a ordem, as dimensões e as quebras de página." data-en="Translate PDFs with selectable text between Brazilian Portuguese and English. The new PDF contains translated text only and keeps page order, dimensions, and page breaks.">Traduza PDFs com texto selecionável entre português do Brasil e inglês. O novo PDF contém apenas texto traduzido, mantendo a ordem, as dimensões e as quebras de página.</p>
+    </section>
+    <section class="pdf-tool-card">
+      <form id="form">
+        <label class="pdf-upload" for="file">
+          <strong data-pt="Selecionar arquivo PDF" data-en="Select PDF file">Selecionar arquivo PDF</strong>
+          <input id="file" type="file" accept="application/pdf,.pdf" required>
+          <span data-pt="PDF com texto selecionável · até 100 páginas" data-en="PDF with selectable text · up to 100 pages">PDF com texto selecionável · até 100 páginas</span>
+        </label>
+        <p id="filename" class="picked-file"></p>
+        <label for="direction" data-pt="Direção da tradução" data-en="Translation direction">Direção da tradução</label>
+        <select id="direction" required>
+          <option value="pt-BR|en">Português (Brasil) → English</option>
+          <option value="en|pt-BR">English → Português (Brasil)</option>
+        </select>
+        <p class="scan-disclosure" data-pt="Tudo é processado localmente no servidor que você controla. Páginas digitalizadas precisam passar por OCR. O PDF resultante preserva páginas, não o layout original." data-en="Everything is processed locally on the server you control. Scanned pages need OCR first. The output keeps pages, not the original layout.">Tudo é processado localmente no servidor que você controla. Páginas digitalizadas precisam passar por OCR. O PDF resultante preserva páginas, não o layout original.</p>
+        <button id="submit" class="primary-button" type="submit" disabled data-pt="Traduzir PDF" data-en="Translate PDF">Traduzir PDF</button>
+      </form>
+      <p id="message" role="status" aria-live="polite"></p>
+      <a id="download" class="download-button" hidden data-pt="Baixar PDF traduzido" data-en="Download translated PDF">Baixar PDF traduzido</a>
+    </section>
+    <footer><a href="/third-party-notices" data-pt="Créditos e licenças dos modelos" data-en="Model credits and licenses">Créditos e licenças dos modelos</a></footer>
+  </main>
+</body>
+</html>
