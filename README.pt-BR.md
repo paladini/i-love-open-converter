@@ -46,6 +46,10 @@ futuras do projeto.
 - Ampliar uma imagem em 2x ou 4x com interpolação Lanczos e nitidez leve, tudo
   localmente. Essa interpolação não recupera detalhes que não existem no
   original; a saída é limitada a 40 megapixels.
+- Remover o fundo de uma imagem localmente com o modelo U2NetP e gerar um PNG
+  transparente. A imagem original pode ter até 40 megapixels; o recorte depende
+  da imagem e não garante bordas perfeitas. O modelo CPU acompanha a imagem Docker,
+  sem download durante o processamento pelo worker isolado da rede.
 - Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
   e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
   à imagem; em imagens pequenas, o texto que não couber termina com reticências.
@@ -56,6 +60,11 @@ futuras do projeto.
 
 Você pode processar várias imagens em um job. Resultados com vários arquivos
 são baixados em um arquivo ZIP. GIFs estáticos são aceitos; imagens animadas não são suportadas.
+
+A remoção de fundo usa rembg (MIT), ONNX Runtime (MIT) e pesos U2NetP
+(Apache-2.0). Consulte [os avisos de terceiros](THIRD_PARTY_NOTICES.md). Ao
+executar diretamente no ambiente de desenvolvimento, o rembg baixa o pequeno
+modelo U2NetP para o cache local na primeira utilização.
 
 ### PDF
 

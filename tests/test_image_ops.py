@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import sys
+from types import SimpleNamespace
+
 import pytest
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
@@ -304,3 +307,66 @@ def test_upscale_uses_lanczos_then_fixed_unsharp_mask(tmp_path, monkeypatch):
         ("resize", Image.Resampling.LANCZOS),
         ("sharpen",),
     ]
+
+
+def test_background_removal_uses_one_cached_local_session(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    Image.new("RGB", (8, 6), "blue").save(source)
+    sessions = []
+    used_sessions = []
+
+    def new_session(model):
+        sessions.append(model)
+        return object()
+
+    def remove(image, *, session, post_process_mask):
+        used_sessions.append((session, post_process_mask))
+        return image.convert("RGBA")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "rembg",
+        SimpleNamespace(new_session=new_session, remove=remove),
+    )
+    monkeypatch.setattr(image_ops, "_BACKGROUND_SESSION", None)
+
+    for index in range(2):
+        process_image(
+            source,
+            tmp_path / f"cutout-{index}.png",
+            "image.remove_background",
+            {"format": "PNG"},
+        )
+
+    assert sessions == ["u2netp"]
+    assert len(used_sessions) == 2
+    assert used_sessions[0][0] is used_sessions[1][0]
+    assert all(post_process for _, post_process in used_sessions)
+    for index in range(2):
+        with Image.open(tmp_path / f"cutout-{index}.png") as result:
+            assert result.mode == "RGBA"
+            assert result.size == (8, 6)
+
+
+def test_background_removal_applies_exif_orientation_before_inference(tmp_path, monkeypatch):
+    source = tmp_path / "rotated.jpg"
+    destination = tmp_path / "cutout.png"
+    original = Image.new("RGB", (8, 12), "blue")
+    exif = Image.Exif()
+    exif[274] = 6
+    original.save(source, exif=exif)
+    original.close()
+    seen_sizes = []
+
+    def fake_remove(image):
+        seen_sizes.append(image.size)
+        return image.convert("RGBA")
+
+    monkeypatch.setattr(image_ops, "_remove_image_background", fake_remove)
+
+    process_image(source, destination, "image.remove_background", {"format": "PNG"})
+
+    assert seen_sizes == [(12, 8)]
+    with Image.open(destination) as result:
+        assert result.size == (12, 8)
+        assert result.mode == "RGBA"

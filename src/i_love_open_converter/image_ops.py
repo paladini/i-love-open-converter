@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import warnings
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, UnidentifiedImageError
@@ -10,9 +11,12 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, Unidentified
 INPUT_FORMATS = {"JPEG", "PNG", "GIF", "WEBP", "BMP", "TIFF"}
 OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 MAX_UPSCALE_PIXELS = 40_000_000
+MAX_BACKGROUND_REMOVAL_PIXELS = 40_000_000
 Image.MAX_IMAGE_PIXELS = 100_000_000
 MAX_GIF_ANIMATION_PIXELS = 25_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
+_BACKGROUND_SESSION = None
+_BACKGROUND_SESSION_LOCK = Lock()
 EDITOR_POSITIONS = {
     "top_left",
     "top_center",
@@ -429,6 +433,10 @@ def process_image(
                 image = image.convert("RGB")
             image = image.resize(target, resample=Image.Resampling.LANCZOS)
             image = _apply_unsharp_mask(image)
+        elif operation == "image.remove_background":
+            if image.width * image.height > MAX_BACKGROUND_REMOVAL_PIXELS:
+                raise InvalidImageError
+            image = _remove_image_background(image)
         elif operation == "image.meme":
             image = image.convert("RGBA")
             _draw_meme_captions(image, options)
@@ -469,6 +477,21 @@ def process_image(
             content_type = "image/webp"
 
     return content_type, destination.stat().st_size
+
+
+def _remove_image_background(image: Image.Image) -> Image.Image:
+    global _BACKGROUND_SESSION
+    with _BACKGROUND_SESSION_LOCK:
+        if _BACKGROUND_SESSION is None:
+            from rembg import new_session
+
+            _BACKGROUND_SESSION = new_session("u2netp")
+    from rembg import remove
+
+    result = remove(image.convert("RGB"), session=_BACKGROUND_SESSION, post_process_mask=True)
+    if not isinstance(result, Image.Image) or result.size != image.size:
+        raise InvalidImageError
+    return result.convert("RGBA")
 
 
 def _apply_unsharp_mask(image: Image.Image) -> Image.Image:

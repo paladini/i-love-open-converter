@@ -72,6 +72,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.rotate",
             "image.meme",
             "image.upscale",
+            "image.remove_background",
             "image.editor",
             "image.crop",
             "image.watermark",

@@ -34,6 +34,7 @@ from .image_ops import (
     EDITOR_SIZES,
     EDITOR_STICKERS,
     INPUT_FORMATS,
+    MAX_BACKGROUND_REMOVAL_PIXELS,
     MAX_UPSCALE_PIXELS,
     InvalidImageError,
     InvalidImageOptionsError,
@@ -506,6 +507,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.rotate",
             "image.meme",
             "image.upscale",
+            "image.remove_background",
             "image.editor",
             "image.crop",
             "image.watermark",
@@ -697,6 +699,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.rotate",
             "image.meme",
             "image.upscale",
+            "image.remove_background",
             "image.editor",
             "image.from_jpg",
             "image.crop",
@@ -736,7 +739,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if (
             operation in single_pdf_operations
             or operation in FAMILIES
-            or operation in {"html.to_pdf", "html.to_image", "image.meme", "image.upscale"}
+            or operation in {
+                "html.to_pdf",
+                "html.to_image",
+                "image.meme",
+                "image.upscale",
+                "image.remove_background",
+            }
         ) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
@@ -1097,6 +1106,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["format"] = "JPEG" if output_format == "JPG" else output_format
+            if operation == "image.remove_background" and output_format != "PNG":
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "A remoção de fundo gera somente PNG transparente.",
+                        }
+                    },
+                )
         if operation == "image.resize":
             for dimension in ("width", "height"):
                 raw = parsed_options.get(dimension)
@@ -1531,6 +1550,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     "error": {
                                         "code": "invalid_options",
                                         "message": "Saída acima do limite de 40 MP.",
+                                    }
+                                },
+                            )
+                    if operation == "image.remove_background":
+                        try:
+                            width, height = inspect_image_dimensions(destination)
+                        except InvalidImageError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={"error": {"code": "invalid_file"}},
+                            ) from exc
+                        if width * height > MAX_BACKGROUND_REMOVAL_PIXELS:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "A imagem excede o limite de 40 MP.",
                                     }
                                 },
                             )

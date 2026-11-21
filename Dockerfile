@@ -5,6 +5,9 @@ RUN curl -fsSL -o /tmp/verapdf.zip https://software.verapdf.org/releases/1.30/ve
     && echo "b512bf24945503a33fc10738ecffc1f2dccaaf8593a448e94ee9ac86a9559a59  /tmp/verapdf.zip" | sha256sum -c - \
     && unzip -q /tmp/verapdf.zip -d /tmp \
     && java -jar /tmp/verapdf-greenfield-1.30.3/verapdf-izpack-installer-1.30.3.jar /tmp/verapdf-install.xml
+RUN mkdir -p /opt/u2net \
+    && curl -fsSL -o /opt/u2net/u2netp.onnx https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx \
+    && echo "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8  /opt/u2net/u2netp.onnx" | sha256sum -c -
 
 FROM python:3.14-slim
 
@@ -19,11 +22,14 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ghostscript fonts-urw-base35 libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 default-jre-headless libreoffice-writer libreoffice-calc libreoffice-impress \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=verapdf-installer /opt/verapdf /opt/verapdf
-ENV VERAPDF_BIN=/opt/verapdf/verapdf
+COPY --from=verapdf-installer /opt/u2net /opt/u2net
+ENV VERAPDF_BIN=/opt/verapdf/verapdf \
+    U2NET_HOME=/opt/u2net
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /bin/
 
-COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY pyproject.toml uv.lock README.md README.pt-BR.md LICENSE THIRD_PARTY_NOTICES.md ./
+COPY licenses ./licenses
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src ./src
