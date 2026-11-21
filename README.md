@@ -81,6 +81,7 @@ small U2NetP model into its local cache on first use.
 - Convert a PDF to an editable Word DOCX locally. Scanned PDFs need OCR, and complex layouts may differ from the original.
 - Convert a PDF to an editable PowerPoint presentation locally. Text and embedded images become separate slide objects; vector drawings, charts, page backgrounds and scanned-page OCR are not reconstructed.
 - Extract detected tables and selectable text from a PDF to an Excel workbook locally. Table rows and page references go to `Tables`; other text goes to `Text`. Values remain literal strings. Unusual table layouts can be missed, and scanned pages require OCR.
+- Add a searchable text layer to scanned PDFs with local Portuguese, English, or combined OCR. The limit is 20 pages, and accuracy depends on scan quality; review the result.
 
 - Turn images into a PDF with one page per image.
 - Add a text or image watermark to every page. Choose its position and
@@ -93,6 +94,8 @@ To bound rendering memory, pages exceeding 16 million pixels at 150 DPI are reje
 PDF-to-Word uses the local `pdf2docx` library, which its upstream no longer actively maintains. It applies the same page-size, time and output-size limits. It requires the network-isolated Linux worker configured below; other environments fail closed.
 PDF-to-PowerPoint uses PyMuPDF and `python-pptx` to create editable text boxes and picture shapes. One slide represents each page; scanned-page OCR and complex vector artwork, chart and background reconstruction are not supported. The conversion is limited to 200 pages, 20,000 slide objects, 16 million page pixels at 150 DPI, 180 seconds and 256 MiB of output. It requires the network-isolated Linux worker; other environments fail closed.
 PDF-to-Excel uses PyMuPDF table detection and XlsxWriter. Detected tables and other selectable text are placed on separate worksheets with source page references; every value remains literal text. Unbordered or unusual tables may not be detected, numeric values are not inferred, and scanned pages need OCR. Limits are 200 pages, 16 million page pixels at 150 DPI, 200,000 table cells, 100,000 text lines, 180 seconds and 256 MiB of output. It requires the network-isolated Linux worker; other environments fail closed.
+
+OCR uses OCRmyPDF and Tesseract installed in the Docker image with Portuguese and English language data bundled. The worker downloads no models or languages and has no network access. Each job accepts up to 20 pages, uses one process, and is limited to 600 seconds; pages with selectable text are preserved. Recognition may fail on blurry, skewed, small, or low-contrast scans.
 
 PDF tools accept unencrypted PDFs. A split or multi-page PDF-to-JPG result
 downloads as a ZIP archive.

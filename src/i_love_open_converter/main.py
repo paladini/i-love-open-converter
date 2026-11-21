@@ -35,6 +35,7 @@ from .image_ops import (
     inspect_image,
     inspect_image_dimensions,
 )
+from .ocr_ops import MAX_OCR_PAGES
 from .office_ops import FAMILIES
 from .pdf_archive import pdfa_available
 from .pdf_ops import (
@@ -56,7 +57,6 @@ PDF_COMING_SOON = [
     ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
-    ("OCR PDF", "OCR PDF", "intelligence", 24),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
 ]
@@ -293,6 +293,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_to_markdown(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-to-markdown.html", {"request": request})
 
+    @app.get("/tools/pdf-ocr", include_in_schema=False)
+    async def pdf_ocr(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-ocr.html", {"request": request})
+
     @app.get("/tools/pdf-to-word", include_in_schema=False)
     async def pdf_to_word(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-to-word.html", {"request": request})
@@ -509,6 +513,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.compare",
             "pdf.pdfa",
+            "pdf.ocr",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -601,6 +606,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.forms",
             "pdf.repair",
             "pdf.pdfa",
+            "pdf.ocr",
         }
         if (
             operation in single_pdf_operations
@@ -635,6 +641,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     status_code=422,
                     detail={
                         "error": {"code": "invalid_options", "message": "Selecione dois PDFs."}
+                    },
+                )
+            validated_options["language"] = language
+        if operation == "pdf.ocr":
+            language = parsed_options.get("language", "por+eng")
+            if language not in {"por", "eng", "por+eng"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Idioma de OCR inválido.",
+                        }
                     },
                 )
             validated_options["language"] = language
@@ -1176,6 +1195,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     }
                                 },
                             ) from exc
+                    if operation == "pdf.ocr" and page_count > MAX_OCR_PAGES:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "page_limit_exceeded",
+                                    "message": "O PDF pode ter no máximo 20 páginas para OCR.",
+                                }
+                            },
+                        )
                     if operation == "pdf.crop":
                         try:
                             validate_crop_options(validated_options, page_count)

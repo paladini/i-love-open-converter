@@ -1419,6 +1419,129 @@ def test_pdf_markup_tools_open_with_upload_first_screens(settings):
     assert "Inserir números de páginas a um PDF" in numbers.text
 
 
+def test_pdf_ocr_page_and_catalog_card_are_available_in_two_languages(settings):
+    with TestClient(create_app(settings)) as client:
+        home = client.get("/")
+        page = client.get("/tools/pdf-ocr")
+        script = client.get("/static/js/pdf-ocr.js")
+
+    assert home.status_code == page.status_code == script.status_code == 200
+    assert 'href="/tools/pdf-ocr"' in home.text
+    assert 'data-pt="OCR PDF" data-en="OCR PDF"' in home.text
+    assert 'accept="application/pdf,.pdf"' in page.text
+    assert 'value="por+eng"' in page.text
+    assert 'value="por"' in page.text
+    assert 'value="eng"' in page.text
+    assert "é local" in page.text
+    assert "up to 20 pages" in page.text
+    assert "Crie uma camada de texto pesquisável" in page.text
+    assert "Add a searchable text layer" in page.text
+    assert "body.append('operation', 'pdf.ocr')" in script.text
+    assert "ocr_no_text" in script.text
+
+
+def test_pdf_ocr_creates_searchable_download_with_selected_language(
+    settings, pdf_bytes, monkeypatch
+):
+    from shutil import copyfile
+
+    from i_love_open_converter import pdf_ops
+
+    used_languages = []
+
+    def make_searchable(source, destination, language):
+        used_languages.append(language)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        copyfile(source, destination)
+        return destination
+
+    monkeypatch.setattr(pdf_ops, "make_searchable_pdf", make_searchable)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.ocr", "options": json.dumps({"language": "por"})},
+            files=_multipart("scanned.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        download = client.get(submitted.json()["status_url"] + "/download")
+
+    assert used_languages == ["por"]
+    assert status["state"] == "succeeded"
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/pdf"
+    with pymupdf.open(stream=download.content, filetype="pdf") as document:
+        assert document.page_count == 2
+        assert "Test page 1" in document[0].get_text()
+
+
+def test_pdf_ocr_rejects_invalid_language_and_more_than_20_pages_before_queue(settings, pdf_bytes):
+    large_document = pymupdf.open()
+    for _ in range(21):
+        large_document.new_page()
+    large_pdf = large_document.tobytes()
+    large_document.close()
+
+    with TestClient(create_app(settings)) as client:
+        invalid_language = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.ocr", "options": json.dumps({"language": "xyz"})},
+            files=_multipart("scan.pdf", pdf_bytes, "application/pdf"),
+        )
+        too_many_pages = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.ocr", "options": json.dumps({"language": "eng"})},
+            files=_multipart("scan.pdf", large_pdf, "application/pdf"),
+        )
+
+    assert invalid_language.status_code == 422
+    assert invalid_language.json()["error"]["code"] == "invalid_options"
+    assert too_many_pages.status_code == 422
+    assert too_many_pages.json()["error"]["code"] == "page_limit_exceeded"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_pdf_ocr_no_text_failure_removes_partial_output(settings, pdf_bytes, monkeypatch):
+    from i_love_open_converter import pdf_ops, worker
+    from i_love_open_converter.ocr_ops import NoOcrTextError
+
+    called = []
+    error_codes = []
+    original_mark_failed = worker.mark_failed
+
+    def track_failure(database_path, job_id, code, message, retention_hours):
+        error_codes.append(code)
+        original_mark_failed(database_path, job_id, code, message, retention_hours)
+
+    def no_text(_source, destination, _language):
+        called.append(True)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(b"partial")
+        raise NoOcrTextError
+
+    monkeypatch.setattr(pdf_ops, "make_searchable_pdf", no_text)
+    monkeypatch.setattr(worker, "mark_failed", track_failure)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.ocr"},
+            files=_multipart("scan.pdf", pdf_bytes, "application/pdf"),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        download = client.get(submitted.json()["status_url"] + "/download")
+
+    assert status["state"] == "failed"
+    assert called == [True]
+    assert error_codes == ["ocr_no_text"]
+    assert status["error"]["code"] == "ocr_no_text"
+    assert download.status_code == 409
+    assert not (settings.jobs_dir / submitted.json()["job_id"] / "output").exists()
+
+
 def test_convert_job_moves_from_queued_to_downloadable(settings, jpeg_bytes):
     with TestClient(create_app(settings)) as client:
         submitted = client.post(
