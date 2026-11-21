@@ -19,6 +19,7 @@ from xml.etree import ElementTree
 import pymupdf
 from PIL import Image, ImageChops, ImageDraw, ImageOps
 
+from .html_ops import HtmlConversionError, convert_html
 from .pdf_archive import convert_pdfa
 from .pdf_image_order import image_order
 
@@ -682,7 +683,13 @@ def process_pdf(
     output_dir: Path,
     secret: str | None = None,
 ) -> tuple[list[Path], str]:
-    """Run one PDF operation; returned paths are ready-to-download artifacts."""
+    """Run one document conversion; returned paths are ready-to-download artifacts."""
+    if operation == "html.to_pdf":
+        if len(sources) != 1:
+            raise HtmlConversionError
+        source, _ = sources[0]
+        return [convert_html(source, output_dir)], "application/pdf"
+
     output_dir.mkdir(parents=True, exist_ok=True)
     if operation == "pdf.pdfa":
         if len(sources) != 1:

@@ -18,6 +18,7 @@ from .database import (
     requeue_interrupted_jobs,
 )
 from .files import safe_stem
+from .html_ops import HtmlConversionError, HtmlExternalResourceError, HtmlUnavailableError
 from .image_ops import InvalidImageError, UnsupportedImageError, process_image
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import (
@@ -105,6 +106,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.to_word",
             "pdf.to_powerpoint",
             "pdf.to_excel",
+            "html.to_pdf",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -168,6 +170,27 @@ def process_one_job(settings: Settings) -> bool:
             ],
             settings.job_retention_hours,
         )
+    except HtmlUnavailableError:
+        mark_failed(
+            settings.database_path, job_id, "html_unavailable",
+            "HTML para PDF exige um worker Linux isolado da rede e do sistema de arquivos.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except HtmlExternalResourceError:
+        mark_failed(
+            settings.database_path, job_id, "html_external_resource",
+            "O HTML usa recursos externos. Incorpore-os como data URI e tente novamente.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except HtmlConversionError:
+        mark_failed(
+            settings.database_path, job_id, "html_failed",
+            "Não foi possível converter o HTML. Verifique o arquivo e os limites de processamento.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
     except OfficeUnavailableError:
         mark_failed(
             settings.database_path, job_id, "office_unavailable",

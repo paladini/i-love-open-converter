@@ -25,7 +25,7 @@ class PathBeneath(ctypes.Structure):
     _fields_ = [("allowed_access", ctypes.c_uint64), ("parent_fd", ctypes.c_int32)]
 
 
-def restrict(root: Path) -> None:
+def restrict(root: Path, *, allow_app: bool = False) -> None:
     libc = ctypes.CDLL(None, use_errno=True)
     abi = libc.syscall(_CREATE_RULESET, 0, 0, _VERSION)
     if abi < 1:
@@ -44,7 +44,7 @@ def restrict(root: Path) -> None:
             (root, rights),
             (Path("/tmp"), (1 << 9) | (1 << 5)),
             (Path("/dev/null"), (1 << 1) | (1 << 2)),
-        ] + [
+        ] + ([(Path("/app"), _READ_EXECUTE)] if allow_app else []) + [
             (Path(item), _READ_EXECUTE)
             for item in ("/usr", "/lib", "/lib64", "/etc", "/dev", "/proc/self")
         ]:
