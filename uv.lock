@@ -178,6 +178,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "python-pptx" },
     { name = "uvicorn" },
+    { name = "xlsxwriter" },
 ]
 
 [package.dev-dependencies]
@@ -199,6 +200,7 @@ requires-dist = [
     { name = "python-multipart", specifier = "==0.0.34" },
     { name = "python-pptx", specifier = "==1.0.2" },
     { name = "uvicorn", specifier = "==0.38.0" },
+    { name = "xlsxwriter", specifier = "==3.3.3" },
 ]
 
 [package.metadata.requires-dev]

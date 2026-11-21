@@ -51,6 +51,18 @@ class PowerPointUnavailableError(PowerPointConversionError):
     """The required Linux network isolation is unavailable."""
 
 
+class ExcelConversionError(Exception):
+    """XLSX processing failed or exceeded a resource limit."""
+
+
+class ExcelUnavailableError(ExcelConversionError):
+    """The required Linux network isolation is unavailable."""
+
+
+class NoSpreadsheetDataError(ExcelConversionError):
+    """The PDF contains no detected table cells or selectable text."""
+
+
 def word_isolated() -> bool:
     if sys.platform != "linux" or os.environ.get("OFFICE_NETWORK_ISOLATED") != "1":
         return False
@@ -828,11 +840,17 @@ def process_pdf(
     if len(sources) != 1:
         raise InvalidPdfError
     source, original_name = sources[0]
+    if operation in {"pdf.to_word", "pdf.to_powerpoint", "pdf.to_excel"}:
+        if not word_isolated():
+            unavailable_errors = {
+                "pdf.to_word": WordUnavailableError,
+                "pdf.to_powerpoint": PowerPointUnavailableError,
+                "pdf.to_excel": ExcelUnavailableError,
+            }
+            raise unavailable_errors[operation]
     document = _open_pdf(source)
     try:
         if operation == "pdf.to_word":
-            if not word_isolated():
-                raise WordUnavailableError
             destination = output_dir / "converted.docx"
             try:
                 completed = subprocess.run(
@@ -856,8 +874,6 @@ def process_pdf(
             return [destination], content_type
 
         if operation == "pdf.to_powerpoint":
-            if not word_isolated():
-                raise PowerPointUnavailableError
             destination = output_dir / "presentation.pptx"
             try:
                 completed = subprocess.run(
@@ -891,6 +907,44 @@ def process_pdf(
             content_type = (
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation"
             )
+            return [destination], content_type
+
+        if operation == "pdf.to_excel":
+            destination = output_dir / "extracted-data.xlsx"
+            try:
+                completed = subprocess.run(
+                    [sys.executable, "-m", "i_love_open_converter.excel_worker",
+                     str(source.resolve()), str(destination.resolve())],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=180, check=False,
+                )
+                if completed.returncode == 3:
+                    raise NoSpreadsheetDataError
+                if completed.returncode != 0 or not destination.is_file():
+                    raise ExcelConversionError
+                if destination.stat().st_size > 256 * 1024**2:
+                    raise ExcelConversionError
+                with zipfile.ZipFile(destination) as archive:
+                    names = set(archive.namelist())
+                    worksheet_names = {
+                        name for name in names
+                        if re.fullmatch(r"xl/worksheets/sheet\d+\.xml", name)
+                    }
+                    if not {"[Content_Types].xml", "xl/workbook.xml"} <= names:
+                        raise ExcelConversionError
+                    if not worksheet_names or len(worksheet_names) > 2 or len(names) > 1000:
+                        raise ExcelConversionError
+                    if sum(item.file_size for item in archive.infolist()) > 512 * 1024**2:
+                        raise ExcelConversionError
+                    for name in names:
+                        if name.endswith(".xml"):
+                            if archive.getinfo(name).file_size > 64 * 1024**2:
+                                raise ExcelConversionError
+                            ElementTree.fromstring(archive.read(name))
+            except (OSError, subprocess.TimeoutExpired, zipfile.BadZipFile,
+                    ElementTree.ParseError, RuntimeError) as exc:
+                raise ExcelConversionError from exc
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             return [destination], content_type
 
         if operation == "pdf.to_markdown":
@@ -999,7 +1053,7 @@ def process_pdf(
             return outputs, "image/jpeg"
 
     except (InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError, WordConversionError,
-            PowerPointConversionError):
+            PowerPointConversionError, ExcelConversionError):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc
