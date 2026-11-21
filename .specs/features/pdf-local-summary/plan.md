@@ -2,8 +2,8 @@
 
 **Approved:** 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o tlc-spec-lean até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** changes requested - independent review identified a P2 TextRank damping issue, recorded in `review.md`.
+**Fix pass:** done - corrected PageRank weights and added a regression case for central sentence ranking; validation passed.
 
 ## Problem
 
@@ -68,13 +68,14 @@ New: nothing - the existing job and artifact records hold the PDF input and text
 
 1. WHEN a visitor opens `/tools/pdf-summary` THEN the page SHALL explain in PT-BR and English that the summary is extractive, uses selectable PDF text, and runs on the self-hosted server.
 2. WHEN a visitor selects one valid PDF and submits THEN the API SHALL create one `pdf.summary` job.
-3. WHEN the worker completes a summary THEN the downloadable UTF-8 `.txt` file SHALL contain no more than 12 sentences selected from the source and preserve their original order.
-4. WHEN the source contains fewer than 13 non-empty sentences THEN the summary SHALL include every sentence.
-5. IF a PDF contains no selectable text THEN the job SHALL fail with `summary_no_text`, return no download, and the page SHALL suggest running OCR first.
-6. IF a PDF has more than 100 pages or 2,000 extracted sentences THEN the job SHALL fail with `summary_too_large` and return no download.
-7. IF a visitor submits a non-PDF or malformed PDF THEN the API SHALL reject it with the existing format or file error and create no job.
-8. WHILE the job is queued or processing THEN the page SHALL show the localized status and prevent duplicate submissions; on success it SHALL show the text download.
-9. WHEN the viewport is 360 CSS pixels wide THEN the upload, status, and download controls SHALL remain usable without horizontal page scrolling.
+3. WHEN the source contains related and unrelated sentence groups THEN the ranking SHALL select central related sentences ahead of unrelated ones.
+4. WHEN the worker completes a summary THEN the downloadable UTF-8 `.txt` file SHALL contain no more than 12 source sentences and preserve their original order.
+5. WHEN the source contains fewer than 13 non-empty sentences THEN the summary SHALL include every sentence.
+6. IF a PDF contains no selectable text THEN the job SHALL fail with `summary_no_text`, return no download, and the page SHALL suggest running OCR first.
+7. IF a PDF has more than 100 pages or 2,000 extracted sentences THEN the job SHALL fail with `summary_too_large` and return no download.
+8. IF a visitor submits a non-PDF or malformed PDF THEN the API SHALL reject it with the existing format or file error and create no job.
+9. WHILE the job is queued or processing THEN the page SHALL show the localized status and prevent duplicate submissions; on success it SHALL show the text download.
+10. WHEN the viewport is 360 CSS pixels wide THEN the upload, status, and download controls SHALL remain usable without horizontal page scrolling.
 
 ## Assumptions
 

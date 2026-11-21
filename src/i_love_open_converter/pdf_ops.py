@@ -119,11 +119,11 @@ def _rank_summary_sentences(sentences: list[str]) -> list[int]:
     ranks = [1 / len(sentences)] * len(sentences)
     weights = [sum(edges.values()) for edges in graph]
     for _ in range(30):
-        updated = [damping / len(sentences)] * len(sentences)
+        updated = [(1 - damping) / len(sentences)] * len(sentences)
         for source, edges in enumerate(graph):
             if not weights[source]:
                 continue
-            share = (1 - damping) * ranks[source] / weights[source]
+            share = damping * ranks[source] / weights[source]
             for target, weight in edges.items():
                 updated[target] += share * weight
         ranks = updated

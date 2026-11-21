@@ -1926,8 +1926,13 @@ def test_pdf_summary_is_extractive_ordered_and_limited_to_twelve_sentences(setti
     document = pymupdf.open()
     page = document.new_page()
     source_sentences = [
-        f"Renewable energy policy supports clean power and stable communities, report {index}."
-        for index in range(15)
+        "Ocean currents influence seasonal temperatures along the coast, report 0.",
+        "Local libraries support neighborhood literacy programs, report 1.",
+        "Ancient pottery offers clues about trade routes, report 2.",
+        *[
+            f"Renewable energy policy supports clean power and stable communities, report {index}."
+            for index in range(3, 15)
+        ],
     ]
     for index, sentence in enumerate(source_sentences):
         page.insert_text((40, 50 + index * 15), sentence, fontsize=8)
@@ -1951,6 +1956,7 @@ def test_pdf_summary_is_extractive_ordered_and_limited_to_twelve_sentences(setti
     summary_sentences = [sentence.strip() for sentence in summary_text.split("\n\n")[1:]]
     assert len(summary_sentences) == 12
     assert all(sentence in source_sentences for sentence in summary_sentences), summary_sentences
+    assert all("Renewable energy policy" in sentence for sentence in summary_sentences)
     indexes = [source_sentences.index(sentence) for sentence in summary_sentences]
     assert indexes == sorted(indexes)
 
