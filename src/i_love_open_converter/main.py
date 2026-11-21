@@ -44,7 +44,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
-    ("PDF para Word", "PDF to Word", "convert", 4),
     ("PDF para PowerPoint", "PDF to PowerPoint", "convert", 5),
     ("PDF para Excel", "PDF to Excel", "convert", 6),
     ("HTML para PDF", "HTML to PDF", "convert", 16),
@@ -291,6 +290,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_to_markdown(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-to-markdown.html", {"request": request})
 
+    @app.get("/tools/pdf-to-word", include_in_schema=False)
+    async def pdf_to_word(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-to-word.html", {"request": request})
+
     @app.get("/tools/office-to-pdf/{family}", include_in_schema=False)
     async def office_to_pdf(request: Request, family: str):
         labels = {
@@ -474,6 +477,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_image",
             "pdf.extract_images",
             "pdf.to_markdown",
+            "pdf.to_word",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -559,6 +563,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_image",
             "pdf.extract_images",
             "pdf.to_markdown",
+            "pdf.to_word",
             "pdf.page_numbers",
             "pdf.crop",
             "pdf.protect",

@@ -3,14 +3,18 @@ from __future__ import annotations
 import base64
 import hashlib
 import html
+import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
+import zipfile
 from difflib import SequenceMatcher
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 import pymupdf
 from PIL import Image, ImageChops, ImageDraw, ImageOps
@@ -29,6 +33,23 @@ class NoEmbeddedImagesError(Exception):
 
 class MarkdownConversionError(Exception):
     """Markdown processing failed or exceeded a resource limit."""
+
+
+class WordConversionError(Exception):
+    """DOCX processing failed or exceeded a resource limit."""
+
+
+class WordUnavailableError(WordConversionError):
+    """The required Linux network isolation is unavailable."""
+
+
+def word_isolated() -> bool:
+    if sys.platform != "linux" or os.environ.get("OFFICE_NETWORK_ISOLATED") != "1":
+        return False
+    try:
+        return {name for _, name in socket.if_nameindex()} == {"lo"}
+    except OSError:
+        return False
 
 
 EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
@@ -801,6 +822,31 @@ def process_pdf(
     source, original_name = sources[0]
     document = _open_pdf(source)
     try:
+        if operation == "pdf.to_word":
+            if not word_isolated():
+                raise WordUnavailableError
+            destination = output_dir / "converted.docx"
+            try:
+                completed = subprocess.run(
+                    [sys.executable, "-m", "i_love_open_converter.word_worker",
+                     str(source.resolve()), str(destination.resolve())],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=180, check=False,
+                )
+                if completed.returncode != 0 or not destination.is_file():
+                    raise WordConversionError
+                with zipfile.ZipFile(destination) as archive:
+                    if not {"[Content_Types].xml", "word/document.xml"} <= set(archive.namelist()):
+                        raise WordConversionError
+                    if archive.getinfo("word/document.xml").file_size > 64 * 1024 * 1024:
+                        raise WordConversionError
+                    ElementTree.fromstring(archive.read("word/document.xml"))
+            except (OSError, subprocess.TimeoutExpired, zipfile.BadZipFile,
+                    ElementTree.ParseError) as exc:
+                raise WordConversionError from exc
+            content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            return [destination], content_type
+
         if operation == "pdf.to_markdown":
             try:
                 completed = subprocess.run(
@@ -906,7 +952,7 @@ def process_pdf(
                 outputs.append(destination)
             return outputs, "image/jpeg"
 
-    except (InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError):
+    except (InvalidPdfError, MarkdownConversionError, NoEmbeddedImagesError, WordConversionError):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc
