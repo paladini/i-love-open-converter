@@ -9,22 +9,30 @@ const messages = {
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
     imageGroup: "Imagens", imageCount: "15 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
-    convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
+    convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
-    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
+    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
+    editorTextLabel: "Texto", editorTextPlaceholder: "Digite uma legenda (opcional)", editorTextSize: "Tamanho do texto", editorPosition: "Posição",
+    editorTextColor: "Cor do texto", editorOpacity: "Opacidade do texto (%)", editorFilter: "Efeito", editorFrame: "Moldura",
+    editorFrameWidth: "Espessura da moldura (%)", editorFrameColor: "Cor da moldura", editorSticker: "Sticker vetorial",
+    editorStickerPosition: "Posição do sticker", editorStickerSize: "Tamanho do sticker", editorStickerColor: "Cor do sticker",
+    editorOriginal: "Original", editorGrayscale: "Preto e branco", editorSepia: "Sépia", editorInvert: "Inverter cores",
+    editorNoFrame: "Sem moldura", editorSolidFrame: "Moldura simples", editorDoubleFrame: "Moldura dupla", editorNoSticker: "Sem sticker",
+    editorHeart: "Coração", editorStar: "Estrela", editorSun: "Sol", editorCheck: "Marca de seleção", editorArrow: "Seta", editorSpeech: "Balão de fala",
+    editorSmall: "Pequeno", editorMedium: "Médio", editorLarge: "Grande", editorTopLeft: "Superior esquerda", editorTopCenter: "Superior central",
+    editorTopRight: "Superior direita", editorCenterLeft: "Centro esquerda", editorCenter: "Centro", editorCenterRight: "Centro direita",
+    editorBottomLeft: "Inferior esquerda", editorBottomCenter: "Inferior central", editorBottomRight: "Inferior direita", editorOneImage: "O editor aceita uma imagem por vez.",
+    mergeTitle: "Mesclar PDF",
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
-    imageToPdfHint: "Uma página para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
-    memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme",
-    upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).",
-    removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.",
+    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkImageTitle: "Marcar imagem", watermarkImageHint: "Texto ou imagem sobre suas fotos", watermarkModeLabel: "Tipo de marca d'água", watermarkTextMode: "Texto", watermarkOverlayMode: "Imagem", watermarkTextLabel: "Texto da marca d'água", watermarkFileLabel: "Imagem da marca d'água (PNG, JPG ou WebP)", watermarkPositionLabel: "Posição", watermarkOpacityLabel: "Transparência (%)", positionTopLeft: "Superior esquerda", positionTopCenter: "Superior central", positionTopRight: "Superior direita", positionCenterLeft: "Centro esquerda", positionCenter: "Centro", positionCenterRight: "Centro direita", positionBottomLeft: "Inferior esquerda", positionBottomCenter: "Inferior central", positionBottomRight: "Inferior direita", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números de página", rangesLabel: "Intervalos (ex.: 1-3,5)", memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme", upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).", removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
     widthLabel: "Largura (px)", heightLabel: "Altura (px)", qualityLabel: "Qualidade", degreesLabel: "Rotação",
     dropTitle: "Solte sua imagem aqui", dropOr: "ou", browse: "escolha um arquivo",
-    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · até {maxFileMb} MB", outputLabel: "Converter para",
+    fileTypes: "JPG, PNG, GIF estático, WEBP, BMP, TIFF · até {maxFileMb} MB", jpgFileTypes: "JPG · até {maxFileMb} MB", outputLabel: "Converter para",
     pdfFileTypes: "PDF · até {maxFileMb} MB",
     resultFormat: "Formato de saída", localNote: "Seu arquivo é processado no servidor que você controla.",
     convertButton: "Converter imagem", downloadButton: "Baixar arquivo", startAgain: "Converter outro arquivo",
@@ -52,22 +60,31 @@ const messages = {
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
     imageGroup: "Images", imageCount: "15 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
-    convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
+    convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
-    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
+    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
+    editorTextLabel: "Text", editorTextPlaceholder: "Enter a caption (optional)", editorTextSize: "Text size", editorPosition: "Position",
+    editorTextColor: "Text color", editorOpacity: "Text opacity (%)", editorFilter: "Effect", editorFrame: "Frame",
+    editorFrameWidth: "Frame width (%)", editorFrameColor: "Frame color", editorSticker: "Vector sticker",
+    editorStickerPosition: "Sticker position", editorStickerSize: "Sticker size", editorStickerColor: "Sticker color",
+    editorOriginal: "Original", editorGrayscale: "Grayscale", editorSepia: "Sepia", editorInvert: "Invert colors",
+    editorNoFrame: "No frame", editorSolidFrame: "Solid frame", editorDoubleFrame: "Double frame", editorNoSticker: "No sticker",
+    editorHeart: "Heart", editorStar: "Star", editorSun: "Sun", editorCheck: "Check mark", editorArrow: "Arrow", editorSpeech: "Speech bubble",
+    editorSmall: "Small", editorMedium: "Medium", editorLarge: "Large", editorTopLeft: "Top left", editorTopCenter: "Top center",
+    editorTopRight: "Top right", editorCenterLeft: "Center left", editorCenter: "Center", editorCenterRight: "Center right",
+    editorBottomLeft: "Bottom left", editorBottomCenter: "Bottom center", editorBottomRight: "Bottom right", editorOneImage: "The editor accepts one image at a time.",
+    mergeTitle: "Merge PDF",
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
-    imageToPdfHint: "One page for each image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
-    memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme",
-    upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
+    imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkImageTitle: "Watermark image", watermarkImageHint: "Add text or a logo to your photos", watermarkModeLabel: "Watermark type", watermarkTextMode: "Text", watermarkOverlayMode: "Image", watermarkTextLabel: "Watermark text", watermarkFileLabel: "Watermark image (PNG, JPG, or WebP)", watermarkPositionLabel: "Position", watermarkOpacityLabel: "Opacity (%)", positionTopLeft: "Top left", positionTopCenter: "Top center", positionTopRight: "Top right", positionCenterLeft: "Center left", positionCenter: "Center", positionCenterRight: "Center right", positionBottomLeft: "Bottom left", positionBottomCenter: "Bottom center", positionBottomRight: "Bottom right", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add page numbers", rangesLabel: "Page ranges (e.g. 1-3,5)", memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme", upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
     removeBackgroundTitle: "Remove background", removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP.", removeBackgroundNote: "The model runs locally. Results depend on the image and may not remove every edge perfectly.",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
     widthLabel: "Width (px)", heightLabel: "Height (px)", qualityLabel: "Quality", degreesLabel: "Rotation",
     dropTitle: "Drop your image here", dropOr: "or", browse: "choose a file",
-    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · up to {maxFileMb} MB", outputLabel: "Convert to",
+    fileTypes: "JPG, PNG, static GIF, WEBP, BMP, TIFF · up to {maxFileMb} MB", jpgFileTypes: "JPG · up to {maxFileMb} MB", outputLabel: "Convert to",
     pdfFileTypes: "PDF · up to {maxFileMb} MB",
     resultFormat: "Output format", localNote: "Your file is processed on the server you control.",
     convertButton: "Convert image", downloadButton: "Download file", startAgain: "Convert another file",
@@ -93,6 +110,9 @@ const selectedFile = document.querySelector("#selected-file");
 const selectedName = document.querySelector("#selected-file-name");
 const selectedSize = document.querySelector("#selected-file-size");
 const outputFormat = document.querySelector("#output-format");
+const watermarkKind = document.querySelector("#watermark-kind");
+const watermarkText = document.querySelector("#watermark-text");
+const watermarkImage = document.querySelector("#watermark-image");
 const formatRow = document.querySelector("#format-row");
 const formatTarget = document.querySelector("#format-target-label");
 const formatTargetIcon = document.querySelector("#format-target-icon");
@@ -138,10 +158,17 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAria));
   });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
   const isPdf = currentOperation.startsWith("pdf.");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf
+    ? "pdfFileTypes"
+    : currentOperation === "image.from_jpg"
+      ? "jpgFileTypes"
+      : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
   else if (currentStatusKey) jobStatusText.textContent = t(currentStatusKey);
@@ -160,16 +187,34 @@ function updateFormatTarget() {
   const format = outputFormat.value === "JPEG" ? "JPG" : outputFormat.value;
   formatTarget.textContent = format;
   formatTargetIcon.textContent = format;
+  document.querySelector('[data-option="quality"]').hidden = !(
+    currentOperation === "image.compress"
+    || (currentOperation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value))
+  );
+}
+
+function syncOutputFormats(operation) {
+  const allowed = operation === "image.from_jpg"
+    ? ["PNG", "GIF"]
+    : ["PNG", "JPEG", "WEBP"];
+  for (const option of outputFormat.options) {
+    option.hidden = !allowed.includes(option.value);
+  }
+  if (!allowed.includes(outputFormat.value)) outputFormat.value = allowed[0];
 }
 
 const operationTitles = {
   "image.convert": "convertTitle",
+  "image.from_jpg": "fromJpgTitle",
+  "image.watermark": "watermarkImageTitle",
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
   "image.meme": "memeTitle",
   "image.upscale": "upscaleTitle",
   "image.remove_background": "removeBackgroundTitle",
+  "image.editor": "editorTitle",
+  "image.crop": "cropImageTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
@@ -186,6 +231,8 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  syncOutputFormats(operation);
+  syncWatermarkControls();
   if (operation === "image.meme") outputFormat.value = "JPEG";
   if (operation === "image.upscale") outputFormat.value = "PNG";
   if (operation === "image.remove_background") outputFormat.value = "PNG";
@@ -201,7 +248,13 @@ function selectTool(operation) {
   submitButton.querySelector("[data-i18n]").textContent = t(submitKey);
   document.querySelector('[data-option="width"]').hidden = operation !== "image.resize";
   document.querySelector('[data-option="height"]').hidden = operation !== "image.resize";
-  document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress";
+  for (const name of ["crop-left", "crop-top", "crop-width", "crop-height"]) {
+    const label = document.querySelector(`[data-option="${name}"]`);
+    label.hidden = operation !== "image.crop";
+    label.querySelector("input").required = operation === "image.crop";
+  }
+  document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress"
+    && !(operation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value));
   document.querySelector('[data-option="degrees"]').hidden = !["image.rotate", "pdf.rotate"].includes(operation);
   document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
   document.querySelector('[data-option="meme-top"]').hidden = operation !== "image.meme";
@@ -210,32 +263,57 @@ function selectTool(operation) {
   document.querySelector('[data-option="upscale-scale"]').hidden = operation !== "image.upscale";
   document.querySelector('[data-option="upscale-limit"]').hidden = operation !== "image.upscale";
   document.querySelector('[data-option="remove-background-note"]').hidden = operation !== "image.remove_background";
-  formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf" || operation === "image.remove_background";
+  document.querySelectorAll('[data-option^="editor-"]').forEach((field) => {
+    field.hidden = operation !== "image.editor";
+  });
+  formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
-  fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && !["image.meme", "image.upscale", "image.remove_background"].includes(operation));
+  fileInput.accept = isPdf
+    ? ".pdf,application/pdf"
+    : operation === "image.from_jpg"
+      ? ".jpg,.jpeg,image/jpeg"
+      : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
+  if (operation !== "image.watermark") {
+    watermarkImage.value = "";
+    document.querySelector("#watermark-file-name").textContent = "";
+  }
   showFiles([]);
+  updateFormatTarget();
+}
+
+function syncWatermarkControls() {
+  const enabled = currentOperation === "image.watermark";
+  const imageMode = enabled && watermarkKind.value === "image";
+  const textMode = enabled && watermarkKind.value === "text";
+  document.querySelector('[data-option="watermark-kind"]').hidden = !enabled;
+  document.querySelector('[data-option="watermark-text"]').hidden = !textMode;
+  document.querySelector('[data-option="watermark-file"]').hidden = !imageMode;
+  document.querySelector('[data-option="watermark-position"]').hidden = !enabled;
+  document.querySelector('[data-option="watermark-opacity"]').hidden = !enabled;
+  watermarkText.required = textMode;
+  watermarkImage.required = imageMode;
 }
 
 const categoryOperations = {
   workflows: [],
   organize: ["pdf.merge", "pdf.split", "pdf.rotate"],
   optimize: ["pdf.compress", "image.compress"],
-  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.resize", "image.rotate"],
-  edit: ["pdf.watermark", "pdf.page_numbers"],
+  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.from_jpg", "image.resize", "image.rotate"],
+  edit: ["pdf.watermark", "pdf.page_numbers", "image.watermark"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background"],
+  images: ["image.convert", "image.from_jpg", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background", "image.editor", "image.crop", "image.watermark"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
+  "img-edit": ["image.crop", "image.watermark", "image.editor", "image.remove_background"],
+  "img-convert": ["image.convert", "image.from_jpg"],
   "img-create": ["image.meme", "image.upscale"],
-  "img-edit": ["image.remove_background"],
-  "img-convert": ["image.convert"],
   "img-security": [],
 };
 document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
@@ -265,7 +343,13 @@ function formatBytes(size) {
 }
 
 function showFiles(files) {
-  currentFiles = Array.from(files || []);
+  const incoming = Array.from(files || []);
+  if (currentOperation === "image.editor" && incoming.length > 1) {
+    formError.textContent = t("editorOneImage");
+    formError.hidden = false;
+    return;
+  }
+  currentFiles = incoming;
   void updateUpscaleDimensions();
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
@@ -348,6 +432,7 @@ function apiErrorKey(code) {
     invalid_file: "invalidFile", unsupported_format: "unsupportedFormat", file_too_large: "fileTooLarge",
     request_too_large: "requestTooLarge", processing_failed: "processingFailed", invalid_options: "invalidOptions",
     too_many_files: "tooManyFiles",
+    crop_out_of_bounds: "cropOutOfBounds",
   };
   return codes[code] || "genericError";
 }
@@ -402,6 +487,13 @@ async function pollJob(statusUrl) {
 }
 
 fileInput.addEventListener("change", () => showFiles(fileInput.files));
+watermarkKind.addEventListener("change", syncWatermarkControls);
+watermarkImage.addEventListener("change", () => {
+  document.querySelector("#watermark-file-name").textContent = watermarkImage.files[0]?.name || "";
+});
+document.querySelector("#watermark-opacity").addEventListener("input", (event) => {
+  document.querySelector("#watermark-opacity-value").textContent = `${event.target.value}%`;
+});
 document.querySelector("#remove-file").addEventListener("click", () => {
   fileInput.value = "";
   showFiles([]);
@@ -437,6 +529,15 @@ form.addEventListener("submit", async (event) => {
     fileInput.focus();
     return;
   }
+  if (currentOperation === "image.editor" &&
+      !document.querySelector("#editor-text").value.trim() &&
+      document.querySelector("#editor-filter").value === "original" &&
+      document.querySelector("#editor-frame").value === "none" &&
+      document.querySelector("#editor-sticker").value === "none") {
+    formError.textContent = t("invalidOptions");
+    formError.hidden = false;
+    return;
+  }
   clearInterval(pollTimer);
   jobResult.hidden = true;
   resetButton.hidden = true;
@@ -458,13 +559,47 @@ form.addEventListener("submit", async (event) => {
     if (document.querySelector("#width").value) options.width = document.querySelector("#width").value;
     if (document.querySelector("#height").value) options.height = document.querySelector("#height").value;
   }
+  if (currentOperation === "image.crop") {
+    options.left = document.querySelector("#crop-left").value;
+    options.top = document.querySelector("#crop-top").value;
+    options.width = document.querySelector("#crop-width").value;
+    options.height = document.querySelector("#crop-height").value;
+  }
   if (currentOperation === "image.compress") options.quality = document.querySelector("#quality").value;
+  if (currentOperation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value)) {
+    options.quality = document.querySelector("#quality").value;
+  }
+  if (currentOperation === "image.watermark") {
+    options.kind = watermarkKind.value;
+    options.position = document.querySelector("#watermark-position").value;
+    options.opacity = document.querySelector("#watermark-opacity").value;
+    if (options.kind === "text") options.text = watermarkText.value;
+  }
   if (currentOperation === "image.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.split") options.ranges = document.querySelector("#ranges").value;
+  if (currentOperation === "image.editor") {
+    options.text = document.querySelector("#editor-text").value;
+    options.text_size = document.querySelector("#editor-text-size").value;
+    options.text_position = document.querySelector("#editor-text-position").value;
+    options.text_color = document.querySelector("#editor-text-color").value;
+    options.opacity = document.querySelector("#editor-opacity").value;
+    options.filter = document.querySelector("#editor-filter").value;
+    options.frame = document.querySelector("#editor-frame").value;
+    options.frame_width = document.querySelector("#editor-frame-width").value;
+    options.frame_color = document.querySelector("#editor-frame-color").value;
+    options.sticker = document.querySelector("#editor-sticker").value;
+    options.sticker_position = document.querySelector("#editor-sticker-position").value;
+    options.sticker_size = document.querySelector("#editor-sticker-size").value;
+    options.sticker_color = document.querySelector("#editor-sticker-color").value;
+  }
   body.append("operation", currentOperation);
   body.append("options", JSON.stringify(options));
   currentFiles.forEach((file) => body.append("files", file, file.name));
+  if (currentOperation === "image.watermark" && watermarkKind.value === "image" && watermarkImage.files[0]) {
+    const overlay = watermarkImage.files[0];
+    body.append("watermark_image", overlay, overlay.name);
+  }
   try {
     const response = await fetch("/api/jobs", { method: "POST", body });
     const payload = await response.json();

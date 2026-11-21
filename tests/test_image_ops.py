@@ -64,7 +64,9 @@ def test_inspect_image_rejects_invalid_content(tmp_path):
 
 def test_inspect_image_rejects_unsupported_image_format(tmp_path):
     source = tmp_path / "animated.gif"
-    Image.new("RGB", (3, 2), "red").save(source, format="GIF")
+    first = Image.new("RGB", (3, 2), "red")
+    second = Image.new("RGB", (3, 2), "blue")
+    first.save(source, format="GIF", save_all=True, append_images=[second], duration=100)
 
     with pytest.raises(UnsupportedImageError):
         inspect_image(source)
