@@ -2,7 +2,7 @@
 
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
-**Review:** pending implementation
+**Review:** sent at ef554c9
 **Fix pass:** pending review
 
 ## Problem
