@@ -114,44 +114,52 @@ def process_image(
 def create_animated_gif(sources: list[Path], destination: Path) -> tuple[str, int]:
     if not sources:
         raise InvalidImageError
-    opened_images: list[Image.Image] = []
+    canvas_width = 0
+    canvas_height = 0
     try:
         for source in sources:
             with Image.open(source) as opened:
                 if (opened.format or "").upper() != "JPEG" or getattr(opened, "n_frames", 1) != 1:
                     raise UnsupportedImageError
-                opened_images.append(ImageOps.exif_transpose(opened).convert("RGB"))
-        canvas_size = (
-            max(image.width for image in opened_images),
-            max(image.height for image in opened_images),
-        )
-        if canvas_size[0] * canvas_size[1] * len(opened_images) > MAX_GIF_ANIMATION_PIXELS:
+                width, height = opened.size
+                if opened.getexif().get(274) in {5, 6, 7, 8}:
+                    width, height = height, width
+                canvas_width = max(canvas_width, width)
+                canvas_height = max(canvas_height, height)
+        canvas_size = (canvas_width, canvas_height)
+        if canvas_width * canvas_height * len(sources) > MAX_GIF_ANIMATION_PIXELS:
             raise InvalidImageError
         frames: list[Image.Image] = []
-        for image in opened_images:
-            frame = Image.new("RGB", canvas_size, "white")
-            position = (
-                (canvas_size[0] - image.width) // 2,
-                (canvas_size[1] - image.height) // 2,
+        try:
+            for source in sources:
+                with Image.open(source) as opened:
+                    image = ImageOps.exif_transpose(opened).convert("RGB")
+                    try:
+                        frame = Image.new("RGB", canvas_size, "white")
+                        position = (
+                            (canvas_width - image.width) // 2,
+                            (canvas_height - image.height) // 2,
+                        )
+                        frame.paste(image, position)
+                        frames.append(frame)
+                    finally:
+                        image.close()
+            frames[0].save(
+                destination,
+                format="GIF",
+                save_all=True,
+                append_images=frames[1:],
+                duration=500,
+                loop=0,
+                disposal=2,
+                optimize=False,
             )
-            frame.paste(image, position)
-            frames.append(frame)
-        frames[0].save(
-            destination,
-            format="GIF",
-            save_all=True,
-            append_images=frames[1:],
-            duration=500,
-            loop=0,
-            disposal=2,
-            optimize=False,
-        )
+        finally:
+            for frame in frames:
+                frame.close()
         return "image/gif", destination.stat().st_size
     except (OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise InvalidImageError from exc
-    finally:
-        for image in opened_images:
-            image.close()
 
 
 def convert_image(source: Path, destination: Path, output_format: str) -> tuple[str, int]:

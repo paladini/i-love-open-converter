@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
 **Review:** sent at ef554c9
-**Fix pass:** pending review
+**Fix pass:** done - preflight canvas dimensions and EXIF before pixel decode; release source frames promptly; cover pre-decode and no-partial-output limits
 
 ## Problem
 
@@ -81,7 +81,7 @@ New: nothing - existing job and artifact records store operation, options, input
 5. WHEN 2-10 JPEGs are submitted with GIF output THEN the worker SHALL return one animated GIF with frames in upload order, 500 ms duration and infinite looping.
 6. WHEN GIF frames have different dimensions THEN the worker SHALL center each unscaled frame on a white canvas with the maximum frame width and height.
 7. WHEN one JPEG is submitted with GIF output THEN the worker SHALL return a valid one-frame GIF.
-8. IF GIF animation canvas dimensions multiplied by frame count exceed 25 million pixels, the output SHALL fail without a partial download.
+8. IF GIF animation canvas dimensions multiplied by frame count exceed 25 million pixels, the worker SHALL reject from JPEG headers and EXIF before decoding pixels and produce no partial download.
 9. IF GIF output receives more than 10 inputs or malformed options THEN the API SHALL return `422` before creating a job.
 10. WHEN the feature ships THEN the PT-BR and English image workflow SHALL display the active catalog tool, GIF/PNG target choice, correct JPEG input filter and responsive layout without horizontal page overflow at 360 px.
 

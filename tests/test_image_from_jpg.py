@@ -119,12 +119,40 @@ def test_gif_animation_rejects_aggregate_pixel_limit(tmp_path, monkeypatch):
     Image.new("RGB", (4, 4), "red").save(first)
     Image.new("RGB", (4, 4), "blue").save(second)
     monkeypatch.setattr(image_ops, "MAX_GIF_ANIMATION_PIXELS", 20)
+    monkeypatch.setattr(
+        Image.Image,
+        "load",
+        lambda *_args, **_kwargs: pytest.fail("pixel decoding must follow the aggregate limit"),
+    )
     destination = tmp_path / "animation.gif"
 
     with pytest.raises(InvalidImageError):
         create_animated_gif([first, second], destination)
 
     assert not destination.exists()
+
+
+def test_oversized_gif_job_fails_without_download(settings, monkeypatch):
+    monkeypatch.setattr(image_ops, "MAX_GIF_ANIMATION_PIXELS", 20)
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(
+            client,
+            [
+                ("first.jpg", _jpeg((4, 4), "red"), "image/jpeg"),
+                ("second.jpg", _jpeg((4, 4), "blue"), "image/jpeg"),
+            ],
+            "GIF",
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status_url = response.json()["status_url"]
+        status = client.get(status_url).json()
+        assert status["state"] == "failed"
+        assert status["error"]["code"] == "invalid_file"
+        assert client.get(status_url + "/download").status_code == 409
+
+    output_dir = settings.jobs_dir / response.json()["job_id"] / "output"
+    assert not output_dir.exists()
 
 
 def test_from_jpg_rejects_non_jpeg_content_before_creating_a_job(settings):
@@ -139,6 +167,22 @@ def test_from_jpg_rejects_non_jpeg_content_before_creating_a_job(settings):
         assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
 
 
+def test_from_jpg_rejects_images_over_pixel_limit_before_creating_a_job(
+    settings, tmp_path, monkeypatch
+):
+    source = tmp_path / "large.jpg"
+    Image.new("RGB", (11, 11), "red").save(source, format="JPEG")
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 50)
+
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(client, [("large.jpg", source.read_bytes(), "image/jpeg")], "PNG")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_file"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
 @pytest.mark.parametrize("format_name", ["JPEG", "WEBP", "BMP", "bad"])
 def test_from_jpg_rejects_unsupported_output_format(settings, format_name):
     with TestClient(create_app(settings)) as client:
@@ -148,6 +192,20 @@ def test_from_jpg_rejects_unsupported_output_format(settings, format_name):
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_options"
+
+
+def test_from_jpg_rejects_malformed_options_before_creating_job(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.from_jpg", "options": "{"},
+            files={"files": ("source.jpg", _jpeg((4, 4), "red"), "image/jpeg")},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_options"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
 
 
 def test_gif_output_rejects_more_than_ten_jpegs(settings):
