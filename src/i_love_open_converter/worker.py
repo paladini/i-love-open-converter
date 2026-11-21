@@ -24,6 +24,8 @@ from .pdf_ops import (
     InvalidPdfError,
     MarkdownConversionError,
     NoEmbeddedImagesError,
+    PowerPointConversionError,
+    PowerPointUnavailableError,
     WordConversionError,
     WordUnavailableError,
     process_pdf,
@@ -98,6 +100,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.extract_images",
             "pdf.to_markdown",
             "pdf.to_word",
+            "pdf.to_powerpoint",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -205,6 +208,20 @@ def process_one_job(settings: Settings) -> bool:
         mark_failed(
             settings.database_path, job_id, "word_unavailable",
             "PDF para Word exige um worker Linux isolado da rede.", settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except PowerPointUnavailableError:
+        mark_failed(
+            settings.database_path, job_id, "powerpoint_unavailable",
+            "PDF para PowerPoint exige um worker Linux isolado da rede.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except PowerPointConversionError:
+        mark_failed(
+            settings.database_path, job_id, "powerpoint_failed",
+            "A conversão para PowerPoint falhou ou excedeu os limites de processamento.",
+            settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except WordConversionError:
