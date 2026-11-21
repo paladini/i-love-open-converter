@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import warnings
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ EDITOR_COLORS = {"black", "white", "red", "orange", "yellow", "green", "blue", "
 EDITOR_FILTERS = {"original", "grayscale", "sepia", "invert"}
 EDITOR_FRAMES = {"none", "solid", "double"}
 EDITOR_SIZES = {"small", "medium", "large"}
+EDITOR_STICKERS = {"none", "heart", "star", "sun", "check", "arrow", "speech"}
 EDITOR_COLOR_VALUES = {
     "black": (25, 30, 40),
     "white": (255, 255, 255),
@@ -165,6 +167,99 @@ def _apply_editor_frame(image: Image.Image, options: dict[str, Any]) -> None:
             )
 
 
+def _sticker_points(kind: str, x: int, y: int, side: int) -> tuple[str, list[tuple[int, int]]]:
+    half = side // 2
+    if kind == "heart":
+        points = [
+            (half, side),
+            (side * 0.04, side * 0.42),
+            (side * 0.08, side * 0.20),
+            (side * 0.25, side * 0.08),
+            (half, side * 0.34),
+            (side * 0.75, side * 0.08),
+            (side * 0.92, side * 0.20),
+            (side * 0.96, side * 0.42),
+        ]
+        return "polygon", [(x + round(px), y + round(py)) for px, py in points]
+    if kind == "star":
+        points = []
+        for index in range(10):
+            angle = -math.pi / 2 + index * math.pi / 5
+            radius = side * (0.5 if index % 2 == 0 else 0.22)
+            points.append(
+                (
+                    round(x + half + math.cos(angle) * radius),
+                    round(y + half + math.sin(angle) * radius),
+                )
+            )
+        return "polygon", points
+    if kind == "arrow":
+        return "polygon", [
+            (x, y + side * 0.35),
+            (x + side * 0.58, y + side * 0.35),
+            (x + side * 0.58, y),
+            (x + side, y + half),
+            (x + side * 0.58, y + side),
+            (x + side * 0.58, y + side * 0.65),
+            (x, y + side * 0.65),
+        ]
+    return kind, [(x, y), (x + side, y + side)]
+
+
+def _apply_editor_sticker(image: Image.Image, options: dict[str, Any]) -> None:
+    kind = options["sticker"]
+    if kind == "none":
+        return
+    factor = {"small": 0.08, "medium": 0.12, "large": 0.18}[options["sticker_size"]]
+    side = min(max(12, round(min(image.size) * factor)), min(image.size))
+    x, y = _editor_offset(image.size, (side, side), options["sticker_position"])
+    draw = ImageDraw.Draw(image)
+    shape, points = _sticker_points(kind, x, y, side)
+    color = (*EDITOR_COLOR_VALUES[options["sticker_color"]], 255)
+    if shape == "polygon":
+        draw.polygon(points, fill=color)
+    elif shape == "sun":
+        draw.ellipse((*points[0], *points[1]), fill=color)
+        center_x, center_y = x + side // 2, y + side // 2
+        ray = max(2, side // 5)
+        for index in range(8):
+            angle = math.pi * index / 4
+            start = (
+                round(center_x + math.cos(angle) * side * 0.53),
+                round(center_y + math.sin(angle) * side * 0.53),
+            )
+            end = (
+                round(center_x + math.cos(angle) * (side * 0.53 + ray)),
+                round(center_y + math.sin(angle) * (side * 0.53 + ray)),
+            )
+            draw.line((start, end), fill=color, width=max(1, side // 12))
+    elif shape == "check":
+        draw.line(
+            (
+                x + side * 0.10,
+                y + side * 0.53,
+                x + side * 0.40,
+                y + side * 0.82,
+                x + side * 0.92,
+                y + side * 0.18,
+            ),
+            fill=color,
+            width=max(2, side // 8),
+            joint="curve",
+        )
+    else:
+        draw.rounded_rectangle((*points[0], *points[1]), radius=max(2, side // 5), fill=color)
+        if shape == "speech":
+            draw.polygon(
+                [
+                    (x + side * 0.22, y + side * 0.82),
+                    (x + side * 0.18, y + side),
+                    (x + side * 0.48, y + side * 0.82),
+                ],
+                fill=color,
+            )
+
+
 def _apply_editor(image: Image.Image, options: dict[str, Any]) -> Image.Image:
     edited = _editor_filter(image, options["filter"])
     if edited.mode != "RGBA":
@@ -172,6 +267,7 @@ def _apply_editor(image: Image.Image, options: dict[str, Any]) -> Image.Image:
         edited.close()
         edited = rgba
     _apply_editor_frame(edited, options)
+    _apply_editor_sticker(edited, options)
     _apply_editor_text(edited, options)
     return edited
 def _apply_image_watermark(

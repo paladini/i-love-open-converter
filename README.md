@@ -41,7 +41,7 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 - Compress JPEG and WebP output with a quality setting.
 - Convert one or more JPG images to PNG or combine them into an animated GIF.
 - Rotate images by 90°, 180°, or 270°.
-- Edit one image with text, local filters, and simple frames.
+- Edit one image with text, local filters, simple frames, and built-in vector stickers.
 - Crop images with pixel coordinates and dimensions after applying EXIF orientation.
 - Add text or image watermarks to image batches with placement and opacity controls.
 
