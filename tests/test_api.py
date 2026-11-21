@@ -1030,6 +1030,7 @@ def test_redaction_rejects_existing_pending_annotations_on_selected_page(setting
 def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     with TestClient(create_app(settings)) as client:
         response = client.get("/")
+        script = client.get("/static/js/app.js").text
 
     assert response.status_code == 200
     assert "Imagens" in response.text
@@ -1044,6 +1045,13 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'data-category="img-optimize"' in response.text
     assert 'data-tool="image.meme"' in response.text
     assert 'id="meme-top-text"' in response.text
+    assert 'memeTitle: "Criar meme"' in script
+    assert 'memeTitle: "Create meme"' in script
+    assert 'memeTopLabel: "Texto superior"' in script
+    assert 'memeTopLabel: "Top text"' in script
+    assert 'memeBottomLabel: "Texto inferior"' in script
+    assert 'memeBottomLabel: "Bottom text"' in script
+    assert 'operation !== "image.meme"' in script
 
 
 def test_meme_generator_creates_local_jpeg_and_rejects_invalid_requests(settings, jpeg_bytes):
@@ -1088,17 +1096,27 @@ def test_meme_generator_creates_local_jpeg_and_rejects_invalid_requests(settings
             data={"operation": "image.meme", "options": json.dumps({"top_text": "MEME"})},
             files=_multipart("photo.jpg", b"not an image"),
         )
+        invalid_format = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.meme",
+                "options": json.dumps({"top_text": "MEME", "format": "BMP"}),
+            },
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
 
     assert download.status_code == 200
     assert download.headers["content-type"] == "image/jpeg"
     with Image.open(BytesIO(download.content)) as meme:
         assert meme.format == "JPEG"
         assert meme.size == (16, 12)
-    for response in (empty, too_long, multiple):
+    for response in (empty, too_long, multiple, invalid_format):
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "invalid_options"
     assert unsupported_extension.status_code == 415
     assert invalid_content.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 1
 
 
 def test_meme_worker_failure_has_no_partial_download(settings, jpeg_bytes, monkeypatch):

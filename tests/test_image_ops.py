@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import pytest
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
 from i_love_open_converter.image_ops import (
     InvalidImageError,
     UnsupportedImageError,
+    _fit_meme_caption,
     convert_image,
     inspect_image,
     process_image,
@@ -160,3 +161,49 @@ def test_meme_applies_exif_orientation_before_drawing_captions(tmp_path):
         assert changed
         assert all(y < 20 for _, y in changed)
     baseline.close()
+
+
+def test_meme_caption_is_centered_bold_and_has_a_dark_outline(tmp_path):
+    source = tmp_path / "plain.png"
+    destination = tmp_path / "styled.png"
+    base = Image.new("RGB", (160, 100), (127, 127, 127))
+    base.save(source)
+    process_image(source, destination, "image.meme", {"format": "PNG", "top_text": "TEST"})
+
+    with Image.open(destination) as rendered:
+        top = rendered.convert("RGB").crop((0, 0, 160, 50))
+        diff = ImageChops.difference(base, rendered.convert("RGB")).convert("L")
+        bbox = diff.crop((0, 0, 160, 50)).getbbox()
+        assert bbox is not None
+        assert abs((bbox[0] + bbox[2]) / 2 - 80) <= 2
+        top_pixels = list(top.get_flattened_data())
+        assert (0, 0, 0) in top_pixels
+        assert (255, 255, 255) in top_pixels
+
+        regular = Image.new("RGB", (160, 100), (127, 127, 127))
+        regular_draw = ImageDraw.Draw(regular)
+        font = ImageFont.load_default(size=20)
+        bounds = regular_draw.textbbox((0, 0), "TEST", font=font)
+        x = (160 - (bounds[2] - bounds[0])) // 2 - bounds[0]
+        regular_draw.text((x, 2), "TEST", font=font, fill="white")
+        regular_white = sum(
+            pixel == (255, 255, 255) for pixel in regular.crop((0, 0, 160, 50)).get_flattened_data()
+        )
+        styled_white = sum(pixel == (255, 255, 255) for pixel in top_pixels)
+        assert styled_white > regular_white
+    base.close()
+
+
+def test_meme_caption_fit_wraps_and_marks_text_that_cannot_fit():
+    image = Image.new("RGB", (80, 60), "gray")
+    draw = ImageDraw.Draw(image)
+
+    font, lines, line_height = _fit_meme_caption(
+        draw, "LONG CAPTION " * 25, max_width=72, max_height=4, base_font_size=12
+    )
+
+    assert len(lines) == 2
+    assert lines[-1].endswith("…")
+    assert all(draw.textlength(line, font=font) <= 72 for line in lines)
+    assert len(lines) * line_height <= 4
+    image.close()

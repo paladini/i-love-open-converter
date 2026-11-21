@@ -120,40 +120,56 @@ def _draw_meme_captions(image: Image.Image, options: dict[str, Any]) -> None:
     for caption, position in captions:
         if not caption:
             continue
-        font_size = base_font_size
-        chosen_font = ImageFont.load_default(size=font_size)
-        lines = _wrap_caption(draw, caption, chosen_font, max_width)
         max_height = max(1, (image.height - inset * 2) // 2)
-        line_height = max(1, font_size + max(1, font_size // 8))
-        while font_size > 1 and (len(lines) * line_height) > max_height:
-            font_size -= 1
-            chosen_font = ImageFont.load_default(size=font_size)
-            lines = _wrap_caption(draw, caption, chosen_font, max_width)
-            line_height = max(1, font_size + max(1, font_size // 8))
-
-        max_lines = max(1, max_height // line_height)
-        if len(lines) > max_lines:
-            lines = lines[:max_lines]
-            last = lines[-1]
-            while last and draw.textlength(f"{last}…", font=chosen_font) > max_width:
-                last = last[:-1]
-            lines[-1] = f"{last}…" if last else "…"
+        chosen_font, lines, line_height = _fit_meme_caption(
+            draw, caption, max_width, max_height, base_font_size
+        )
         block_height = line_height * len(lines)
         y = inset if position == "top" else max(inset, image.height - inset - block_height)
         for line in lines:
-            bounds = draw.textbbox(
-                (0, 0), line, font=chosen_font, stroke_width=max(2, font_size // 14)
-            )
-            x = (image.width - (bounds[2] - bounds[0])) // 2 - bounds[0]
+            stroke_width = max(2, chosen_font.size // 14)
+            bounds = draw.textbbox((0, 0), line, font=chosen_font, stroke_width=stroke_width)
+            text_width = bounds[2] - bounds[0]
+            x = (image.width - text_width - 1) // 2 - bounds[0]
             draw.text(
                 (x, y),
                 line,
                 font=chosen_font,
                 fill="white",
-                stroke_width=max(2, font_size // 14),
+                stroke_width=stroke_width,
                 stroke_fill="black",
             )
+            # Pillow's bundled Aileron font is regular. A one-pixel white overdraw
+            # thickens the glyphs while preserving the dark stroke around them.
+            draw.text((x + 1, y), line, font=chosen_font, fill="white")
             y += line_height
+
+
+def _fit_meme_caption(
+    draw: ImageDraw.ImageDraw,
+    caption: str,
+    max_width: int,
+    max_height: int,
+    base_font_size: int,
+) -> tuple[ImageFont.ImageFont, list[str], int]:
+    font_size = base_font_size
+    font = ImageFont.load_default(size=font_size)
+    lines = _wrap_caption(draw, caption, font, max_width)
+    line_height = max(1, font_size + max(1, font_size // 8))
+    while font_size > 1 and len(lines) * line_height > max_height:
+        font_size -= 1
+        font = ImageFont.load_default(size=font_size)
+        lines = _wrap_caption(draw, caption, font, max_width)
+        line_height = max(1, font_size + max(1, font_size // 8))
+
+    max_lines = max(1, max_height // line_height)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        last = lines[-1]
+        while last and draw.textlength(f"{last}…", font=font) > max_width:
+            last = last[:-1]
+        lines[-1] = f"{last}…" if last else "…"
+    return font, lines, line_height
 
 
 def _wrap_caption(

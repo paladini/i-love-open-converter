@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\\Users\\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none
 **Review:** sent at 79290af
-**Fix pass:** pending review
+**Fix pass:** done - consolidated the duplicate plan sections, added a one-pixel bold overdraw, tested centering/wrapping/outline/ellipsis and fail-before-queue for invalid meme requests, and checked PT-BR/English UI labels; full test suite, Ruff, JavaScript syntax, diff check, and plan validation pass
 
 ## Problem
 
@@ -57,7 +57,7 @@ None - no schema, public route signature, or new runtime dependency is introduce
 
 1. WHEN a visitor selects the `Gerador de memes` card THEN the page SHALL show one image picker, top and bottom caption fields, an output-format selector defaulting to JPEG, and the `Criar meme` action.
 2. WHEN the visitor uploads one supported static image, enters at least one non-whitespace caption, selects JPEG, PNG, or WebP, and submits THEN the existing job flow SHALL return one downloadable image with the selected format and oriented input dimensions.
-3. WHEN captions are rendered THEN the system SHALL center each caption, wrap it to the image width, scale text to fit the top or bottom half, draw high-contrast white glyphs with a dark outline, and end with an ellipsis when a small image cannot show the entire caption without changing image dimensions.
+3. WHEN captions are rendered THEN the system SHALL center each caption, wrap it to the image width, scale text to fit the top or bottom half, draw visibly bold high-contrast white glyphs with a dark outline, and end with an ellipsis when a small image cannot show the entire caption without changing image dimensions.
 4. WHEN a PNG or WebP image with transparency is processed THEN the system SHALL retain alpha; WHEN a transparent image is output as JPEG THEN the system SHALL composite it onto white.
 5. WHEN an image has EXIF orientation THEN the system SHALL apply that orientation before sizing or positioning captions and retain the resulting oriented dimensions.
 6. IF the request has zero or multiple images, no non-whitespace caption, a field longer than 300 Unicode characters, or an unsupported output format THEN the API SHALL return 422 before creating a job.
@@ -76,7 +76,7 @@ None - no schema, public route signature, or new runtime dependency is introduce
 | Decision | Chosen default | Rationale | Confirmed? |
 | --- | --- | --- | --- |
 | Image/template source | User supplies one image; no stock templates are bundled | Avoids third-party image licensing and keeps uploads within the existing local tool flow | y - user delegated completion of the roadmap |
-| Caption style | Centered white text with dark outline; local bundled Pillow default font | Keeps captions readable without fetching remote fonts or adding a dependency | y - user delegated implementation details |
+| Caption style | Centered white text with dark outline and a one-pixel bold overdraw using Pillow's bundled font | Keeps captions readable without fetching remote fonts or adding a dependency | y - user delegated implementation details |
 | Empty captions | Both fields may be empty individually, but at least one must contain non-whitespace text | A blank caption should not produce an unchanged result | y - user delegated implementation details |
 | Caption length | Up to 300 Unicode characters per field | Bounds layout work and supports a short multiline caption | y - user delegated implementation details |
 | JPEG transparency | Composite onto white | JPEG cannot preserve alpha; white is a predictable background | y - user delegated implementation details |
@@ -87,43 +87,3 @@ None - no schema, public route signature, or new runtime dependency is introduce
 
 - nothing - no screenshots, captures, or external source are provided for this feature.
 
-## Surface
-
-- Activate the existing meme generator catalog card.
-- Add localized top-caption, bottom-caption, and output-format controls.
-- Allow exactly one input image for this operation.
-- Reuse existing upload validation, progress, job status, and download behavior.
-
-## Landing
-
-- `src/i_love_open_converter/image_ops.py`: local caption rendering, sizing and output.
-- `src/i_love_open_converter/main.py`: operation registration and strict option validation.
-- `src/i_love_open_converter/worker.py`: job dispatch.
-- `src/i_love_open_converter/static/js/app.js`: operation selection and localized controls.
-- `src/i_love_open_converter/templates/index.html`: active catalog entry and controls.
-- `tests/`: pixel, validation, queue, output and UI coverage.
-- README in PT-BR and English: format and behavior limits.
-
-## Criteria
-
-### S1: Create a local meme image (P1)
-
-1. GIVEN a supported static image and optional top/bottom text WHEN submitted THEN the existing job flow returns one downloadable meme in the requested PNG/JPEG/WebP format.
-2. GIVEN captions WHEN rendered THEN each caption uses bold high-contrast text with a dark outline, wraps within image bounds, and auto-scales without changing output dimensions.
-3. GIVEN an EXIF-oriented image WHEN processed THEN orientation is applied before caption placement and output dimensions match the oriented image.
-4. GIVEN a transparent image WHEN PNG/WebP is selected THEN alpha is retained; WHEN JPEG is selected THEN transparent pixels are composited onto the documented light background.
-5. GIVEN invalid formats, text limits, multiple files, or malformed settings WHEN submitted THEN the API returns 422 before creating a job.
-6. GIVEN a worker error WHEN a meme job runs THEN the job fails and no partial download is available.
-7. GIVEN PT-BR and English visitors WHEN opening the tool THEN title, hint, controls, validation errors and action text are localized and the tool is usable on a 360 px viewport.
-
-## Out of scope
-
-- Stock or bundled photographic templates, externally licensed meme images, remote fonts, stickers, freeform canvas editing, batch generation, and AI image generation.
-- User claims or guarantees about copyright status of uploaded images.
-
-## Assumptions
-
-- The feature is local-only, has no tracking, and processes only one input at a time.
-- Empty top and bottom captions are valid; at least one must contain non-whitespace text.
-- Caption limit is 300 Unicode characters per field; output dimensions retain existing project pixel and byte limits.
-- JPEG background for transparent input is white.
