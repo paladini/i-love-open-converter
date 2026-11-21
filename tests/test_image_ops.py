@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
+import i_love_open_converter.image_ops as image_ops
 from i_love_open_converter.image_ops import (
     InvalidImageError,
     UnsupportedImageError,
@@ -273,3 +274,31 @@ def test_upscale_applies_exif_orientation_before_multiplying_dimensions(tmp_path
 
     with Image.open(destination) as result:
         assert result.size == (24, 16)
+
+
+def test_upscale_uses_lanczos_then_fixed_unsharp_mask(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "upscaled.png"
+    Image.new("RGB", (8, 6), (20, 60, 100)).save(source)
+    events = []
+    original_resize = Image.Image.resize
+    original_sharpen = image_ops._apply_unsharp_mask
+
+    def track_resize(image, size, resample=None, **kwargs):
+        if size == (16, 12):
+            events.append(("resize", resample))
+        return original_resize(image, size, resample=resample, **kwargs)
+
+    def track_sharpen(image):
+        events.append(("sharpen",))
+        return original_sharpen(image)
+
+    monkeypatch.setattr(Image.Image, "resize", track_resize)
+    monkeypatch.setattr(image_ops, "_apply_unsharp_mask", track_sharpen)
+
+    process_image(source, destination, "image.upscale", {"format": "PNG", "scale": 2})
+
+    assert events == [
+        ("resize", Image.Resampling.LANCZOS),
+        ("sharpen",),
+    ]

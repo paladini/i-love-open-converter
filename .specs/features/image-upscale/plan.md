@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\\Users\\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none
 **Review:** sent at f059f106d8c96dea4769418ac611d9a6df8467f3
-**Fix pass:** pending review
+**Fix pass:** done - show exact predicted output dimensions after selecting an image and changing scale, add PT-BR/English UI regression assertions, and protect Lanczos-before-unsharp processing with an operation-order test.
 
 ## Problem
 
@@ -54,7 +54,7 @@ None - no schema, public route signature, or runtime dependency is introduced; e
 
 **Acceptance Criteria**
 
-1. WHEN a visitor selects the `Melhorar imagem` card THEN the page SHALL show a single-image picker, a 2x/4x scale selector defaulting to 2x, a PNG/JPEG/WebP output selector, a visible 40-megapixel output limit, and a localized action.
+1. WHEN a visitor selects the `Melhorar imagem` card THEN the page SHALL show a single-image picker, a 2x/4x scale selector defaulting to 2x, a PNG/JPEG/WebP output selector, a visible 40-megapixel output limit, and a localized action; after image selection it SHALL show the exact predicted output width and height before job submission.
 2. WHEN a visitor submits one supported image with scale 2 or 4 THEN the existing job flow SHALL return one image whose oriented width and height are each multiplied by the selected scale.
 3. WHEN the image is resized THEN the worker SHALL use Pillow Lanczos resampling followed by the fixed unsharp mask and SHALL preserve oriented dimensions apart from the selected scale.
 4. WHEN a transparent PNG or WebP is upscaled to PNG or WebP THEN the system SHALL retain alpha; WHEN JPEG is selected THEN transparent pixels SHALL be composited onto white.

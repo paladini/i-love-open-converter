@@ -1045,6 +1045,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'data-category="img-optimize"' in response.text
     assert 'data-tool="image.meme"' in response.text
     assert 'data-tool="image.upscale"' in response.text
+    assert 'id="upscale-dimensions"' in response.text
     assert 'id="meme-top-text"' in response.text
     assert 'memeTitle: "Criar meme"' in script
     assert 'memeTitle: "Create meme"' in script
@@ -1057,6 +1058,12 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'upscaleTitle: "Upscale image"' in script
     assert 'upscaleScaleLabel: "Escala"' in script
     assert 'upscaleScaleLabel: "Scale"' in script
+    assert 'upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP)."' in script
+    assert (
+        'upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP)."' in script
+    )
+    assert "createImageBitmap(currentFiles[0])" in script
+    assert 'document.querySelector("#upscale-scale").addEventListener("change"' in script
 
 
 def test_meme_generator_creates_local_jpeg_and_rejects_invalid_requests(settings, jpeg_bytes):
