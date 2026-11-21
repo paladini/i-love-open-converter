@@ -2,8 +2,8 @@
 
 **Approved:** 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o tlc-spec-lean até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** pass - the fresh independent review of commit `21becc1` found no blockers; see `review.md`.
+**Fix pass:** done - close both earlier P2 UX findings; the post-build review passed with no further changes.
 
 ## Problem
 
