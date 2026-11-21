@@ -344,3 +344,27 @@ def test_background_removal_uses_one_cached_local_session(tmp_path, monkeypatch)
         with Image.open(tmp_path / f"cutout-{index}.png") as result:
             assert result.mode == "RGBA"
             assert result.size == (8, 6)
+
+
+def test_background_removal_applies_exif_orientation_before_inference(tmp_path, monkeypatch):
+    source = tmp_path / "rotated.jpg"
+    destination = tmp_path / "cutout.png"
+    original = Image.new("RGB", (8, 12), "blue")
+    exif = Image.Exif()
+    exif[274] = 6
+    original.save(source, exif=exif)
+    original.close()
+    seen_sizes = []
+
+    def fake_remove(image):
+        seen_sizes.append(image.size)
+        return image.convert("RGBA")
+
+    monkeypatch.setattr(image_ops, "_remove_image_background", fake_remove)
+
+    process_image(source, destination, "image.remove_background", {"format": "PNG"})
+
+    assert seen_sizes == [(12, 8)]
+    with Image.open(destination) as result:
+        assert result.size == (12, 8)
+        assert result.mode == "RGBA"

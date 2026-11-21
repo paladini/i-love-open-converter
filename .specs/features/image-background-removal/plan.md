@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user delegated completing the application roadmap and implementation choices under tlc-spec-lean.
 **Settled mid-build:** none
 **Review:** sent at f3652639c6094c38b67827730dd36365ae87fd76
-**Fix pass:** pending review
+**Fix pass:** done - add EXIF-orientation coverage to background-removal processing and a deployment regression check tying the pinned model URL/checksum/path/U2NET_HOME to the network-isolated worker.
 
 ## Problem
 
