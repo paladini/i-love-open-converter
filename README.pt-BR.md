@@ -42,6 +42,9 @@ futuras do projeto.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Girar imagens em 90°, 180° ou 270°.
+- Ampliar uma imagem em 2x ou 4x com interpolação Lanczos e nitidez leve, tudo
+  localmente. Essa interpolação não recupera detalhes que não existem no
+  original; a saída é limitada a 40 megapixels.
 - Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
   e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
   à imagem; em imagens pequenas, o texto que não couber termina com reticências.

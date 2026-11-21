@@ -62,6 +62,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.compress",
             "image.rotate",
             "image.meme",
+            "image.upscale",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
             if not input_artifacts:

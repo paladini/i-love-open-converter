@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
+import i_love_open_converter.image_ops as image_ops
 from i_love_open_converter.image_ops import (
     InvalidImageError,
     UnsupportedImageError,
@@ -207,3 +208,97 @@ def test_meme_caption_fit_wraps_and_marks_text_that_cannot_fit():
     assert all(draw.textlength(line, font=font) <= 72 for line in lines)
     assert len(lines) * line_height <= 4
     image.close()
+
+
+@pytest.mark.parametrize("scale", [2, 4])
+@pytest.mark.parametrize(
+    ("output_format", "expected_mode"), [("PNG", "RGBA"), ("WEBP", "RGBA"), ("JPEG", "RGB")]
+)
+def test_upscale_uses_selected_dimensions_and_preserves_alpha(
+    tmp_path, scale, output_format, expected_mode
+):
+    source = tmp_path / "transparent.png"
+    destination = tmp_path / f"upscaled.{output_format.lower()}"
+    image = Image.new("RGBA", (8, 6), (220, 30, 50, 0))
+    for x in range(4, 8):
+        for y in range(6):
+            image.putpixel((x, y), (220, 30, 50, 255))
+    image.save(source)
+
+    process_image(
+        source,
+        destination,
+        "image.upscale",
+        {"format": output_format, "scale": scale},
+    )
+
+    with Image.open(destination) as result:
+        assert result.size == (8 * scale, 6 * scale)
+        assert result.mode == expected_mode
+        if expected_mode == "RGBA":
+            assert result.getchannel("A").getextrema() == (0, 255)
+        else:
+            assert min(result.getpixel((1, 5))) > 240
+    image.close()
+
+
+def test_upscale_converts_palette_transparency_before_lanczos_resampling(tmp_path):
+    source = tmp_path / "palette.png"
+    destination = tmp_path / "palette-upscaled.png"
+    image = Image.new("P", (8, 6), 0)
+    image.putpalette([255, 0, 0, 0, 0, 255] + [0, 0, 0] * 254)
+    for x in range(4, 8):
+        for y in range(6):
+            image.putpixel((x, y), 1)
+    image.save(source, transparency=0)
+
+    process_image(source, destination, "image.upscale", {"format": "PNG", "scale": 2})
+
+    with Image.open(destination) as result:
+        assert result.mode == "RGBA"
+        assert result.size == (16, 12)
+        assert result.getchannel("A").getextrema() == (0, 255)
+    image.close()
+
+
+def test_upscale_applies_exif_orientation_before_multiplying_dimensions(tmp_path):
+    source = tmp_path / "rotated.jpg"
+    destination = tmp_path / "oriented-upscale.png"
+    image = Image.new("RGB", (8, 12), "blue")
+    exif = Image.Exif()
+    exif[274] = 6
+    image.save(source, format="JPEG", exif=exif)
+    image.close()
+
+    process_image(source, destination, "image.upscale", {"format": "PNG", "scale": 2})
+
+    with Image.open(destination) as result:
+        assert result.size == (24, 16)
+
+
+def test_upscale_uses_lanczos_then_fixed_unsharp_mask(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "upscaled.png"
+    Image.new("RGB", (8, 6), (20, 60, 100)).save(source)
+    events = []
+    original_resize = Image.Image.resize
+    original_sharpen = image_ops._apply_unsharp_mask
+
+    def track_resize(image, size, resample=None, **kwargs):
+        if size == (16, 12):
+            events.append(("resize", resample))
+        return original_resize(image, size, resample=resample, **kwargs)
+
+    def track_sharpen(image):
+        events.append(("sharpen",))
+        return original_sharpen(image)
+
+    monkeypatch.setattr(Image.Image, "resize", track_resize)
+    monkeypatch.setattr(image_ops, "_apply_unsharp_mask", track_sharpen)
+
+    process_image(source, destination, "image.upscale", {"format": "PNG", "scale": 2})
+
+    assert events == [
+        ("resize", Image.Resampling.LANCZOS),
+        ("sharpen",),
+    ]

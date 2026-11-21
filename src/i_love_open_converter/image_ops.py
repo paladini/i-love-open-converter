@@ -4,10 +4,11 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, UnidentifiedImageError
 
 INPUT_FORMATS = {"JPEG", "PNG", "WEBP", "BMP", "TIFF"}
 OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP"}
+MAX_UPSCALE_PIXELS = 40_000_000
 Image.MAX_IMAGE_PIXELS = 100_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
 
@@ -30,6 +31,25 @@ def inspect_image(path: Path) -> tuple[str, str]:
                 raise UnsupportedImageError
             image.verify()
             return image_format, image.get_format_mimetype() or "application/octet-stream"
+    except UnsupportedImageError:
+        raise
+    except (
+        UnidentifiedImageError,
+        OSError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ) as exc:
+        raise InvalidImageError from exc
+
+
+def inspect_image_dimensions(path: Path) -> tuple[int, int]:
+    try:
+        with Image.open(path) as opened:
+            if (opened.format or "").upper() not in INPUT_FORMATS or getattr(
+                opened, "n_frames", 1
+            ) != 1:
+                raise UnsupportedImageError
+            return ImageOps.exif_transpose(opened).size
     except UnsupportedImageError:
         raise
     except (
@@ -72,6 +92,17 @@ def process_image(
         elif operation == "image.rotate":
             degrees = int(options["degrees"])
             image = image.rotate(-degrees, expand=True)
+        elif operation == "image.upscale":
+            scale = int(options["scale"])
+            target = (image.width * scale, image.height * scale)
+            if scale not in {2, 4} or target[0] * target[1] > MAX_UPSCALE_PIXELS:
+                raise InvalidImageError
+            if image.mode in {"1", "P", "PA"}:
+                image = image.convert("RGBA" if "transparency" in image.info else "RGB")
+            elif image.mode not in {"L", "LA", "RGB", "RGBA"}:
+                image = image.convert("RGB")
+            image = image.resize(target, resample=Image.Resampling.LANCZOS)
+            image = _apply_unsharp_mask(image)
         elif operation == "image.meme":
             image = image.convert("RGBA")
             _draw_meme_captions(image, options)
@@ -105,6 +136,27 @@ def process_image(
             content_type = "image/webp"
 
     return content_type, destination.stat().st_size
+
+
+def _apply_unsharp_mask(image: Image.Image) -> Image.Image:
+    unsharp = ImageFilter.UnsharpMask(radius=1.0, percent=100, threshold=3)
+    if image.mode == "RGBA":
+        alpha = image.getchannel("A")
+        sharpened = image.convert("RGB").filter(unsharp).convert("RGBA")
+        sharpened.putalpha(alpha)
+        return sharpened
+    if image.mode == "LA":
+        gray, alpha = image.split()
+        return Image.merge("LA", (gray.filter(unsharp), alpha))
+    if image.mode == "P" and "transparency" in image.info:
+        rgba = image.convert("RGBA")
+        alpha = rgba.getchannel("A")
+        sharpened = rgba.convert("RGB").filter(unsharp).convert("RGBA")
+        sharpened.putalpha(alpha)
+        return sharpened
+    if image.mode == "P":
+        image = image.convert("RGB")
+    return image.filter(unsharp)
 
 
 def _draw_meme_captions(image: Image.Image, options: dict[str, Any]) -> None:

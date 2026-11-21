@@ -8,7 +8,7 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
-    imageGroup: "Imagens", imageCount: "13 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    imageGroup: "Imagens", imageCount: "14 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
@@ -17,6 +17,7 @@ const messages = {
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
     imageToPdfHint: "Uma página para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
     memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme",
+    upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -49,7 +50,7 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
-    imageGroup: "Images", imageCount: "13 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    imageGroup: "Images", imageCount: "14 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
@@ -58,6 +59,7 @@ const messages = {
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
     imageToPdfHint: "One page for each image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
     memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme",
+    upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -164,6 +166,7 @@ const operationTitles = {
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
   "image.meme": "memeTitle",
+  "image.upscale": "upscaleTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
@@ -181,6 +184,7 @@ function selectTool(operation) {
   }
   currentOperation = operation;
   if (operation === "image.meme") outputFormat.value = "JPEG";
+  if (operation === "image.upscale") outputFormat.value = "PNG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -199,10 +203,12 @@ function selectTool(operation) {
   document.querySelector('[data-option="meme-top"]').hidden = operation !== "image.meme";
   document.querySelector('[data-option="meme-bottom"]').hidden = operation !== "image.meme";
   if (operation === "image.meme") submitButton.querySelector("[data-i18n]").textContent = t("memeButton");
+  document.querySelector('[data-option="upscale-scale"]').hidden = operation !== "image.upscale";
+  document.querySelector('[data-option="upscale-limit"]').hidden = operation !== "image.upscale";
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
   fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.meme");
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && !["image.meme", "image.upscale"].includes(operation));
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
   fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
@@ -220,9 +226,9 @@ const categoryOperations = {
   edit: ["pdf.watermark", "pdf.page_numbers"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme"],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
-  "img-create": ["image.meme"],
+  "img-create": ["image.meme", "image.upscale"],
   "img-edit": [],
   "img-convert": ["image.convert"],
   "img-security": [],
@@ -255,6 +261,7 @@ function formatBytes(size) {
 
 function showFiles(files) {
   currentFiles = Array.from(files || []);
+  void updateUpscaleDimensions();
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
   if (currentFiles.length) {
@@ -285,6 +292,32 @@ function showFiles(files) {
     selectedSize.textContent = `${currentFiles.length} · ${formatBytes(totalSize)}`;
   }
   clearError();
+}
+
+let dimensionRequestId = 0;
+async function updateUpscaleDimensions() {
+  const preview = document.querySelector("#upscale-dimensions");
+  const requestId = ++dimensionRequestId;
+  preview.hidden = true;
+  if (currentOperation !== "image.upscale" || !currentFiles.length) return;
+  try {
+    const bitmap = await createImageBitmap(currentFiles[0]);
+    if (requestId !== dimensionRequestId || currentOperation !== "image.upscale") {
+      bitmap.close();
+      return;
+    }
+    const scale = Number(document.querySelector("#upscale-scale").value);
+    const width = bitmap.width * scale;
+    const height = bitmap.height * scale;
+    bitmap.close();
+    preview.textContent = t("upscaleDimensions")
+      .replace("{width}", width.toLocaleString(currentLanguage))
+      .replace("{height}", height.toLocaleString(currentLanguage))
+      .replace("{megapixels}", ((width * height) / 1_000_000).toLocaleString(currentLanguage, { maximumFractionDigits: 2 }));
+    preview.hidden = false;
+  } catch {
+    preview.hidden = true;
+  }
 }
 
 function clearError() {
@@ -373,6 +406,7 @@ document.querySelectorAll("[data-tool]").forEach((tool) => {
 });
 outputFormat.addEventListener("change", updateFormatTarget);
 languageSelect.addEventListener("change", () => applyLanguage(languageSelect.value));
+document.querySelector("#upscale-scale").addEventListener("change", () => void updateUpscaleDimensions());
 document.querySelector("#year").textContent = new Date().getFullYear();
 
 for (const eventName of ["dragenter", "dragover"]) {
@@ -414,6 +448,7 @@ form.addEventListener("submit", async (event) => {
     options.top_text = document.querySelector("#meme-top-text").value;
     options.bottom_text = document.querySelector("#meme-bottom-text").value;
   }
+  if (currentOperation === "image.upscale") options.scale = document.querySelector("#upscale-scale").value;
   if (currentOperation === "image.resize") {
     if (document.querySelector("#width").value) options.width = document.querySelector("#width").value;
     if (document.querySelector("#height").value) options.height = document.querySelector("#height").value;
