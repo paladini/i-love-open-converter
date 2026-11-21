@@ -85,6 +85,7 @@ modelo U2NetP para o cache local na primeira utilização.
 - Converter documentos Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) e Excel (`.xls`, `.xlsx`) em PDF usando LibreOffice local.
 - Extrair imagens incorporadas do PDF em PNG dentro de um ZIP, preservando a transparência. Objetos de imagem repetidos são incluídos uma vez; imagens inline são incluídas em cada ocorrência.
 - Converter PDFs para Markdown com texto, tabelas e figuras extraídos localmente em um ZIP portátil. Páginas digitalizadas exigem OCR, que não faz parte desta conversão; layouts complexos podem não ser reconstruídos fielmente.
+- Criar um resumo extrativo local de até 12 frases a partir do texto selecionável do PDF. PDFs digitalizados precisam de OCR; o resumo seleciona frases do documento sem gerar texto novo.
 - Converter PDF em um DOCX editável localmente. PDFs digitalizados exigem OCR, e layouts complexos podem diferir do original.
 - Converter PDF em uma apresentação PowerPoint editável localmente. Textos e imagens incorporadas viram objetos separados nos slides; desenhos vetoriais, gráficos, fundos de página e OCR de páginas digitalizadas não são reconstruídos.
 - Extrair tabelas detectadas e texto selecionável de um PDF para uma planilha Excel local. Tabelas e referências de página ficam na aba `Tables`; outros textos vão para `Text`. Os valores permanecem textos literais. Layouts incomuns podem não ser reconhecidos, e páginas digitalizadas exigem OCR.

@@ -83,6 +83,7 @@ small U2NetP model into its local cache on first use.
 - Convert Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) and Excel (`.xls`, `.xlsx`) documents to PDF using local LibreOffice.
 - Extract embedded PDF images as PNG files in a ZIP, preserving transparency. Repeated image objects are included once; inline images are included at each occurrence.
 - Convert PDFs to Markdown with locally extracted text, tables and figures in a portable ZIP. Scanned pages require OCR, which is not part of this conversion; complex layouts may not be reconstructed faithfully.
+- Create a local extractive summary of up to 12 sentences from selectable PDF text. Scanned PDFs need OCR first; the summary selects source sentences and does not generate new wording.
 - Convert a PDF to an editable Word DOCX locally. Scanned PDFs need OCR, and complex layouts may differ from the original.
 - Convert a PDF to an editable PowerPoint presentation locally. Text and embedded images become separate slide objects; vector drawings, charts, page backgrounds and scanned-page OCR are not reconstructed.
 - Extract detected tables and selectable text from a PDF to an Excel workbook locally. Table rows and page references go to `Tables`; other text goes to `Text`. Values remain literal strings. Unusual table layouts can be missed, and scanned pages require OCR.
