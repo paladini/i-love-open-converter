@@ -1023,7 +1023,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for index, upload in enumerate(files):
                 original_name = safe_filename(upload.filename or "imagem")
                 extension = Path(original_name).suffix.lower()
-                accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+                accepted_extensions = {
+                    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff"
+                }
                 is_pdf_operation = operation.startswith("pdf.")
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(

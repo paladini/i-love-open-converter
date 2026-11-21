@@ -21,7 +21,7 @@ const messages = {
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
     widthLabel: "Largura (px)", heightLabel: "Altura (px)", qualityLabel: "Qualidade", degreesLabel: "Rotação",
     dropTitle: "Solte sua imagem aqui", dropOr: "ou", browse: "escolha um arquivo",
-    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · até {maxFileMb} MB", outputLabel: "Converter para",
+    fileTypes: "JPG, PNG, GIF estático, WEBP, BMP, TIFF · até {maxFileMb} MB", outputLabel: "Converter para",
     pdfFileTypes: "PDF · até {maxFileMb} MB",
     resultFormat: "Formato de saída", localNote: "Seu arquivo é processado no servidor que você controla.",
     convertButton: "Converter imagem", downloadButton: "Baixar arquivo", startAgain: "Converter outro arquivo",
@@ -61,7 +61,7 @@ const messages = {
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
     widthLabel: "Width (px)", heightLabel: "Height (px)", qualityLabel: "Quality", degreesLabel: "Rotation",
     dropTitle: "Drop your image here", dropOr: "or", browse: "choose a file",
-    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · up to {maxFileMb} MB", outputLabel: "Convert to",
+    fileTypes: "JPG, PNG, static GIF, WEBP, BMP, TIFF · up to {maxFileMb} MB", outputLabel: "Convert to",
     pdfFileTypes: "PDF · up to {maxFileMb} MB",
     resultFormat: "Output format", localNote: "Your file is processed on the server you control.",
     convertButton: "Convert image", downloadButton: "Download file", startAgain: "Convert another file",
@@ -202,7 +202,7 @@ function selectTool(operation) {
   document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
-  fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
+  fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
   fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || operation.startsWith("image.");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");

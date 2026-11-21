@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\skills\tlc-spec-lean\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none
 **Review:** sent at a98d84f
-**Fix pass:** pending review
+**Fix pass:** done - added static GIF support and closed the request mismatch; expanded tests for batch limits, single downloads, sanitized names, pixel bounds, WebP quality and UI controls
 
 ## Problem
 
@@ -61,7 +61,7 @@ New: nothing - the existing job and artifact entities store operation, options, 
 | --- | --- | --- |
 | Batch geometry | Apply one left/top/width/height rectangle to every selected image; fail the complete job if it does not fit any image | Silently vary coordinates per image or return a partial ZIP. |
 | Coordinate space | Integer pixels after EXIF orientation; left/top are 0-9,999, width/height are 1-10,000, and right/bottom edges must remain within the image | Use pre-orientation coordinates, percentages, or implicit clamping that changes the selected rectangle. |
-| Formats | Reuse the existing static JPEG, PNG, WebP, BMP and TIFF input formats and PNG, JPEG or WebP outputs | Add animated GIF or new codecs outside the current image engine. |
+| Formats | Accept static JPEG, PNG, GIF, WebP, BMP and TIFF inputs; reject animated files; retain PNG, JPEG or WebP outputs | Add animated GIF processing or new codecs outside the current image engine. |
 
 ## Criteria
 
@@ -69,7 +69,7 @@ New: nothing - the existing job and artifact entities store operation, options, 
 
 **Acceptance Criteria**
 
-1. WHEN a visitor selects `Recortar IMAGEM` THEN the system SHALL show controls for left, top, width and height in pixels, output format, JPEG/WebP quality when applicable, and the existing image upload action.
+1. WHEN a visitor selects `Recortar IMAGEM` THEN the system SHALL show controls for left, top, width and height in pixels, output format, JPEG/WebP quality when applicable, and the existing image upload action accepting JPG, PNG and static GIF.
 2. WHEN the visitor submits one supported image with a valid rectangle THEN the worker SHALL apply EXIF orientation first and return an image whose dimensions equal the requested width and height.
 3. WHEN the visitor submits 2-10 supported images THEN the worker SHALL apply the same rectangle to each image and return one sanitized image per input in input order, as individual output for one image or a ZIP for multiple images.
 4. WHEN a visitor submits PNG, JPEG or WebP output options THEN the system SHALL preserve the chosen output format and apply the existing quality setting to JPEG and WebP.
@@ -97,7 +97,7 @@ New: nothing - the existing job and artifact entities store operation, options, 
 
 ## Differences from the source
 
-The initial project plan's S2 criterion 10 establishes static JPEG, PNG, WebP, BMP and TIFF inputs and rejects GIF/animated formats. This feature follows that accepted image-engine scope; it does not add an animation decoder.
+The initial project plan's S2 criterion 10 establishes static JPEG, PNG, WebP, BMP and TIFF inputs and rejects animated formats. This feature adds static GIF input to meet the crop request while retaining the existing no-animation policy; no animation decoder is introduced.
 
 ## Sources
 

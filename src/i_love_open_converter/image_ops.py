@@ -6,7 +6,7 @@ from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-INPUT_FORMATS = {"JPEG", "PNG", "WEBP", "BMP", "TIFF"}
+INPUT_FORMATS = {"JPEG", "PNG", "GIF", "WEBP", "BMP", "TIFF"}
 OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP"}
 Image.MAX_IMAGE_PIXELS = 100_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
