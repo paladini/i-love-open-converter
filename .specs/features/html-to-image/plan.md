@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user authorized implementation of the complete free, open-source converter roadmap: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
 **Review:** sent at a845b67
-**Fix pass:** pending
+**Fix pass:** done - expanded the isolated smoke to assert two numbered pages for both formats and added a 60-inch page case that proves JPG/SVG dimension guards return a specific error without leaving an artifact; added job-level failure coverage
 
 ## Build evidence
 
@@ -11,7 +11,8 @@
 - `uv run ruff check .` - passed.
 - `node --check src/i_love_open_converter/static/js/html-to-image.js` - passed.
 - `docker compose config` - passed; worker retains `network_mode: none` and `OFFICE_NETWORK_ISOLATED=1`.
-- Docker Linux smoke as UID 1000 with `--network none` - passed; local HTML rendered to PDF, JPG at 144 DPI and SVG, while HTTP, HTTPS, FTP, `file:` and relative resources were rejected.
+- Docker Linux smoke as UID 1000 with `--network none` - passed; local HTML rendered to PDF and two numbered JPG/SVG pages, oversized pages were rejected without artifacts, and HTTP, HTTPS, FTP, `file:` and relative resources were blocked.
+- The worker's page-bound failure was also checked through the job lifecycle; the job failed and exposed no download.
 - Browser review at 360 x 800 - PT-BR and English pages usable with no horizontal overflow.
 
 ## Problem

@@ -38,6 +38,10 @@ class HtmlExternalResourceError(HtmlConversionError):
     """The input references a resource other than an embedded data URI."""
 
 
+class HtmlImageBoundsError(HtmlConversionError):
+    """The rendered page or image archive exceeded its configured bounds."""
+
+
 def allowed_html_resource(url: str) -> bool:
     """Only embedded data resources are available to untrusted HTML and CSS."""
     return url[:5].lower() == "data:"
@@ -104,6 +108,8 @@ def _convert_html(source: Path, output_dir: Path, output_format: str) -> Path:
                 raise HtmlUnavailableError
             if completed.returncode == 4:
                 raise HtmlExternalResourceError
+            if completed.returncode == 5:
+                raise HtmlImageBoundsError
             if completed.returncode != 0 or not rendered.is_file():
                 raise HtmlConversionError
             size = rendered.stat().st_size

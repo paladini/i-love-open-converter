@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from i_love_open_converter import html_ops, pdf_ops
-from i_love_open_converter.html_ops import HtmlExternalResourceError
+from i_love_open_converter.html_ops import HtmlExternalResourceError, HtmlImageBoundsError
 from i_love_open_converter.main import create_app
 from i_love_open_converter.worker import process_one_job
 
@@ -166,6 +166,30 @@ def test_html_to_image_fails_without_artifact_when_external_resources_are_used(
 
     assert status.json()["state"] == "failed"
     assert status.json()["error"]["code"] == "html_external_resource"
+    assert download.status_code == 409
+    assert not list(settings.jobs_dir.glob("*/output/*"))
+
+
+def test_html_to_image_fails_without_artifact_when_page_bounds_are_exceeded(
+    settings, monkeypatch
+):
+    def reject_oversized_page(source, output_dir, image_format):
+        raise HtmlImageBoundsError
+
+    monkeypatch.setattr(pdf_ops, "convert_html_to_images", reject_oversized_page)
+    with TestClient(create_app(settings)) as client:
+        response = _submit(
+            client,
+            [("files", ("large.html", b"<h1>large</h1>", "text/html"))],
+            {"format": "jpg"},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"])
+        download = client.get(response.json()["status_url"] + "/download")
+
+    assert status.json()["state"] == "failed"
+    assert status.json()["error"]["code"] == "html_failed"
     assert download.status_code == 409
     assert not list(settings.jobs_dir.glob("*/output/*"))
 

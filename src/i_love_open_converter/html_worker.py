@@ -43,7 +43,7 @@ def main(root: Path, source: Path, destination: Path, output_format: str = "pdf"
     try:
         document = HTML(filename=str(source), url_fetcher=DataOnlyFetcher()).render()
         if not 1 <= len(document.pages) <= MAX_HTML_PAGES:
-            return 2
+            return 5 if output_format in {"jpg", "svg"} else 2
         if output_format == "pdf":
             document.write_pdf(str(destination))
         elif output_format in {"jpg", "svg"}:
@@ -60,20 +60,20 @@ def main(root: Path, source: Path, destination: Path, output_format: str = "pdf"
                     width = math.ceil(page.rect.width * HTML_IMAGE_DPI / 72)
                     height = math.ceil(page.rect.height * HTML_IMAGE_DPI / 72)
                     if width <= 0 or height <= 0 or width * height > MAX_HTML_PAGE_PIXELS:
-                        return 2
+                        return 5
                     if output_format == "jpg":
                         image_path = root / name
                         page.get_pixmap(dpi=HTML_IMAGE_DPI, alpha=False).save(image_path)
                         size = image_path.stat().st_size
                         if total_bytes + size > MAX_HTML_IMAGE_OUTPUT_BYTES:
-                            return 2
+                            return 5
                         total_bytes += size
                         archive.write(image_path, arcname=name)
                         image_path.unlink()
                     else:
                         svg = page.get_svg_image(text_as_path=True).encode("utf-8")
                         if total_bytes + len(svg) > MAX_HTML_IMAGE_OUTPUT_BYTES:
-                            return 2
+                            return 5
                         total_bytes += len(svg)
                         archive.writestr(name, svg)
         else:
