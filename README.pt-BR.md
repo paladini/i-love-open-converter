@@ -41,6 +41,7 @@ futuras do projeto.
   WebP.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
+- Converter JPG para PNG ou combinar várias imagens em um GIF animado.
 - Girar imagens em 90°, 180° ou 270°.
 - Recortar imagens por coordenadas e dimensões em pixels após aplicar a orientação EXIF.
 - Adicionar marcas d'água de texto ou imagem em lotes, com controles de posição e opacidade.
