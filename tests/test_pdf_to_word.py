@@ -5,11 +5,14 @@ from docx import Document
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from i_love_open_converter import pdf_ops
 from i_love_open_converter.main import create_app
 from i_love_open_converter.worker import process_one_job
 
 
-def test_pdf_to_word_has_editable_text_in_order(settings):
+def test_pdf_to_word_has_editable_text_in_order(settings, monkeypatch):
+    # Test conversion separately from the deployment isolation guard.
+    monkeypatch.setattr("i_love_open_converter.pdf_ops.word_isolated", lambda: True)
     pdf = pymupdf.open()
     pdf.new_page().insert_text((72, 72), "First page content")
     pdf.new_page().insert_text((72, 72), "Second page content")
@@ -55,7 +58,8 @@ def test_pdf_to_word_rejects_invalid_and_multiple_files(settings, pdf_bytes):
         assert encrypted.status_code == 422
 
 
-def test_pdf_to_word_fails_safely_for_extreme_page(settings):
+def test_pdf_to_word_fails_safely_for_extreme_page(settings, monkeypatch):
+    monkeypatch.setattr("i_love_open_converter.pdf_ops.word_isolated", lambda: True)
     pdf = pymupdf.open()
     pdf.new_page(width=5000, height=5000).insert_text((72, 72), "Large page")
     source = pdf.tobytes()
@@ -72,7 +76,8 @@ def test_pdf_to_word_fails_safely_for_extreme_page(settings):
         assert client.get(response.json()["status_url"] + "/download").status_code != 200
 
 
-def test_pdf_to_word_retains_detectable_table_and_image(settings):
+def test_pdf_to_word_retains_detectable_table_and_image(settings, monkeypatch):
+    monkeypatch.setattr("i_love_open_converter.pdf_ops.word_isolated", lambda: True)
     image = BytesIO()
     Image.new("RGB", (80, 80), "red").save(image, "PNG")
     pdf = pymupdf.open()
@@ -100,3 +105,30 @@ def test_pdf_to_word_retains_detectable_table_and_image(settings):
         assert any("Apples" in cell.text for table in doc.tables for row in table.rows
                    for cell in row.cells)
         assert len(doc.inline_shapes) >= 1
+
+
+def test_pdf_to_word_requires_isolated_linux_worker(settings, pdf_bytes, monkeypatch):
+    monkeypatch.setattr("i_love_open_converter.pdf_ops.word_isolated", lambda: False)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_word"},
+            files={"files": ("input.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "word_unavailable"
+        assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_word_isolation_requires_linux_attestation_and_loopback_only(monkeypatch):
+    monkeypatch.setattr(pdf_ops.sys, "platform", "linux")
+    monkeypatch.delenv("OFFICE_NETWORK_ISOLATED", raising=False)
+    monkeypatch.setattr(pdf_ops.socket, "if_nameindex", lambda: [(1, "lo")])
+    assert not pdf_ops.word_isolated()
+    monkeypatch.setenv("OFFICE_NETWORK_ISOLATED", "1")
+    assert pdf_ops.word_isolated()
+    monkeypatch.setattr(pdf_ops.socket, "if_nameindex", lambda: [(1, "lo"), (2, "eth0")])
+    assert not pdf_ops.word_isolated()
+    monkeypatch.setattr(pdf_ops.sys, "platform", "win32")
+    assert not pdf_ops.word_isolated()

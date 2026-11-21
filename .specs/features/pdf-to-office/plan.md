@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-20 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at 5ff04c9
+**Fix pass:** done - added a fail-closed Linux loopback-only isolation guard before spawning Word conversion, documented unsupported environments, added guard and unavailable-worker tests; verified real isolated AMD64 and ARM64 worker conversions, connected-worker refusal, safe oversized failure, and isolated browser upload/download.
 
 ## Problem
 

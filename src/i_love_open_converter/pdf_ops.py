@@ -3,7 +3,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import html
+import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
@@ -35,6 +37,19 @@ class MarkdownConversionError(Exception):
 
 class WordConversionError(Exception):
     """DOCX processing failed or exceeded a resource limit."""
+
+
+class WordUnavailableError(WordConversionError):
+    """The required Linux network isolation is unavailable."""
+
+
+def word_isolated() -> bool:
+    if sys.platform != "linux" or os.environ.get("OFFICE_NETWORK_ISOLATED") != "1":
+        return False
+    try:
+        return {name for _, name in socket.if_nameindex()} == {"lo"}
+    except OSError:
+        return False
 
 
 EDIT_FONTS = {"helv": "DejaVuSans.ttf", "tiro": "DejaVuSerif.ttf", "cour": "DejaVuSansMono.ttf"}
@@ -808,6 +823,8 @@ def process_pdf(
     document = _open_pdf(source)
     try:
         if operation == "pdf.to_word":
+            if not word_isolated():
+                raise WordUnavailableError
             destination = output_dir / "converted.docx"
             try:
                 completed = subprocess.run(

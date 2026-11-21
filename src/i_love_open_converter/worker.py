@@ -25,6 +25,7 @@ from .pdf_ops import (
     MarkdownConversionError,
     NoEmbeddedImagesError,
     WordConversionError,
+    WordUnavailableError,
     process_pdf,
 )
 
@@ -198,6 +199,12 @@ def process_one_job(settings: Settings) -> bool:
             "no_images",
             "O PDF não contém imagens extraíveis.",
             settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except WordUnavailableError:
+        mark_failed(
+            settings.database_path, job_id, "word_unavailable",
+            "PDF para Word exige um worker Linux isolado da rede.", settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except WordConversionError:

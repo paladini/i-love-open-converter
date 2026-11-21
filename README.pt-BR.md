@@ -72,7 +72,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 
 A conversão de PDF para Markdown usa o mecanismo completo de layout do PyMuPDF e o ONNX Runtime local, sem GPU. A telemetria do ONNX é desativada antes da inicialização.
 Para limitar a memória de renderização, páginas que excedem 16 milhões de pixels a 150 DPI são recusadas; a conversão também está sujeita a limites de tempo e tamanho de saída.
-A conversão de PDF para Word usa a biblioteca local `pdf2docx`, que não recebe mais manutenção ativa do projeto original. Ela aplica os mesmos limites de tamanho de página, tempo e arquivo de saída.
+A conversão de PDF para Word usa a biblioteca local `pdf2docx`, que não recebe mais manutenção ativa do projeto original. Ela aplica os mesmos limites de tamanho de página, tempo e arquivo de saída e exige o worker Linux isolado da rede configurado abaixo; outros ambientes recusam a conversão.
 
 As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
 ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.

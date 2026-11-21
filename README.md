@@ -69,7 +69,7 @@ ZIP archive. Animated images are not supported.
 
 PDF-to-Markdown uses the full PyMuPDF layout engine and CPU-only ONNX Runtime locally. ONNX telemetry is disabled before initialization.
 To bound rendering memory, pages exceeding 16 million pixels at 150 DPI are rejected; conversion is also subject to time and output-size limits.
-PDF-to-Word uses the local `pdf2docx` library, which its upstream no longer actively maintains. It applies the same page-size, time and output-size limits.
+PDF-to-Word uses the local `pdf2docx` library, which its upstream no longer actively maintains. It applies the same page-size, time and output-size limits. It requires the network-isolated Linux worker configured below; other environments fail closed.
 
 PDF tools accept unencrypted PDFs. A split or multi-page PDF-to-JPG result
 downloads as a ZIP archive.
