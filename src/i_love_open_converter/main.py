@@ -64,7 +64,6 @@ BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
-    ("Traduzir PDF", "Translate PDF", "intelligence", 30),
 ]
 IMAGE_COMING_SOON = [
     ("Desfocar placas", "Blur license plates", "img-security", 14),
@@ -306,6 +305,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/tools/pdf-summary", include_in_schema=False)
     async def pdf_summary(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-summary.html", {"request": request})
+
+    @app.get("/tools/pdf-translate", include_in_schema=False)
+    async def pdf_translate(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-translate.html", {"request": request})
+
+    @app.get("/third-party-notices", include_in_schema=False)
+    async def third_party_notices():
+        return FileResponse(
+            BASE_DIR.parent.parent / "THIRD_PARTY_NOTICES.md", media_type="text/markdown"
+        )
 
     @app.get("/tools/scan-to-pdf", include_in_schema=False)
     async def scan_to_pdf(request: Request):
@@ -551,6 +560,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.pdfa",
             "pdf.ocr",
             "pdf.summary",
+            "pdf.translate",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -768,6 +778,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.pdfa",
             "pdf.ocr",
             "pdf.summary",
+            "pdf.translate",
         }
         if (
             operation in single_pdf_operations
@@ -906,6 +917,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
+            )
+        if operation == "pdf.translate":
+            source_language = parsed_options.get("from")
+            target_language = parsed_options.get("to")
+            if (
+                set(parsed_options) != {"from", "to"}
+                or (source_language, target_language) not in {("pt-BR", "en"), ("en", "pt-BR")}
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Escolha uma direção de tradução.",
+                        }
+                    },
+                )
+            validated_options.update(
+                source_language=source_language, target_language=target_language
             )
         if operation == "html.to_pdf" and parsed_options:
             raise HTTPException(
@@ -1472,12 +1502,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         )
                         pdf_page_counts.append(page_count)
                         content_type = "application/pdf"
-                        if operation == "pdf.summary" and page_count > 100:
+                        if operation in {"pdf.summary", "pdf.translate"} and page_count > 100:
                             raise HTTPException(
                                 status_code=422,
                                 detail={
                                     "error": {
-                                        "code": "summary_too_large",
+                                        "code": (
+                                            "translation_too_large"
+                                            if operation == "pdf.translate"
+                                            else "summary_too_large"
+                                        ),
                                         "message": "O PDF excede o limite de 100 páginas.",
                                     }
                                 },

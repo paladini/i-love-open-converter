@@ -25,6 +25,10 @@ from .html_ops import HtmlConversionError, convert_html, convert_html_to_images
 from .ocr_ops import NoOcrTextError, OcrProcessingError, make_searchable_pdf
 from .pdf_archive import convert_pdfa
 from .pdf_image_order import image_order
+from .pdf_translation import (
+    InvalidTranslatedPdfError,
+    translate_pdf,
+)
 
 
 class InvalidPdfError(Exception):
@@ -802,6 +806,17 @@ def process_pdf(
         destination = output_dir / "summary.txt"
         summarize_pdf(sources[0][0], destination)
         return [destination], "text/plain; charset=utf-8"
+    if operation == "pdf.translate":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        destination = output_dir / "translated.pdf"
+        source_code = "pb" if options["source_language"] == "pt-BR" else "en"
+        target_code = "pb" if options["target_language"] == "pt-BR" else "en"
+        try:
+            translate_pdf(sources[0][0], destination, source_code, target_code)
+        except InvalidTranslatedPdfError as exc:
+            raise InvalidPdfError from exc
+        return [destination], "application/pdf"
     if operation == "pdf.pdfa":
         if len(sources) != 1:
             raise InvalidPdfError

@@ -2027,6 +2027,22 @@ def test_pdf_summary_fails_above_sentence_limit_without_output(settings, monkeyp
     assert "download_url" not in status
 
 
+def test_pdf_translation_requires_supported_direction_and_exposes_page(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/tools/pdf-translate")
+        assert page.status_code == 200
+        assert "pdf-translate.js" in page.text
+        invalid = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.translate", "options": json.dumps({"from": "fr", "to": "en"})},
+            files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+        )
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "invalid_options"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
 def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_bytes):
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as source_document:
         original_sizes = [page.rect for page in source_document]
