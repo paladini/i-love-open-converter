@@ -61,6 +61,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.watermark",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
             if not input_artifacts:
@@ -70,7 +71,20 @@ def process_one_job(settings: Settings) -> bool:
             output_format = str(job["options"].get("format", "PNG")).upper()
             extension = "jpg" if output_format in {"JPEG", "JPG"} else output_format.lower()
             generated: list[tuple[str, str, int]] = []
-            for index, source_artifact in enumerate(input_artifacts, start=1):
+            source_count = int(job["options"].get("source_count", len(input_artifacts)))
+            if not 1 <= source_count <= len(input_artifacts):
+                raise InvalidImageError
+            source_artifacts = input_artifacts[:source_count]
+            watermark_path = None
+            if job["operation"] == "image.watermark" and job["options"].get("kind") == "image":
+                if source_count != len(input_artifacts) - 1:
+                    raise InvalidImageError
+                watermark_path = (
+                    settings.data_dir / input_artifacts[-1]["relative_path"]
+                ).resolve()
+                if not watermark_path.is_relative_to(settings.data_dir.resolve()):
+                    raise InvalidImageError
+            for index, source_artifact in enumerate(source_artifacts, start=1):
                 source = (settings.data_dir / source_artifact["relative_path"]).resolve()
                 if not source.is_relative_to(settings.data_dir.resolve()):
                     raise InvalidImageError
@@ -80,7 +94,11 @@ def process_one_job(settings: Settings) -> bool:
                 output_name = f"{stem}.{extension}"
                 destination = output_dir / output_name
                 content_type, size_bytes = process_image(
-                    source, destination, job["operation"], job["options"]
+                    source,
+                    destination,
+                    job["operation"],
+                    job["options"],
+                    watermark_path=watermark_path,
                 )
                 generated.append((output_name, content_type, size_bytes))
             if len(generated) == 1:
@@ -170,15 +188,20 @@ def process_one_job(settings: Settings) -> bool:
         )
     except OfficeUnavailableError:
         mark_failed(
-            settings.database_path, job_id, "office_unavailable",
+            settings.database_path,
+            job_id,
+            "office_unavailable",
             "Conversor Office indisponível ou sem isolamento de rede e de arquivos.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except OfficeConversionError:
         mark_failed(
-            settings.database_path, job_id, "office_failed",
-            "Não foi possível converter o documento Office.", settings.job_retention_hours,
+            settings.database_path,
+            job_id,
+            "office_failed",
+            "Não foi possível converter o documento Office.",
+            settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except UnsupportedImageError:
@@ -210,55 +233,72 @@ def process_one_job(settings: Settings) -> bool:
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except WordUnavailableError:
         mark_failed(
-            settings.database_path, job_id, "word_unavailable",
-            "PDF para Word exige um worker Linux isolado da rede.", settings.job_retention_hours,
+            settings.database_path,
+            job_id,
+            "word_unavailable",
+            "PDF para Word exige um worker Linux isolado da rede.",
+            settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except PowerPointUnavailableError:
         mark_failed(
-            settings.database_path, job_id, "powerpoint_unavailable",
+            settings.database_path,
+            job_id,
+            "powerpoint_unavailable",
             "PDF para PowerPoint exige um worker Linux isolado da rede.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except PowerPointConversionError:
         mark_failed(
-            settings.database_path, job_id, "powerpoint_failed",
+            settings.database_path,
+            job_id,
+            "powerpoint_failed",
             "A conversão para PowerPoint falhou ou excedeu os limites de processamento.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except ExcelUnavailableError:
         mark_failed(
-            settings.database_path, job_id, "excel_unavailable",
+            settings.database_path,
+            job_id,
+            "excel_unavailable",
             "PDF para Excel exige um worker Linux isolado da rede.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except NoSpreadsheetDataError:
         mark_failed(
-            settings.database_path, job_id, "no_extractable_data",
+            settings.database_path,
+            job_id,
+            "no_extractable_data",
             "O PDF não contém tabelas detectadas nem texto selecionável.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except ExcelConversionError:
         mark_failed(
-            settings.database_path, job_id, "excel_failed",
+            settings.database_path,
+            job_id,
+            "excel_failed",
             "A extração para Excel falhou ou excedeu os limites de processamento.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except WordConversionError:
         mark_failed(
-            settings.database_path, job_id, "word_failed",
+            settings.database_path,
+            job_id,
+            "word_failed",
             "A conversão Word falhou ou excedeu os limites de processamento.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
     except MarkdownConversionError:
         mark_failed(
-            settings.database_path, job_id, "markdown_failed",
+            settings.database_path,
+            job_id,
+            "markdown_failed",
             "A conversão Markdown falhou ou excedeu os limites de processamento.",
             settings.job_retention_hours,
         )

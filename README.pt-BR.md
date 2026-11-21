@@ -42,6 +42,7 @@ futuras do projeto.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Girar imagens em 90°, 180° ou 270°.
+- Adicionar marcas d'água de texto ou imagem em lotes, com controles de posição e opacidade.
 
 Você pode processar várias imagens em um job. Resultados com vários arquivos
 são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
@@ -85,7 +86,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
-| JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
+| JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, marca d'água | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |
