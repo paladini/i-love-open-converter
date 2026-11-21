@@ -152,7 +152,7 @@ def test_editor_text_is_positioned_after_exif_orientation(settings):
     oriented.close()
 
 
-def test_editor_combines_filter_frame_and_text(settings):
+def test_editor_combines_filter_frame_sticker_and_text_in_layer_order(settings):
     base = _image_bytes()
     common = {
         "filter": "invert",
@@ -161,6 +161,17 @@ def test_editor_combines_filter_frame_and_text(settings):
         "frame_color": "red",
     }
     frame = _run(settings, common, base)
+    sticker = _run(
+        settings,
+        {
+            **common,
+            "sticker": "star",
+            "sticker_position": "top_left",
+            "sticker_size": "large",
+            "sticker_color": "yellow",
+        },
+        base,
+    )
     text = _run(
         settings,
         {
@@ -177,6 +188,10 @@ def test_editor_combines_filter_frame_and_text(settings):
         settings,
         {
             **common,
+            "sticker": "star",
+            "sticker_position": "top_left",
+            "sticker_size": "large",
+            "sticker_color": "yellow",
             "text": "EDIT",
             "text_position": "top_left",
             "text_size": "large",
@@ -186,17 +201,51 @@ def test_editor_combines_filter_frame_and_text(settings):
         base,
     )
 
-    assert frame.size == text.size == combined.size == (80, 80)
+    assert frame.size == sticker.size == text.size == combined.size == (80, 80)
     assert frame.getpixel((0, 40))[:3] == (220, 53, 69)
     assert combined.getpixel((40, 40))[:3] == (235, 175, 55)
     assert any(
-        combined.getpixel((x, y)) != frame.getpixel((x, y))
-        for y in range(4, 24)
-        for x in range(4, 76)
+        sticker.getpixel((x, y)) != frame.getpixel((x, y))
+        for y in range(4, 20)
+        for x in range(4, 20)
     )
+    overlaps = [
+        (x, y)
+        for y in range(4, 30)
+        for x in range(4, 35)
+        if sticker.getpixel((x, y)) != frame.getpixel((x, y))
+        and text.getpixel((x, y)) != frame.getpixel((x, y))
+    ]
+    assert overlaps
+    assert any(combined.getpixel(point) != sticker.getpixel(point) for point in overlaps)
     frame.close()
+    sticker.close()
     text.close()
     combined.close()
+
+
+@pytest.mark.parametrize("sticker", ["heart", "star", "sun", "check", "arrow", "speech"])
+def test_editor_draws_each_builtin_sticker_at_selected_position(settings, sticker):
+    with _run(
+        settings,
+        {
+            "sticker": sticker,
+            "sticker_position": "top_right",
+            "sticker_size": "large",
+            "sticker_color": "yellow",
+        },
+    ) as result:
+        assert result.size == (80, 80)
+        sticker_pixels = [
+            pixel
+            for pixel in result.crop((48, 0, 80, 32)).get_flattened_data()
+            if pixel[:3] != (20, 80, 200)
+        ]
+        assert sticker_pixels
+        assert not any(
+            pixel[:3] != (20, 80, 200)
+            for pixel in result.crop((0, 48, 32, 80)).get_flattened_data()
+        )
 
 
 @pytest.mark.parametrize(
@@ -229,6 +278,7 @@ def test_editor_returns_selected_output_format(settings, format_name, content_ty
     [
         {"filter": "unknown"},
         {"frame": "ornate"},
+        {"sticker": "external"},
         {"text": "x" * 81},
         {"text": "caption", "text_position": "unknown"},
         {"text": "caption", "text_size": "huge"},
@@ -238,7 +288,10 @@ def test_editor_returns_selected_output_format(settings, format_name, content_ty
         {"frame": "solid", "frame_width": 1},
         {"frame": "solid", "frame_width": 13},
         {"frame": "solid", "frame_color": "transparent"},
-        {"filter": "original", "frame": "none"},
+        {"sticker": "star", "sticker_position": "invalid"},
+        {"sticker": "star", "sticker_size": "tiny"},
+        {"sticker": "star", "sticker_color": "invalid"},
+        {"filter": "original", "frame": "none", "sticker": "none"},
         {"filter": "invert", "format": "GIF"},
     ],
 )
@@ -322,6 +375,10 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
         "editor-text",
         "editor-filter",
         "editor-frame",
+        "editor-sticker",
+        "editor-sticker-position",
+        "editor-sticker-size",
+        "editor-sticker-color",
         "editor-output",
     ):
         if field == "editor-output":
@@ -331,6 +388,10 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
     assert "editorTitle" in page.text
     assert 'id="file-input"' in page.text
     assert 'type="file"' in page.text
+    assert 'editorSticker: "Sticker vetorial"' in script
+    assert 'editorSticker: "Vector sticker"' in script
+    assert 'editorStickerPosition: "Posição do sticker"' in script
+    assert 'editorStickerPosition: "Sticker position"' in script
     assert 'fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation)' in script
     assert 'operation.startsWith("image.") && operation !== "image.editor"' in script
     assert ".operation-options { display: flex; flex-wrap: wrap;" in css

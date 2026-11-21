@@ -105,3 +105,10 @@ The original request's sticker capability was deferred from the simple first edi
 - `.specs/features/image-editor/plan.md` - accepted first-stage editor behavior and responsive baseline.
 - `.specs/features/image-editor/review.md` - prior independent review of the vector sticker behavior and test coverage.
 - `.specs/STATE.md` - local processing decision and AD-016.
+
+## Build evidence
+
+- `uv run pytest -q` passed after restoring the sticker stage; the suite covers all six shapes, chosen anchor/size/color, invalid settings before job creation, layer order, dimensions, output formats, and failed-job cleanup.
+- `uv run ruff check src/i_love_open_converter tests` passed.
+- `node --check src/i_love_open_converter/static/js/app.js` passed.
+- Browser inspection at 127.0.0.1:8798 showed the localized sticker controls and six choices in the editor. The available browser surface used its default 1280 px viewport; the existing responsive controls use wrapping, while 360 px visual verification remains for independent review.
