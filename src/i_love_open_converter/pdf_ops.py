@@ -798,12 +798,20 @@ def process_pdf(
     if operation == "image.to_pdf":
         output = pymupdf.open()
         try:
-            for source, _ in sources:
+            rotations = options.get("rotations", [0] * len(sources))
+            if len(rotations) != len(sources):
+                raise InvalidPdfError
+            for index, (source, _) in enumerate(sources):
+                rotation = rotations[index]
+                if type(rotation) is not int or rotation not in {0, 90, 180, 270}:
+                    raise InvalidPdfError
                 image = pymupdf.open(source)
                 try:
                     width, height = image[0].rect.width, image[0].rect.height
                 finally:
                     image.close()
+                if rotation in {90, 270}:
+                    width, height = height, width
                 landscape = width > height
                 page_width, page_height = (842.0, 595.0) if landscape else (595.0, 842.0)
                 page = output.new_page(width=page_width, height=page_height)
@@ -812,6 +820,7 @@ def process_pdf(
                     pymupdf.Rect(margin, margin, page_width - margin, page_height - margin),
                     filename=str(source),
                     keep_proportion=True,
+                    rotate=rotation,
                 )
             destination = output_dir / "images.pdf"
             output.save(destination, garbage=3, deflate=True, use_objstms=True)
