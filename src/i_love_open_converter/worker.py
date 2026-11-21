@@ -107,6 +107,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.to_powerpoint",
             "pdf.to_excel",
             "html.to_pdf",
+            "html.to_image",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
