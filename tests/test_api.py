@@ -1065,6 +1065,8 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'removeBackgroundTitle: "Remove background"' in script
     assert 'blurFacesTitle: "Desfocar cara"' in script
     assert 'blurFacesTitle: "Blur faces"' in script
+    assert 'blurFacesHint: "Desfoque local de rostos frontais e de perfil; até 40 MP."' in script
+    assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
     assert 'data-option="blur-faces-note"' in response.text
     assert 'imageCount: "14 available"' in script
     assert 'removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP."' in script

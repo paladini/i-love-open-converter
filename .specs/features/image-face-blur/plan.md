@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user delegated completing the application roadmap and implementation choices under tlc-spec-lean.
 **Settled mid-build:** none
 **Review:** sent at cc2e4bc
-**Fix pass:** pending review
+**Fix pass:** done - disclose the 40 MP limit in PT-BR and English and cover both strings with an API page regression test; the review's 360 px visual condition remains independently unverified because no viewport capture was provided.
 
 ## Problem
 
