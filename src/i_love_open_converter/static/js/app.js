@@ -11,12 +11,14 @@ const messages = {
     imageGroup: "Imagens", imageCount: "13 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
-    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos e molduras",
+    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
     editorTextLabel: "Texto", editorTextPlaceholder: "Digite uma legenda (opcional)", editorTextSize: "Tamanho do texto", editorPosition: "Posição",
     editorTextColor: "Cor do texto", editorOpacity: "Opacidade do texto (%)", editorFilter: "Efeito", editorFrame: "Moldura",
-    editorFrameWidth: "Espessura da moldura (%)", editorFrameColor: "Cor da moldura",
+    editorFrameWidth: "Espessura da moldura (%)", editorFrameColor: "Cor da moldura", editorSticker: "Sticker vetorial",
+    editorStickerPosition: "Posição do sticker", editorStickerSize: "Tamanho do sticker", editorStickerColor: "Cor do sticker",
     editorOriginal: "Original", editorGrayscale: "Preto e branco", editorSepia: "Sépia", editorInvert: "Inverter cores",
-    editorNoFrame: "Sem moldura", editorSolidFrame: "Moldura simples", editorDoubleFrame: "Moldura dupla",
+    editorNoFrame: "Sem moldura", editorSolidFrame: "Moldura simples", editorDoubleFrame: "Moldura dupla", editorNoSticker: "Sem sticker",
+    editorHeart: "Coração", editorStar: "Estrela", editorSun: "Sol", editorCheck: "Marca de seleção", editorArrow: "Seta", editorSpeech: "Balão de fala",
     editorSmall: "Pequeno", editorMedium: "Médio", editorLarge: "Grande", editorTopLeft: "Superior esquerda", editorTopCenter: "Superior central",
     editorTopRight: "Superior direita", editorCenterLeft: "Centro esquerda", editorCenter: "Centro", editorCenterRight: "Centro direita",
     editorBottomLeft: "Inferior esquerda", editorBottomCenter: "Inferior central", editorBottomRight: "Inferior direita", editorOneImage: "O editor aceita uma imagem por vez.",
@@ -60,12 +62,14 @@ const messages = {
     imageGroup: "Images", imageCount: "13 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
-    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, and frames",
+    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
     editorTextLabel: "Text", editorTextPlaceholder: "Enter a caption (optional)", editorTextSize: "Text size", editorPosition: "Position",
     editorTextColor: "Text color", editorOpacity: "Text opacity (%)", editorFilter: "Effect", editorFrame: "Frame",
-    editorFrameWidth: "Frame width (%)", editorFrameColor: "Frame color",
+    editorFrameWidth: "Frame width (%)", editorFrameColor: "Frame color", editorSticker: "Vector sticker",
+    editorStickerPosition: "Sticker position", editorStickerSize: "Sticker size", editorStickerColor: "Sticker color",
     editorOriginal: "Original", editorGrayscale: "Grayscale", editorSepia: "Sepia", editorInvert: "Invert colors",
-    editorNoFrame: "No frame", editorSolidFrame: "Solid frame", editorDoubleFrame: "Double frame",
+    editorNoFrame: "No frame", editorSolidFrame: "Solid frame", editorDoubleFrame: "Double frame", editorNoSticker: "No sticker",
+    editorHeart: "Heart", editorStar: "Star", editorSun: "Sun", editorCheck: "Check mark", editorArrow: "Arrow", editorSpeech: "Speech bubble",
     editorSmall: "Small", editorMedium: "Medium", editorLarge: "Large", editorTopLeft: "Top left", editorTopCenter: "Top center",
     editorTopRight: "Top right", editorCenterLeft: "Center left", editorCenter: "Center", editorCenterRight: "Center right",
     editorBottomLeft: "Bottom left", editorBottomCenter: "Bottom center", editorBottomRight: "Bottom right", editorOneImage: "The editor accepts one image at a time.",
@@ -422,7 +426,8 @@ form.addEventListener("submit", async (event) => {
   if (currentOperation === "image.editor" &&
       !document.querySelector("#editor-text").value.trim() &&
       document.querySelector("#editor-filter").value === "original" &&
-      document.querySelector("#editor-frame").value === "none") {
+      document.querySelector("#editor-frame").value === "none" &&
+      document.querySelector("#editor-sticker").value === "none") {
     formError.textContent = t("invalidOptions");
     formError.hidden = false;
     return;
@@ -457,6 +462,10 @@ form.addEventListener("submit", async (event) => {
     options.frame = document.querySelector("#editor-frame").value;
     options.frame_width = document.querySelector("#editor-frame-width").value;
     options.frame_color = document.querySelector("#editor-frame-color").value;
+    options.sticker = document.querySelector("#editor-sticker").value;
+    options.sticker_position = document.querySelector("#editor-sticker-position").value;
+    options.sticker_size = document.querySelector("#editor-sticker-size").value;
+    options.sticker_color = document.querySelector("#editor-sticker-color").value;
   }
   body.append("operation", currentOperation);
   body.append("options", JSON.stringify(options));

@@ -31,6 +31,7 @@ from .image_ops import (
     EDITOR_FRAMES,
     EDITOR_POSITIONS,
     EDITOR_SIZES,
+    EDITOR_STICKERS,
     INPUT_FORMATS,
     InvalidImageError,
     UnsupportedImageError,
@@ -303,9 +304,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/tools/pdf-to-powerpoint", include_in_schema=False)
     async def pdf_to_powerpoint(request: Request):
-        return TEMPLATES.TemplateResponse(
-            request, "pdf-to-powerpoint.html", {"request": request}
-        )
+        return TEMPLATES.TemplateResponse(request, "pdf-to-powerpoint.html", {"request": request})
 
     @app.get("/tools/pdf-to-excel", include_in_schema=False)
     async def pdf_to_excel(request: Request):
@@ -322,8 +321,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404)
         title, extensions = labels[family]
         return TEMPLATES.TemplateResponse(
-            request, "office-to-pdf.html", {"request": request, "family": family,
-                                           "title": title, "extensions": extensions}
+            request,
+            "office-to-pdf.html",
+            {"request": request, "family": family, "title": title, "extensions": extensions},
         )
 
     @app.get("/tools/pdf-compare", include_in_schema=False)
@@ -632,6 +632,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             text_opacity = parsed_options.get("opacity", 100)
             frame_color = parsed_options.get("frame_color", "black")
             frame_width = parsed_options.get("frame_width", 5)
+            sticker = parsed_options.get("sticker", "none")
+            sticker_position = parsed_options.get("sticker_position", "center")
+            sticker_size = parsed_options.get("sticker_size", "medium")
+            sticker_color = parsed_options.get("sticker_color", "yellow")
             if (
                 any(
                     not isinstance(value, str)
@@ -642,6 +646,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         text_position,
                         text_color,
                         frame_color,
+                        sticker,
+                        sticker_position,
+                        sticker_size,
+                        sticker_color,
                     )
                 )
                 or filter_name not in EDITOR_FILTERS
@@ -655,6 +663,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 or not str(text_opacity).isdigit()
                 or not 10 <= int(text_opacity) <= 100
                 or frame_color not in EDITOR_COLORS
+                or sticker not in EDITOR_STICKERS
+                or sticker_position not in EDITOR_POSITIONS
+                or sticker_size not in EDITOR_SIZES
+                or sticker_color not in EDITOR_COLORS
                 or isinstance(frame_width, bool)
                 or not str(frame_width).isdigit()
                 or not 2 <= int(frame_width) <= 12
@@ -662,6 +674,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     not text.strip()
                     and filter_name == "original"
                     and frame == "none"
+                    and sticker == "none"
                 )
             ):
                 raise HTTPException(
@@ -683,6 +696,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 text_position=text_position,
                 text_color=text_color,
                 opacity=int(text_opacity),
+                sticker=sticker,
+                sticker_position=sticker_position,
+                sticker_size=sticker_size,
+                sticker_color=sticker_color,
             )
         if operation == "pdf.pdfa" and not pdfa_available():
             raise HTTPException(

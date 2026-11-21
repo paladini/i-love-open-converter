@@ -99,6 +99,30 @@ def test_editor_places_text_with_color_size_and_opacity(settings):
         )
 
 
+@pytest.mark.parametrize("sticker", ["heart", "star", "sun", "check", "arrow", "speech"])
+def test_editor_draws_each_builtin_sticker_at_selected_position(settings, sticker):
+    with _run(
+        settings,
+        {
+            "sticker": sticker,
+            "sticker_position": "top_right",
+            "sticker_size": "large",
+            "sticker_color": "yellow",
+        },
+    ) as result:
+        assert result.size == (80, 80)
+        sticker_pixels = [
+            pixel
+            for pixel in result.crop((48, 0, 80, 32)).get_flattened_data()
+            if pixel[:3] != (20, 80, 200)
+        ]
+        assert sticker_pixels
+        assert not any(
+            pixel[:3] != (20, 80, 200)
+            for pixel in result.crop((0, 48, 32, 80)).get_flattened_data()
+        )
+
+
 @pytest.mark.parametrize(
     ("format_name", "content_type"),
     [("PNG", "image/png"), ("JPEG", "image/jpeg"), ("WEBP", "image/webp")],
@@ -129,6 +153,7 @@ def test_editor_returns_selected_output_format(settings, format_name, content_ty
     [
         {"filter": "unknown"},
         {"frame": "ornate"},
+        {"sticker": "external"},
         {"text": "x" * 81},
         {"text": "caption", "text_position": "unknown"},
         {"text": "caption", "text_size": "huge"},
@@ -138,7 +163,10 @@ def test_editor_returns_selected_output_format(settings, format_name, content_ty
         {"frame": "solid", "frame_width": 1},
         {"frame": "solid", "frame_width": 13},
         {"frame": "solid", "frame_color": "transparent"},
-        {"filter": "original", "frame": "none"},
+        {"sticker": "star", "sticker_position": "invalid"},
+        {"sticker": "star", "sticker_size": "tiny"},
+        {"sticker": "star", "sticker_color": "invalid"},
+        {"filter": "original", "frame": "none", "sticker": "none"},
         {"filter": "invert", "format": "GIF"},
     ],
 )
@@ -220,6 +248,7 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
         "editor-text",
         "editor-filter",
         "editor-frame",
+        "editor-sticker",
         "editor-output",
     ):
         if field == "editor-output":
