@@ -11,7 +11,16 @@ const messages = {
     imageGroup: "Imagens", imageCount: "13 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
-    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
+    rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos e molduras",
+    editorTextLabel: "Texto", editorTextPlaceholder: "Digite uma legenda (opcional)", editorTextSize: "Tamanho do texto", editorPosition: "Posição",
+    editorTextColor: "Cor do texto", editorOpacity: "Opacidade do texto (%)", editorFilter: "Efeito", editorFrame: "Moldura",
+    editorFrameWidth: "Espessura da moldura (%)", editorFrameColor: "Cor da moldura",
+    editorOriginal: "Original", editorGrayscale: "Preto e branco", editorSepia: "Sépia", editorInvert: "Inverter cores",
+    editorNoFrame: "Sem moldura", editorSolidFrame: "Moldura simples", editorDoubleFrame: "Moldura dupla",
+    editorSmall: "Pequeno", editorMedium: "Médio", editorLarge: "Grande", editorTopLeft: "Superior esquerda", editorTopCenter: "Superior central",
+    editorTopRight: "Superior direita", editorCenterLeft: "Centro esquerda", editorCenter: "Centro", editorCenterRight: "Centro direita",
+    editorBottomLeft: "Inferior esquerda", editorBottomCenter: "Inferior central", editorBottomRight: "Inferior direita", editorOneImage: "O editor aceita uma imagem por vez.",
+    mergeTitle: "Mesclar PDF",
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
@@ -51,7 +60,16 @@ const messages = {
     imageGroup: "Images", imageCount: "13 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
-    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
+    rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, and frames",
+    editorTextLabel: "Text", editorTextPlaceholder: "Enter a caption (optional)", editorTextSize: "Text size", editorPosition: "Position",
+    editorTextColor: "Text color", editorOpacity: "Text opacity (%)", editorFilter: "Effect", editorFrame: "Frame",
+    editorFrameWidth: "Frame width (%)", editorFrameColor: "Frame color",
+    editorOriginal: "Original", editorGrayscale: "Grayscale", editorSepia: "Sepia", editorInvert: "Invert colors",
+    editorNoFrame: "No frame", editorSolidFrame: "Solid frame", editorDoubleFrame: "Double frame",
+    editorSmall: "Small", editorMedium: "Medium", editorLarge: "Large", editorTopLeft: "Top left", editorTopCenter: "Top center",
+    editorTopRight: "Top right", editorCenterLeft: "Center left", editorCenter: "Center", editorCenterRight: "Center right",
+    editorBottomLeft: "Bottom left", editorBottomCenter: "Bottom center", editorBottomRight: "Bottom right", editorOneImage: "The editor accepts one image at a time.",
+    mergeTitle: "Merge PDF",
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
@@ -129,6 +147,9 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAria));
   });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  });
   const isPdf = currentOperation.startsWith("pdf.");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
@@ -158,6 +179,7 @@ const operationTitles = {
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
+  "image.editor": "editorTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
@@ -189,10 +211,13 @@ function selectTool(operation) {
   document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress";
   document.querySelector('[data-option="degrees"]').hidden = !["image.rotate", "pdf.rotate"].includes(operation);
   document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
+  document.querySelectorAll('[data-option^="editor-"]').forEach((field) => {
+    field.hidden = operation !== "image.editor";
+  });
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
   fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || operation.startsWith("image.");
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
   fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
@@ -210,10 +235,10 @@ const categoryOperations = {
   edit: ["pdf.watermark", "pdf.page_numbers"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf"],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.editor"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-create": [],
-  "img-edit": [],
+  "img-edit": ["image.editor"],
   "img-convert": ["image.convert"],
   "img-security": [],
 };
@@ -244,7 +269,13 @@ function formatBytes(size) {
 }
 
 function showFiles(files) {
-  currentFiles = Array.from(files || []);
+  const incoming = Array.from(files || []);
+  if (currentOperation === "image.editor" && incoming.length > 1) {
+    formError.textContent = t("editorOneImage");
+    formError.hidden = false;
+    return;
+  }
+  currentFiles = incoming;
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
   if (currentFiles.length) {
@@ -388,6 +419,14 @@ form.addEventListener("submit", async (event) => {
     fileInput.focus();
     return;
   }
+  if (currentOperation === "image.editor" &&
+      !document.querySelector("#editor-text").value.trim() &&
+      document.querySelector("#editor-filter").value === "original" &&
+      document.querySelector("#editor-frame").value === "none") {
+    formError.textContent = t("invalidOptions");
+    formError.hidden = false;
+    return;
+  }
   clearInterval(pollTimer);
   jobResult.hidden = true;
   resetButton.hidden = true;
@@ -408,6 +447,17 @@ form.addEventListener("submit", async (event) => {
   if (currentOperation === "image.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.split") options.ranges = document.querySelector("#ranges").value;
+  if (currentOperation === "image.editor") {
+    options.text = document.querySelector("#editor-text").value;
+    options.text_size = document.querySelector("#editor-text-size").value;
+    options.text_position = document.querySelector("#editor-text-position").value;
+    options.text_color = document.querySelector("#editor-text-color").value;
+    options.opacity = document.querySelector("#editor-opacity").value;
+    options.filter = document.querySelector("#editor-filter").value;
+    options.frame = document.querySelector("#editor-frame").value;
+    options.frame_width = document.querySelector("#editor-frame-width").value;
+    options.frame_color = document.querySelector("#editor-frame-color").value;
+  }
   body.append("operation", currentOperation);
   body.append("options", JSON.stringify(options));
   currentFiles.forEach((file) => body.append("files", file, file.name));

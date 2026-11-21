@@ -25,7 +25,17 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
-from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
+from .image_ops import (
+    EDITOR_COLORS,
+    EDITOR_FILTERS,
+    EDITOR_FRAMES,
+    EDITOR_POSITIONS,
+    EDITOR_SIZES,
+    INPUT_FORMATS,
+    InvalidImageError,
+    UnsupportedImageError,
+    inspect_image,
+)
 from .office_ops import FAMILIES
 from .pdf_archive import pdfa_available
 from .pdf_ops import (
@@ -54,7 +64,6 @@ PDF_COMING_SOON = [
 IMAGE_COMING_SOON = [
     ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
     ("Converter de JPG", "Convert from JPG", "img-convert", 5),
-    ("Editor de fotos", "Photo editor", "img-edit", 6),
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
     ("Marcar IMAGEM", "Watermark IMAGE", "img-edit", 9),
@@ -477,6 +486,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.editor",
             "image.to_pdf",
             "pdf.merge",
             "pdf.split",
@@ -558,7 +568,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "As opções não são válidas."}
                 },
             )
-        image_operations = {"image.convert", "image.resize", "image.compress", "image.rotate"}
+        image_operations = {
+            "image.convert",
+            "image.resize",
+            "image.compress",
+            "image.rotate",
+            "image.editor",
+        }
+        if operation == "image.editor" and len(files) != 1:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Selecione uma imagem."}},
+            )
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
                 status_code=422,
@@ -601,6 +622,68 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         validated_options: dict[str, Any] = {}
+        if operation == "image.editor":
+            filter_name = parsed_options.get("filter", "original")
+            frame = parsed_options.get("frame", "none")
+            text = parsed_options.get("text", "")
+            text_size = parsed_options.get("text_size", "medium")
+            text_position = parsed_options.get("text_position", "bottom_center")
+            text_color = parsed_options.get("text_color", "white")
+            text_opacity = parsed_options.get("opacity", 100)
+            frame_color = parsed_options.get("frame_color", "black")
+            frame_width = parsed_options.get("frame_width", 5)
+            if (
+                any(
+                    not isinstance(value, str)
+                    for value in (
+                        filter_name,
+                        frame,
+                        text_size,
+                        text_position,
+                        text_color,
+                        frame_color,
+                    )
+                )
+                or filter_name not in EDITOR_FILTERS
+                or frame not in EDITOR_FRAMES
+                or not isinstance(text, str)
+                or len(text) > 80
+                or text_size not in EDITOR_SIZES
+                or text_position not in EDITOR_POSITIONS
+                or text_color not in EDITOR_COLORS
+                or isinstance(text_opacity, bool)
+                or not str(text_opacity).isdigit()
+                or not 10 <= int(text_opacity) <= 100
+                or frame_color not in EDITOR_COLORS
+                or isinstance(frame_width, bool)
+                or not str(frame_width).isdigit()
+                or not 2 <= int(frame_width) <= 12
+                or (
+                    not text.strip()
+                    and filter_name == "original"
+                    and frame == "none"
+                )
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Opções de edição inválidas.",
+                        }
+                    },
+                )
+            validated_options.update(
+                filter=filter_name,
+                frame=frame,
+                frame_color=frame_color,
+                frame_width=int(frame_width),
+                text=text.strip(),
+                text_size=text_size,
+                text_position=text_position,
+                text_color=text_color,
+                opacity=int(text_opacity),
+            )
         if operation == "pdf.pdfa" and not pdfa_available():
             raise HTTPException(
                 status_code=503,
@@ -1011,8 +1094,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(
                         status_code=415,
-                        detail={"error": {"code": "unsupported_format",
-                                          "message": "Formato de documento não suportado."}},
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Formato de documento não suportado.",
+                            }
+                        },
                     )
                 is_watermark_image = (
                     (operation == "pdf.watermark" and watermark_kind == "image")
