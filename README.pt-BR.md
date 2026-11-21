@@ -86,7 +86,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
-| JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
+| JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, marca d'água | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |

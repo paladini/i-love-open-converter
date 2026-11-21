@@ -83,7 +83,7 @@ downloads as a ZIP archive.
 
 | Input | Available operations | Output |
 | --- | --- | --- |
-| JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
+| JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate, watermark | JPEG, PNG, WebP |
 | Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown, Word, PowerPoint or Excel, extract images, watermark, page numbers | PDF, DOCX, PPTX, XLSX, HTML, JPG, or ZIP |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
 | Password-protected PDF | Unlock with the current password | PDF |

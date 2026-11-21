@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
 **Review:** sent at 0ed12f8
-**Fix pass:** pending review
+**Fix pass:** done - added regressions for text opacity and EXIF orientation, per-source overlay placement, alpha and bounded sizing, option and upload-count limits, malformed/oversized overlays, and failed batches without partial downloads; aligned the format matrix with the new operation.
 
 ## Problem
 
