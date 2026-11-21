@@ -47,6 +47,9 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
   a transparent PNG. The source is capped at 40 megapixels; edge quality depends
   on the image and is not guaranteed. Docker builds include the CPU model so the
   network-isolated worker needs no model download at runtime.
+- Blur detected frontal and profile faces locally with OpenCV. Detection can
+  miss faces; plates and arbitrary objects are not detected, so review the
+  result before sharing. Images with no detected faces fail without output.
 - Create a meme from one uploaded image with optional top and bottom captions,
   rendered locally in JPEG, PNG, or WebP. Captions wrap and scale to fit; on
   small images, captions that still do not fit end with an ellipsis. JPEG output

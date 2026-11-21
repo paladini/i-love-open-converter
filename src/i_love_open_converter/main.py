@@ -28,6 +28,7 @@ from .files import safe_filename
 from .image_ops import (
     INPUT_FORMATS,
     MAX_BACKGROUND_REMOVAL_PIXELS,
+    MAX_FACE_BLUR_PIXELS,
     MAX_UPSCALE_PIXELS,
     InvalidImageError,
     UnsupportedImageError,
@@ -65,7 +66,6 @@ IMAGE_COMING_SOON = [
     ("Editor de fotos", "Photo editor", "img-edit", 6),
     ("Marcar IMAGEM", "Watermark IMAGE", "img-edit", 9),
     ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
-    ("Desfocar cara", "Blur faces", "img-security", 13),
 ]
 
 
@@ -484,6 +484,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.meme",
             "image.upscale",
             "image.remove_background",
+            "image.blur_faces",
             "image.to_pdf",
             "pdf.merge",
             "pdf.split",
@@ -573,6 +574,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.meme",
             "image.upscale",
             "image.remove_background",
+            "image.blur_faces",
         }
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
@@ -603,7 +605,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if (
             operation in single_pdf_operations
             or operation in FAMILIES
-            or operation in {"image.meme", "image.upscale", "image.remove_background"}
+            or operation
+            in {"image.meme", "image.upscale", "image.remove_background", "image.blur_faces"}
         ) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
@@ -1289,6 +1292,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 detail={"error": {"code": "invalid_file"}},
                             ) from exc
                         if width * height > MAX_BACKGROUND_REMOVAL_PIXELS:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "A imagem excede o limite de 40 MP.",
+                                    }
+                                },
+                            )
+                    if operation == "image.blur_faces":
+                        try:
+                            width, height = inspect_image_dimensions(destination)
+                        except InvalidImageError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={"error": {"code": "invalid_file"}},
+                            ) from exc
+                        if width * height > MAX_FACE_BLUR_PIXELS:
                             raise HTTPException(
                                 status_code=422,
                                 detail={
