@@ -35,7 +35,13 @@ with tempfile.TemporaryDirectory(prefix="html-pdf-smoke-") as temporary:
         if not document[0].get_images():
             raise RuntimeError("Embedded data URI image was not rendered")
 
-    for resource in ("https://example.invalid/image.png", "file:///etc/passwd"):
+    for resource in (
+        "http://example.invalid/image.png",
+        "https://example.invalid/image.png",
+        "ftp://example.invalid/image.png",
+        "file:///etc/passwd",
+        "../assets/image.png",
+    ):
         source.write_text(f'<html><body><img src="{resource}"></body></html>', encoding="utf-8")
         try:
             convert_html(source, output)
@@ -45,5 +51,6 @@ with tempfile.TemporaryDirectory(prefix="html-pdf-smoke-") as temporary:
             raise RuntimeError(f"Blocked resource was not rejected: {resource}")
 
 print(
-    "HTML_TO_PDF_SMOKE_OK: selectable text and data URI rendered; HTTP and file resources blocked"
+    "HTML_TO_PDF_SMOKE_OK: selectable text and data URI rendered; HTTP, HTTPS, FTP, file, "
+    "and relative resources blocked"
 )

@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
 **Review:** sent at a15a9d2
-**Fix pass:** pending
+**Fix pass:** done - added failed-job regression tests for renderer timeout, invalid PDF, output size and page bounds; expanded the Linux smoke to HTTPS, FTP, file and relative resources
 
 ## Build evidence
 
@@ -11,7 +11,8 @@
 - `uv run ruff check .` - passed.
 - `node --check src/i_love_open_converter/static/js/html-to-pdf.js` - passed.
 - `docker compose config` - passed; worker retains `network_mode: none` and `OFFICE_NETWORK_ISOLATED=1`.
-- Docker Linux smoke as UID 1000 with `--network none` - passed; selectable text and embedded `data:` image rendered, HTTP and `file:` resources rejected.
+- Docker Linux smoke as UID 1000 with `--network none` - passed; selectable text and embedded `data:` image rendered, HTTP, HTTPS, FTP, `file:` and relative resources rejected.
+- HTML regression tests - passed, including timeout, invalid PDF, oversized output and page-bound failures with no downloadable artifact.
 - Browser review at 360 x 800 - PT-BR and English controls and copy visible; no horizontal overflow.
 
 ## Problem

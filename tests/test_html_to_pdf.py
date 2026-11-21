@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 
@@ -167,5 +168,46 @@ def test_html_worker_unavailable_fails_closed_without_output(settings, monkeypat
 
     assert status.json()["state"] == "failed"
     assert status.json()["error"]["code"] == "html_unavailable"
+    assert download.status_code == 409
+    assert not list(settings.jobs_dir.glob("*/output/*"))
+
+
+@pytest.mark.parametrize("failure", ["timeout", "invalid_pdf", "oversized_pdf", "too_many_pages"])
+def test_html_worker_rejects_renderer_bounds_without_output(settings, monkeypatch, failure):
+    monkeypatch.setattr(html_ops, "office_isolated", lambda: True)
+
+    def fake_run(command, **kwargs):
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+        output_path = Path(command[-1])
+        if failure == "invalid_pdf":
+            output_path.write_bytes(b"not a PDF")
+        else:
+            document = pymupdf.open()
+            for _ in range(2 if failure == "too_many_pages" else 1):
+                document.new_page()
+            document.save(output_path)
+            document.close()
+            if failure == "oversized_pdf":
+                monkeypatch.setattr(html_ops, "MAX_HTML_OUTPUT_BYTES", 10)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(html_ops.subprocess, "run", fake_run)
+    if failure == "too_many_pages":
+        monkeypatch.setattr(html_ops, "MAX_HTML_PAGES", 1)
+
+    with TestClient(create_app(settings)) as client:
+        response = _submit(
+            client,
+            [("files", ("sample.html", b"<h1>Local</h1>", "text/html"))],
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"])
+        download = client.get(response.json()["status_url"] + "/download")
+
+    assert status.json()["state"] == "failed"
+    assert status.json()["error"]["code"] == "html_failed"
     assert download.status_code == 409
     assert not list(settings.jobs_dir.glob("*/output/*"))
