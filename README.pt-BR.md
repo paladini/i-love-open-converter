@@ -42,6 +42,7 @@ futuras do projeto.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Girar imagens em 90°, 180° ou 270°.
+- Recortar imagens por coordenadas e dimensões em pixels após aplicar a orientação EXIF.
 
 Você pode processar várias imagens em um job. Resultados com vários arquivos
 são baixados em um arquivo ZIP. Imagens animadas não são suportadas.

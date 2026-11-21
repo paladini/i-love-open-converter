@@ -15,7 +15,7 @@ const messages = {
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
-    imageToPdfHint: "Uma página para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
+    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -55,7 +55,7 @@ const messages = {
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
-    imageToPdfHint: "One page for each image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
+    imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -151,6 +151,10 @@ function updateFormatTarget() {
   const format = outputFormat.value === "JPEG" ? "JPG" : outputFormat.value;
   formatTarget.textContent = format;
   formatTargetIcon.textContent = format;
+  document.querySelector('[data-option="quality"]').hidden = !(
+    currentOperation === "image.compress"
+    || (currentOperation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value))
+  );
 }
 
 const operationTitles = {
@@ -158,6 +162,7 @@ const operationTitles = {
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
+  "image.crop": "cropImageTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
@@ -186,7 +191,13 @@ function selectTool(operation) {
   submitButton.querySelector("[data-i18n]").textContent = t(submitKey);
   document.querySelector('[data-option="width"]').hidden = operation !== "image.resize";
   document.querySelector('[data-option="height"]').hidden = operation !== "image.resize";
-  document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress";
+  for (const name of ["crop-left", "crop-top", "crop-width", "crop-height"]) {
+    const label = document.querySelector(`[data-option="${name}"]`);
+    label.hidden = operation !== "image.crop";
+    label.querySelector("input").required = operation === "image.crop";
+  }
+  document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress"
+    && !(operation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value));
   document.querySelector('[data-option="degrees"]').hidden = !["image.rotate", "pdf.rotate"].includes(operation);
   document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
@@ -200,6 +211,7 @@ function selectTool(operation) {
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
   showFiles([]);
+  updateFormatTarget();
 }
 
 const categoryOperations = {
@@ -210,10 +222,10 @@ const categoryOperations = {
   edit: ["pdf.watermark", "pdf.page_numbers"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf"],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.crop"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-create": [],
-  "img-edit": [],
+  "img-edit": ["image.crop"],
   "img-convert": ["image.convert"],
   "img-security": [],
 };
@@ -300,6 +312,7 @@ function apiErrorKey(code) {
     invalid_file: "invalidFile", unsupported_format: "unsupportedFormat", file_too_large: "fileTooLarge",
     request_too_large: "requestTooLarge", processing_failed: "processingFailed", invalid_options: "invalidOptions",
     too_many_files: "tooManyFiles",
+    crop_out_of_bounds: "cropOutOfBounds",
   };
   return codes[code] || "genericError";
 }
@@ -404,7 +417,16 @@ form.addEventListener("submit", async (event) => {
     if (document.querySelector("#width").value) options.width = document.querySelector("#width").value;
     if (document.querySelector("#height").value) options.height = document.querySelector("#height").value;
   }
+  if (currentOperation === "image.crop") {
+    options.left = document.querySelector("#crop-left").value;
+    options.top = document.querySelector("#crop-top").value;
+    options.width = document.querySelector("#crop-width").value;
+    options.height = document.querySelector("#crop-height").value;
+  }
   if (currentOperation === "image.compress") options.quality = document.querySelector("#quality").value;
+  if (currentOperation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value)) {
+    options.quality = document.querySelector("#quality").value;
+  }
   if (currentOperation === "image.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.split") options.ranges = document.querySelector("#ranges").value;
