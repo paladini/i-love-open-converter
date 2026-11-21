@@ -41,6 +41,7 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 - Compress JPEG and WebP output with a quality setting.
 - Convert one or more JPG images to PNG or combine them into an animated GIF.
 - Rotate images by 90°, 180°, or 270°.
+- Edit one image with text, local filters, and simple frames.
 - Crop images with pixel coordinates and dimensions after applying EXIF orientation.
 - Add text or image watermarks to image batches with placement and opacity controls.
 
@@ -89,7 +90,7 @@ downloads as a ZIP archive.
 
 | Input | Available operations | Output |
 | --- | --- | --- |
-| JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate, watermark | JPEG, PNG, WebP |
+| JPEG, PNG, GIF, WebP, BMP, TIFF | Convert, resize, compress, rotate, crop, watermark, photo edit | JPEG, PNG, WebP |
 | Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown, Word, PowerPoint or Excel, extract images, watermark, page numbers | PDF, DOCX, PPTX, XLSX, HTML, JPG, or ZIP |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
 | HTML (`.html`, `.htm`) | Local HTML to PDF; embedded `data:` resources only | PDF |

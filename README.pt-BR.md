@@ -43,6 +43,7 @@ futuras do projeto.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Converter JPG para PNG ou combinar várias imagens em um GIF animado.
 - Girar imagens em 90°, 180° ou 270°.
+- Editar uma imagem com texto, filtros locais e molduras simples.
 - Recortar imagens por coordenadas e dimensões em pixels após aplicar a orientação EXIF.
 - Adicionar marcas d'água de texto ou imagem em lotes, com controles de posição e opacidade.
 
@@ -92,7 +93,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
-| JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, marca d'água | JPEG, PNG, WebP |
+| JPEG, PNG, GIF, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, recortar, marcar e editar fotos | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
 | HTML (`.html`, `.htm`) | HTML local para PDF; somente recursos `data:` incorporados | PDF |

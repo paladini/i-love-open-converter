@@ -11,6 +11,31 @@ OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 Image.MAX_IMAGE_PIXELS = 100_000_000
 MAX_GIF_ANIMATION_PIXELS = 25_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
+EDITOR_POSITIONS = {
+    "top_left",
+    "top_center",
+    "top_right",
+    "center_left",
+    "center",
+    "center_right",
+    "bottom_left",
+    "bottom_center",
+    "bottom_right",
+}
+EDITOR_COLORS = {"black", "white", "red", "orange", "yellow", "green", "blue", "purple"}
+EDITOR_FILTERS = {"original", "grayscale", "sepia", "invert"}
+EDITOR_FRAMES = {"none", "solid", "double"}
+EDITOR_SIZES = {"small", "medium", "large"}
+EDITOR_COLOR_VALUES = {
+    "black": (25, 30, 40),
+    "white": (255, 255, 255),
+    "red": (220, 53, 69),
+    "orange": (245, 130, 32),
+    "yellow": (250, 204, 21),
+    "green": (34, 160, 107),
+    "blue": (59, 105, 225),
+    "purple": (139, 92, 246),
+}
 
 
 class InvalidImageError(Exception):
@@ -35,31 +60,120 @@ def validate_image_crop_options(options: dict[str, Any]) -> dict[str, int]:
             raise InvalidImageOptionsError
         values[name] = int(raw)
     return values
-def _watermark_offset(
-    canvas_size: tuple[int, int], mark_size: tuple[int, int], position: str
+
+
+def _editor_offset(
+    canvas_size: tuple[int, int], element_size: tuple[int, int], position: str
 ) -> tuple[int, int]:
     width, height = canvas_size
-    mark_width, mark_height = mark_size
+    element_width, element_height = element_size
     inset = max(4, round(min(width, height) * 0.02))
     horizontal = position.rsplit("_", 1)[-1] if "_" in position else position
     vertical = position.split("_", 1)[0] if "_" in position else position
     x = (
         inset
         if horizontal == "left"
-        else width - mark_width - inset
+        else width - element_width - inset
         if horizontal == "right"
-        else (width - mark_width) // 2
+        else (width - element_width) // 2
     )
     y = (
         inset
         if vertical == "top"
-        else height - mark_height - inset
+        else height - element_height - inset
         if vertical == "bottom"
-        else (height - mark_height) // 2
+        else (height - element_height) // 2
     )
     return max(0, x), max(0, y)
 
 
+def _watermark_offset(
+    canvas_size: tuple[int, int], mark_size: tuple[int, int], position: str
+) -> tuple[int, int]:
+    return _editor_offset(canvas_size, mark_size, position)
+
+
+def _editor_filter(image: Image.Image, filter_name: str) -> Image.Image:
+    if filter_name == "original":
+        return image.convert("RGBA")
+    rgba = image.convert("RGBA")
+    alpha = rgba.getchannel("A")
+    rgb = rgba.convert("RGB")
+    rgba.close()
+    if filter_name == "grayscale":
+        filtered = rgb.convert("L").convert("RGB")
+    elif filter_name == "sepia":
+        gray = rgb.convert("L")
+        filtered = ImageOps.colorize(gray, black="#272019", white="#f4d7a1").convert("RGB")
+        gray.close()
+    else:
+        filtered = ImageOps.invert(rgb)
+    rgb.close()
+    filtered.putalpha(alpha)
+    alpha.close()
+    return filtered
+
+
+def _apply_editor_text(image: Image.Image, options: dict[str, Any]) -> None:
+    text = str(options.get("text", ""))
+    if not text:
+        return
+    size_factor = {"small": 0.03, "medium": 0.05, "large": 0.08}[options["text_size"]]
+    opacity = int(options["opacity"])
+    inset = max(4, round(min(image.size) * 0.02))
+    font_size = max(12, round(min(image.size) * size_factor))
+    font = ImageFont.load_default(size=font_size)
+    draw = ImageDraw.Draw(image)
+    bounds = draw.textbbox((0, 0), text, font=font)
+    available_width = max(1, image.width - 2 * inset)
+    text_width = bounds[2] - bounds[0]
+    if text_width > available_width:
+        font = ImageFont.load_default(size=max(1, round(font_size * available_width / text_width)))
+        bounds = draw.textbbox((0, 0), text, font=font)
+    text_size = (bounds[2] - bounds[0], bounds[3] - bounds[1])
+    x, y = _editor_offset(image.size, text_size, options["text_position"])
+    color = EDITOR_COLOR_VALUES[options["text_color"]]
+    draw.text(
+        (x - bounds[0], y - bounds[1]),
+        text,
+        font=font,
+        fill=(*color, round(255 * opacity / 100)),
+        stroke_width=max(1, font_size // 16),
+        stroke_fill=(25, 30, 40, round(190 * opacity / 100)),
+    )
+
+
+def _apply_editor_frame(image: Image.Image, options: dict[str, Any]) -> None:
+    frame = options["frame"]
+    if frame == "none":
+        return
+    width = max(1, round(min(image.size) * int(options["frame_width"]) / 100))
+    color = EDITOR_COLOR_VALUES[options["frame_color"]]
+    draw = ImageDraw.Draw(image)
+    if frame == "solid":
+        draw.rectangle(
+            (0, 0, image.width - 1, image.height - 1), outline=(*color, 255), width=width
+        )
+        return
+    line_width = max(1, width // 3)
+    for offset in (0, width - line_width):
+        if offset * 2 < min(image.size):
+            draw.rectangle(
+                (offset, offset, image.width - offset - 1, image.height - offset - 1),
+                outline=(*color, 255),
+                width=line_width,
+            )
+
+
+def _apply_editor(image: Image.Image, options: dict[str, Any]) -> Image.Image:
+    edited = _editor_filter(image, options["filter"])
+    if edited.mode != "RGBA":
+        rgba = edited.convert("RGBA")
+        edited.close()
+        edited = rgba
+    _apply_editor_frame(edited, options)
+    _apply_editor_text(edited, options)
+    return edited
 def _apply_image_watermark(
     image: Image.Image, options: dict[str, Any], watermark_path: Path | None
 ) -> Image.Image:
@@ -188,6 +302,8 @@ def process_image(
         elif operation == "image.rotate":
             degrees = int(options["degrees"])
             image = image.rotate(-degrees, expand=True)
+        elif operation == "image.editor":
+            image = _apply_editor(image, options)
         elif operation == "image.watermark":
             image = _apply_image_watermark(image, options, watermark_path)
         if output_format == "JPEG":
