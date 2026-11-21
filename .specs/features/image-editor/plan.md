@@ -2,7 +2,7 @@
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações de acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** user: "Editor simples local (Recomendado)"
-**Review:** pending revised-scope implementation
+**Review:** sent at de3886a
 **Fix pass:** pending review
 
 ## Problem
@@ -109,3 +109,9 @@ The source request also mentions stickers; the user selected text, filters and f
 - `.specs/features/initial-project/request.md` - original photo-editor request.
 - `.specs/features/initial-project/plan.md` - static image formats, resource limits and shared local image flow.
 - `.specs/STATE.md` - local processing, full catalog visibility and no external telemetry decisions.
+
+## Build evidence
+
+- `uv run pytest -q` and `uv run ruff check src/i_love_open_converter tests` passed after the editor was limited to text, filters, and frames.
+- `node --check src/i_love_open_converter/static/js/app.js` passed.
+- Browser inspection confirmed the editor card and controls in PT-BR and English. At 360px, the page width stayed within the viewport and the controls fit without horizontal page overflow.
