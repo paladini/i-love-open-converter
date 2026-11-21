@@ -2027,20 +2027,119 @@ def test_pdf_summary_fails_above_sentence_limit_without_output(settings, monkeyp
     assert "download_url" not in status
 
 
+def _translation_pdf_bytes(page_count=2):
+    document = pymupdf.open()
+    for number in range(page_count):
+        page = document.new_page(width=300 + number * 20, height=400 + number * 20)
+        if number == 0:
+            page.insert_text((40, 60), "A source sentence for translation.")
+    result = document.tobytes()
+    document.close()
+    return result
+
+
 def test_pdf_translation_requires_supported_direction_and_exposes_page(settings, pdf_bytes):
     with TestClient(create_app(settings)) as client:
         page = client.get("/tools/pdf-translate")
         assert page.status_code == 200
         assert "pdf-translate.js" in page.text
-        invalid = client.post(
+        requests = [
+            ("{}", [("document.pdf", pdf_bytes, "application/pdf")], 422),
+            (
+                json.dumps({"from": "fr", "to": "en"}),
+                [("document.pdf", pdf_bytes, "application/pdf")],
+                422,
+            ),
+            (
+                json.dumps({"from": "pt-BR", "to": "en"}),
+                [
+                    ("one.pdf", pdf_bytes, "application/pdf"),
+                    ("two.pdf", pdf_bytes, "application/pdf"),
+                ],
+                422,
+            ),
+            (
+                json.dumps({"from": "pt-BR", "to": "en"}),
+                [("document.txt", b"not a PDF", "text/plain")],
+                415,
+            ),
+            (
+                json.dumps({"from": "pt-BR", "to": "en"}),
+                [("malformed.pdf", b"not a valid PDF", "application/pdf")],
+                422,
+            ),
+            (
+                json.dumps({"from": "pt-BR", "to": "en"}),
+                [("too-many-pages.pdf", _translation_pdf_bytes(101), "application/pdf")],
+                422,
+            ),
+        ]
+        for options, files, expected_status in requests:
+            rejected = client.post(
+                "/api/jobs",
+                data={"operation": "pdf.translate", "options": options},
+                files=[("files", item) for item in files],
+            )
+            assert rejected.status_code == expected_status, rejected.json()
+            with sqlite3.connect(settings.database_path) as connection:
+                assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_pdf_translation_job_returns_text_pdf_download(settings, monkeypatch):
+    from i_love_open_converter import pdf_translation
+
+    monkeypatch.setattr(
+        pdf_translation,
+        "_translate_text",
+        lambda text, source, target: f"Translated: {text}",
+    )
+    with TestClient(create_app(settings)) as client:
+        created = client.post(
             "/api/jobs",
-            data={"operation": "pdf.translate", "options": json.dumps({"from": "fr", "to": "en"})},
-            files={"files": ("document.pdf", pdf_bytes, "application/pdf")},
+            data={
+                "operation": "pdf.translate",
+                "options": json.dumps({"from": "en", "to": "pt-BR"}),
+            },
+            files={"files": ("document.pdf", _translation_pdf_bytes(), "application/pdf")},
         )
-    assert invalid.status_code == 422
-    assert invalid.json()["error"]["code"] == "invalid_options"
-    with sqlite3.connect(settings.database_path) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+        assert created.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(created.json()["status_url"]).json()
+        assert status["state"] == "succeeded", status
+        download = client.get(status["download_url"])
+        assert download.status_code == 200
+        assert download.headers["content-type"].startswith("application/pdf")
+    with pymupdf.open(stream=download.content, filetype="pdf") as translated:
+        assert translated.page_count == 2
+        assert translated[0].get_text().replace("\u00a0", " ").startswith("Translated: ")
+        assert translated[1].get_text().strip() == ""
+        assert [page.rect.width for page in translated] == [300, 320]
+
+
+def test_pdf_translation_fails_without_models_and_has_no_download(settings, monkeypatch, tmp_path):
+    from i_love_open_converter import pdf_translation
+
+    pdf_translation._load_direction.cache_clear()
+    monkeypatch.setenv("TRANSLATION_MODEL_DIR", str(tmp_path / "missing-models"))
+    try:
+        with TestClient(create_app(settings)) as client:
+            created = client.post(
+                "/api/jobs",
+                data={
+                    "operation": "pdf.translate",
+                    "options": json.dumps({"from": "en", "to": "pt-BR"}),
+                },
+                files={"files": ("document.pdf", _translation_pdf_bytes(), "application/pdf")},
+            )
+            assert created.status_code == 202
+            assert process_one_job(settings)
+            status = client.get(created.json()["status_url"]).json()
+            assert status["state"] == "failed"
+            assert status["error"]["code"] == "translation_unavailable"
+            assert "download_url" not in status
+            assert not (settings.jobs_dir / created.json()["job_id"] / "output").exists()
+    finally:
+        pdf_translation._load_direction.cache_clear()
 
 
 def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_bytes):

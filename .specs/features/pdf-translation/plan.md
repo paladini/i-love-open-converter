@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** user chose “PDF textual por página (Recomendado)” for offline PT-BR ↔ English translation, with text and page breaks preserved and no layout/images retained; user approved about 200 MB of image growth. To stay near that size, use the Argos model files with direct CTranslate2 and SentencePiece rather than the PyPI Argos runtime, whose stanza dependency pulls in PyTorch.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at 0188c33.
+**Fix pass:** done - added API/worker tests for the successful PDF download and the missing-model failure, then covered the rejected request matrix with no-job assertions.
 
 ## Problem
 
