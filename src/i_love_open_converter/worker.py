@@ -22,6 +22,7 @@ from .html_ops import HtmlConversionError, HtmlExternalResourceError, HtmlUnavai
 from .image_ops import (
     InvalidImageError,
     InvalidImageOptionsError,
+    NoFacesDetectedError,
     UnsupportedImageError,
     create_animated_gif,
     inspect_image,
@@ -73,6 +74,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.meme",
             "image.upscale",
             "image.remove_background",
+            "image.blur_faces",
             "image.editor",
             "image.crop",
             "image.watermark",
@@ -252,6 +254,15 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "office_failed",
             "Não foi possível converter o documento Office.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoFacesDetectedError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "no_faces_detected",
+            "Nenhum rosto foi detectado. Revise a imagem e tente novamente.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

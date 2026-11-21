@@ -12,11 +12,14 @@ INPUT_FORMATS = {"JPEG", "PNG", "GIF", "WEBP", "BMP", "TIFF"}
 OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 MAX_UPSCALE_PIXELS = 40_000_000
 MAX_BACKGROUND_REMOVAL_PIXELS = 40_000_000
+MAX_FACE_BLUR_PIXELS = 40_000_000
 Image.MAX_IMAGE_PIXELS = 100_000_000
 MAX_GIF_ANIMATION_PIXELS = 25_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
 _BACKGROUND_SESSION = None
 _BACKGROUND_SESSION_LOCK = Lock()
+_FACE_CASCADES = None
+_FACE_CASCADES_LOCK = Lock()
 EDITOR_POSITIONS = {
     "top_left",
     "top_center",
@@ -54,6 +57,10 @@ class UnsupportedImageError(Exception):
 
 
 class InvalidImageOptionsError(Exception):
+    pass
+
+
+class NoFacesDetectedError(Exception):
     pass
 
 
@@ -437,6 +444,10 @@ def process_image(
             if image.width * image.height > MAX_BACKGROUND_REMOVAL_PIXELS:
                 raise InvalidImageError
             image = _remove_image_background(image)
+        elif operation == "image.blur_faces":
+            if image.width * image.height > MAX_FACE_BLUR_PIXELS:
+                raise InvalidImageError
+            image = _blur_detected_faces(image)
         elif operation == "image.meme":
             image = image.convert("RGBA")
             _draw_meme_captions(image, options)
@@ -492,6 +503,108 @@ def _remove_image_background(image: Image.Image) -> Image.Image:
     if not isinstance(result, Image.Image) or result.size != image.size:
         raise InvalidImageError
     return result.convert("RGBA")
+
+
+def _face_cascades():
+    global _FACE_CASCADES
+    with _FACE_CASCADES_LOCK:
+        if _FACE_CASCADES is None:
+            import cv2
+
+            data_dir = Path(cv2.data.haarcascades)
+            frontal = cv2.CascadeClassifier(str(data_dir / "haarcascade_frontalface_default.xml"))
+            profile = cv2.CascadeClassifier(str(data_dir / "haarcascade_profileface.xml"))
+            if frontal.empty() or profile.empty():
+                raise InvalidImageError
+            _FACE_CASCADES = (cv2, frontal, profile)
+    return _FACE_CASCADES
+
+
+def _detect_face_regions(image: Image.Image) -> list[tuple[int, int, int, int]]:
+    import numpy as np
+
+    cv2, frontal, profile = _face_cascades()
+    preview = ImageOps.contain(image.convert("RGB"), (1600, 1600), method=Image.Resampling.LANCZOS)
+    gray = cv2.cvtColor(np.asarray(preview), cv2.COLOR_RGB2GRAY)
+    gray = cv2.equalizeHist(gray)
+    regions = []
+    for x, y, width, height in frontal.detectMultiScale(
+        gray, scaleFactor=1.1, minNeighbors=5, minSize=(24, 24)
+    ):
+        regions.append((int(x), int(y), int(width), int(height)))
+    for x, y, width, height in profile.detectMultiScale(
+        gray, scaleFactor=1.1, minNeighbors=5, minSize=(24, 24)
+    ):
+        regions.append((int(x), int(y), int(width), int(height)))
+    for x, y, width, height in profile.detectMultiScale(
+        cv2.flip(gray, 1), scaleFactor=1.1, minNeighbors=5, minSize=(24, 24)
+    ):
+        regions.append((int(preview.width - x - width), int(y), int(width), int(height)))
+    scale_x = image.width / preview.width
+    scale_y = image.height / preview.height
+    mapped = [
+        (
+            max(0, round(x * scale_x)),
+            max(0, round(y * scale_y)),
+            min(image.width, round((x + width) * scale_x)),
+            min(image.height, round((y + height) * scale_y)),
+        )
+        for x, y, width, height in regions
+    ]
+    return _deduplicate_face_regions(mapped)
+
+
+def _deduplicate_face_regions(
+    regions: list[tuple[int, int, int, int]],
+) -> list[tuple[int, int, int, int]]:
+    kept = []
+    for candidate in sorted(
+        regions, key=lambda rect: (rect[2] - rect[0]) * (rect[3] - rect[1]), reverse=True
+    ):
+        left, top, right, bottom = candidate
+        area = max(0, right - left) * max(0, bottom - top)
+        if not area:
+            continue
+        duplicate = False
+        for other in kept:
+            x_overlap = max(0, min(right, other[2]) - max(left, other[0]))
+            y_overlap = max(0, min(bottom, other[3]) - max(top, other[1]))
+            intersection = x_overlap * y_overlap
+            other_area = (other[2] - other[0]) * (other[3] - other[1])
+            if intersection / max(1, area + other_area - intersection) > 0.45:
+                duplicate = True
+                break
+        if not duplicate:
+            kept.append(candidate)
+    return kept
+
+
+def _blur_detected_faces(image: Image.Image) -> Image.Image:
+    regions = _detect_face_regions(image)
+    if not regions:
+        raise NoFacesDetectedError
+    result = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+    for left, top, right, bottom in regions:
+        width = right - left
+        height = bottom - top
+        padding_x = round(width * 0.22)
+        padding_y = round(height * 0.22)
+        box = (
+            max(0, left - padding_x),
+            max(0, top - padding_y),
+            min(result.width, right + padding_x),
+            min(result.height, bottom + padding_y),
+        )
+        region = result.crop(box)
+        radius = max(15, round(min(width, height) * 0.22))
+        if region.mode == "RGBA":
+            alpha = region.getchannel("A")
+            blurred = region.convert("RGB").filter(ImageFilter.GaussianBlur(radius))
+            blurred.putalpha(alpha)
+        else:
+            blurred = region.filter(ImageFilter.GaussianBlur(radius))
+        result.paste(blurred, box[:2])
+    return result
 
 
 def _apply_unsharp_mask(image: Image.Image) -> Image.Image:

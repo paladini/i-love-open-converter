@@ -50,6 +50,9 @@ futuras do projeto.
   transparente. A imagem original pode ter até 40 megapixels; o recorte depende
   da imagem e não garante bordas perfeitas. O modelo CPU acompanha a imagem Docker,
   sem download durante o processamento pelo worker isolado da rede.
+- Desfocar localmente rostos detectados de frente ou de perfil com OpenCV. A
+  detecção pode deixar rostos passar; placas e outros objetos não são detectados,
+  então revise o resultado antes de compartilhar. Sem rostos detectados, não há saída.
 - Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
   e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
   à imagem; em imagens pequenas, o texto que não couber termina com reticências.
