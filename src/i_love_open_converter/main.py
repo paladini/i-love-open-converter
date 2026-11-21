@@ -57,7 +57,6 @@ IMAGE_COMING_SOON = [
     ("Editor de fotos", "Photo editor", "img-edit", 6),
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
-    ("Marcar IMAGEM", "Watermark IMAGE", "img-edit", 9),
     ("Gerador de memes", "Meme generator", "img-create", 10),
     ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
     ("Desfocar cara", "Blur faces", "img-security", 13),
@@ -464,11 +463,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         operation = form.get("operation")
         options = form.get("options", "{}")
         raw_files = form.getlist("files")
+        raw_watermark_files = form.getlist("watermark_image")
         files = [item for item in raw_files if isinstance(item, UploadFile)]
+        watermark_upload = (
+            raw_watermark_files[0]
+            if len(raw_watermark_files) == 1 and isinstance(raw_watermark_files[0], UploadFile)
+            else None
+        )
         if (
             not isinstance(operation, str)
             or not isinstance(options, str)
             or len(files) != len(raw_files)
+            or len(raw_watermark_files) > 1
+            or (raw_watermark_files and watermark_upload is None)
         ):
             raise HTTPException(
                 status_code=422,
@@ -485,6 +492,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.watermark",
             "image.to_pdf",
             "pdf.merge",
             "pdf.split",
@@ -568,7 +576,111 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "As opções não são válidas."}
                 },
             )
-        image_operations = {"image.convert", "image.resize", "image.compress", "image.rotate"}
+        validated_options: dict[str, Any] = {}
+        image_watermark_kind: str | None = None
+        if operation == "image.watermark":
+            image_watermark_kind = parsed_options.get("kind")
+            if image_watermark_kind not in {"text", "image"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Escolha texto ou imagem."}
+                    },
+                )
+            if image_watermark_kind == "image":
+                if (
+                    watermark_upload is None
+                    or not 1 <= len(files) <= settings.max_files_per_job - 1
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "error": {
+                                "code": "invalid_options",
+                                "message": "Selecione imagens e uma marca d'água.",
+                            }
+                        },
+                    )
+                overlay_extension = Path(
+                    safe_filename(watermark_upload.filename or "overlay")
+                ).suffix.lower()
+                if overlay_extension not in {".png", ".jpg", ".jpeg", ".webp"}:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Use uma marca d'água PNG, JPG ou WebP.",
+                            }
+                        },
+                    )
+                files.append(watermark_upload)
+                validated_options["source_count"] = len(files) - 1
+            elif watermark_upload is not None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "O modo texto não aceita uma imagem de marca d'água.",
+                        }
+                    },
+                )
+            elif not 1 <= len(files) <= settings.max_files_per_job:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Selecione de 1 a 10 imagens.",
+                        }
+                    },
+                )
+            valid_positions = {
+                "top_left",
+                "top_center",
+                "top_right",
+                "center_left",
+                "center",
+                "center_right",
+                "bottom_left",
+                "bottom_center",
+                "bottom_right",
+            }
+            position = parsed_options.get("position", "center")
+            if position not in valid_positions:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Posição inválida."}},
+                )
+            opacity = parsed_options.get("opacity", 30)
+            if (
+                isinstance(opacity, bool)
+                or not str(opacity).isdigit()
+                or not 10 <= int(opacity) <= 100
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Opacidade inválida."}},
+                )
+            validated_options.update(
+                kind=image_watermark_kind, position=position, opacity=int(opacity)
+            )
+            if image_watermark_kind == "text":
+                text = parsed_options.get("text")
+                if not isinstance(text, str) or not text.strip() or len(text) > 120:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Texto inválido."}},
+                    )
+                validated_options["text"] = text.strip()
+        image_operations = {
+            "image.convert",
+            "image.resize",
+            "image.compress",
+            "image.rotate",
+            "image.watermark",
+        }
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
                 status_code=422,
@@ -611,7 +723,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
-        validated_options: dict[str, Any] = {}
         if operation == "pdf.pdfa" and not pdfa_available():
             raise HTTPException(
                 status_code=503,
@@ -1041,6 +1152,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     )
                 is_watermark_image = (
                     (operation == "pdf.watermark" and watermark_kind == "image")
+                    or (
+                        operation == "image.watermark"
+                        and image_watermark_kind == "image"
+                        and index == len(files) - 1
+                    )
                     or (
                         operation in {"pdf.edit", "pdf.sign"}
                         and validated_options["kind"] == "image"
