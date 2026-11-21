@@ -6,7 +6,7 @@ from io import BytesIO
 
 import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageOps
 
 from i_love_open_converter import worker
 from i_love_open_converter.main import create_app
@@ -97,6 +97,131 @@ def test_editor_places_text_with_color_size_and_opacity(settings):
             red > 200 and green < 80
             for red, green, blue, _ in result.crop((45, 0, 80, 30)).get_flattened_data()
         )
+
+
+@pytest.mark.parametrize(
+    ("position", "expected"),
+    [
+        ("top_left", (4, 4)),
+        ("top_center", (45, 4)),
+        ("top_right", (86, 4)),
+        ("center_left", (4, 45)),
+        ("center", (45, 45)),
+        ("center_right", (86, 45)),
+        ("bottom_left", (4, 86)),
+        ("bottom_center", (45, 86)),
+        ("bottom_right", (86, 86)),
+    ],
+)
+def test_editor_maps_all_nine_positions_to_expected_anchors(position, expected):
+    from i_love_open_converter.image_ops import _editor_offset
+
+    assert _editor_offset((100, 100), (10, 10), position) == expected
+
+
+def test_editor_text_is_positioned_after_exif_orientation(settings):
+    source_buffer = BytesIO()
+    source_image = Image.new("RGB", (40, 80), (0, 0, 255))
+    exif = Image.Exif()
+    exif[274] = 6
+    source_image.save(source_buffer, format="JPEG", exif=exif)
+    source_image.close()
+    source = source_buffer.getvalue()
+    with Image.open(BytesIO(source)) as opened:
+        oriented = ImageOps.exif_transpose(opened).convert("RGBA")
+
+    with _run(
+        settings,
+        {
+            "text": "EXIF",
+            "text_position": "top_left",
+            "text_color": "red",
+            "opacity": 100,
+        },
+        source,
+    ) as result:
+        assert result.size == (80, 40)
+        changed = [
+            (x, y)
+            for y in range(result.height)
+            for x in range(result.width)
+            if result.getpixel((x, y)) != oriented.getpixel((x, y))
+        ]
+        assert any(x < 35 and y < 20 for x, y in changed)
+        assert not any(x >= 45 and y < 20 for x, y in changed)
+    oriented.close()
+
+
+def test_editor_combines_filter_frame_sticker_and_text_in_layer_order(settings):
+    base = _image_bytes()
+    common = {
+        "filter": "invert",
+        "frame": "solid",
+        "frame_width": 12,
+        "frame_color": "red",
+    }
+    frame = _run(settings, common, base)
+    sticker = _run(
+        settings,
+        {
+            **common,
+            "sticker": "star",
+            "sticker_position": "top_left",
+            "sticker_size": "large",
+            "sticker_color": "yellow",
+        },
+        base,
+    )
+    text = _run(
+        settings,
+        {
+            **common,
+            "text": "EDIT",
+            "text_position": "top_left",
+            "text_size": "large",
+            "text_color": "green",
+            "opacity": 100,
+        },
+        base,
+    )
+    combined = _run(
+        settings,
+        {
+            **common,
+            "sticker": "star",
+            "sticker_position": "top_left",
+            "sticker_size": "large",
+            "sticker_color": "yellow",
+            "text": "EDIT",
+            "text_position": "top_left",
+            "text_size": "large",
+            "text_color": "green",
+            "opacity": 100,
+        },
+        base,
+    )
+
+    assert frame.size == sticker.size == text.size == combined.size == (80, 80)
+    assert frame.getpixel((0, 40))[:3] == (220, 53, 69)
+    assert combined.getpixel((40, 40))[:3] == (235, 175, 55)
+    assert any(
+        sticker.getpixel((x, y)) != frame.getpixel((x, y))
+        for y in range(4, 20)
+        for x in range(4, 20)
+    )
+    overlaps = [
+        (x, y)
+        for y in range(4, 30)
+        for x in range(4, 35)
+        if sticker.getpixel((x, y)) != frame.getpixel((x, y))
+        and text.getpixel((x, y)) != frame.getpixel((x, y))
+    ]
+    assert overlaps
+    assert any(combined.getpixel(point) != sticker.getpixel(point) for point in overlaps)
+    frame.close()
+    sticker.close()
+    text.close()
+    combined.close()
 
 
 @pytest.mark.parametrize("sticker", ["heart", "star", "sun", "check", "arrow", "speech"])
@@ -240,6 +365,8 @@ def test_editor_worker_failure_has_no_downloadable_partial_file(settings, monkey
 def test_editor_card_and_controls_are_active_and_bilingual(settings):
     with TestClient(create_app(settings)) as client:
         page = client.get("/")
+        script = client.get("/static/js/app.js").text
+        css = client.get("/static/css/app.css").text
 
     assert 'data-tool="image.editor"' in page.text
     assert 'data-catalog-category="img-edit" data-catalog-order="6"' in page.text
@@ -249,6 +376,9 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
         "editor-filter",
         "editor-frame",
         "editor-sticker",
+        "editor-sticker-position",
+        "editor-sticker-size",
+        "editor-sticker-color",
         "editor-output",
     ):
         if field == "editor-output":
@@ -258,3 +388,10 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
     assert "editorTitle" in page.text
     assert 'id="file-input"' in page.text
     assert 'type="file"' in page.text
+    assert 'editorSticker: "Sticker vetorial"' in script
+    assert 'editorSticker: "Vector sticker"' in script
+    assert 'editorStickerPosition: "Posição do sticker"' in script
+    assert 'editorStickerPosition: "Sticker position"' in script
+    assert 'fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation)' in script
+    assert 'operation.startsWith("image.") && operation !== "image.editor"' in script
+    assert ".operation-options { display: flex; flex-wrap: wrap;" in css

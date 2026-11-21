@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações de acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none
-**Review:** sent at 7e988c5
-**Fix pass:** pending review
+**Review:** completed at 5609efb; scope matched, with test coverage gaps
+**Fix pass:** done - added EXIF orientation, all-position anchors, combined filter/frame/sticker/text layer-order, and UI contract regression checks; full test suite, Ruff, JavaScript syntax, and diff checks pass
 
 ## Problem
 
