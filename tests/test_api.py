@@ -1045,6 +1045,8 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'data-category="img-optimize"' in response.text
     assert 'data-tool="image.meme"' in response.text
     assert 'data-tool="image.upscale"' in response.text
+    assert 'data-tool="image.remove_background"' in response.text
+    assert 'data-option="remove-background-note"' in response.text
     assert 'id="upscale-dimensions"' in response.text
     assert 'id="meme-top-text"' in response.text
     assert 'memeTitle: "Criar meme"' in script
@@ -1058,6 +1060,11 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'upscaleTitle: "Upscale image"' in script
     assert 'upscaleScaleLabel: "Escala"' in script
     assert 'upscaleScaleLabel: "Scale"' in script
+    assert 'removeBackgroundTitle: "Remover fundo"' in script
+    assert 'removeBackgroundTitle: "Remove background"' in script
+    assert 'removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP."' in script
+    assert 'removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP."' in script
+    assert '"image.remove_background": "removeBackgroundTitle"' in script
     assert 'upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP)."' in script
     assert (
         'upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP)."' in script
@@ -1232,6 +1239,105 @@ def test_upscale_worker_failure_has_no_partial_download(settings, jpeg_bytes, mo
         submitted = client.post(
             "/api/jobs",
             data={"operation": "image.upscale", "options": json.dumps({"scale": 2})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"])
+        download = client.get(f"{submitted.json()['status_url']}/download")
+
+    assert status.json()["state"] == "failed"
+    assert download.status_code == 409
+    assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
+
+
+def test_background_removal_creates_transparent_png_and_rejects_other_formats(
+    settings, jpeg_bytes, monkeypatch
+):
+    from i_love_open_converter import image_ops
+
+    def remove_background(image):
+        result = image.convert("RGBA")
+        result.putpixel((0, 0), (0, 0, 0, 0))
+        return result
+
+    monkeypatch.setattr(image_ops, "_remove_image_background", remove_background)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.remove_background"},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(f"{submitted.json()['status_url']}/download")
+        invalid_format = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.remove_background",
+                "options": json.dumps({"format": "JPEG"}),
+            },
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "image/png"
+    with Image.open(BytesIO(download.content)) as result:
+        assert result.mode == "RGBA"
+        assert result.getpixel((0, 0))[3] == 0
+        assert result.size == (16, 12)
+    assert invalid_format.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 1
+
+
+def test_background_removal_rejects_multiple_files_and_over_40_megapixels(
+    settings, jpeg_bytes, monkeypatch
+):
+    from i_love_open_converter import main
+
+    multiple = [
+        ("files", ("one.jpg", jpeg_bytes, "image/jpeg")),
+        ("files", ("two.jpg", jpeg_bytes, "image/jpeg")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        missing = client.post(
+            "/api/jobs",
+            content=(
+                b"--remove-bg\r\nContent-Disposition: form-data; name=\"operation\"\r\n\r\n"
+                b"image.remove_background\r\n--remove-bg--\r\n"
+            ),
+            headers={"Content-Type": "multipart/form-data; boundary=remove-bg"},
+        )
+        multiple_response = client.post(
+            "/api/jobs",
+            data={"operation": "image.remove_background"},
+            files=multiple,
+        )
+        monkeypatch.setattr(main, "inspect_image_dimensions", lambda _path: (5000, 9000))
+        oversized = client.post(
+            "/api/jobs",
+            data={"operation": "image.remove_background"},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+
+    assert missing.status_code == multiple_response.status_code == 422
+    assert oversized.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_background_removal_worker_failure_has_no_partial_output(settings, jpeg_bytes, monkeypatch):
+    from i_love_open_converter import image_ops
+
+    def fail_background_removal(_image):
+        raise image_ops.InvalidImageError
+
+    monkeypatch.setattr(image_ops, "_remove_image_background", fail_background_removal)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.remove_background"},
             files=_multipart("photo.jpg", jpeg_bytes),
         )
         assert submitted.status_code == 202
