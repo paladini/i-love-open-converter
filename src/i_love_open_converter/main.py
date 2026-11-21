@@ -26,7 +26,14 @@ from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
 from .html_ops import MAX_HTML_BYTES
-from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
+from .image_ops import (
+    INPUT_FORMATS,
+    InvalidImageError,
+    InvalidImageOptionsError,
+    UnsupportedImageError,
+    inspect_image,
+    validate_image_crop_options,
+)
 from .office_ops import FAMILIES
 from .pdf_archive import pdfa_available
 from .pdf_ops import (
@@ -52,7 +59,6 @@ PDF_COMING_SOON = [
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
 ]
 IMAGE_COMING_SOON = [
-    ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
     ("Converter de JPG", "Convert from JPG", "img-convert", 5),
     ("Editor de fotos", "Photo editor", "img-edit", 6),
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
@@ -492,6 +498,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.crop",
             "image.watermark",
             "image.to_pdf",
             "pdf.merge",
@@ -679,6 +686,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.crop",
             "image.watermark",
         }
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
@@ -1008,6 +1016,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         }
                     },
                 )
+        if operation == "image.crop":
+            try:
+                validated_options.update(validate_image_crop_options(parsed_options))
+            except InvalidImageOptionsError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Recorte inválido."}},
+                ) from exc
         if operation == "image.rotate":
             degrees = parsed_options.get("degrees")
             if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
@@ -1141,7 +1157,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for index, upload in enumerate(files):
                 original_name = safe_filename(upload.filename or "imagem")
                 extension = Path(original_name).suffix.lower()
-                accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+                accepted_extensions = {
+                    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff"
+                }
                 is_pdf_operation = operation.startswith("pdf.")
                 is_html_operation = operation in {"html.to_pdf", "html.to_image"}
                 if operation in FAMILIES and extension not in FAMILIES[operation]:

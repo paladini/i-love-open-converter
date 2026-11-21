@@ -19,7 +19,12 @@ from .database import (
 )
 from .files import safe_stem
 from .html_ops import HtmlConversionError, HtmlExternalResourceError, HtmlUnavailableError
-from .image_ops import InvalidImageError, UnsupportedImageError, process_image
+from .image_ops import (
+    InvalidImageError,
+    InvalidImageOptionsError,
+    UnsupportedImageError,
+    process_image,
+)
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import (
     ExcelConversionError,
@@ -62,6 +67,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.crop",
             "image.watermark",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
@@ -234,6 +240,15 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "unsupported_format",
             "Formato de imagem não suportado.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except InvalidImageOptionsError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "crop_out_of_bounds",
+            "O recorte precisa caber dentro de cada imagem.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

@@ -6,7 +6,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
-INPUT_FORMATS = {"JPEG", "PNG", "WEBP", "BMP", "TIFF"}
+INPUT_FORMATS = {"JPEG", "PNG", "GIF", "WEBP", "BMP", "TIFF"}
 OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP"}
 Image.MAX_IMAGE_PIXELS = 100_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -20,6 +20,20 @@ class UnsupportedImageError(Exception):
     pass
 
 
+class InvalidImageOptionsError(Exception):
+    pass
+
+
+def validate_image_crop_options(options: dict[str, Any]) -> dict[str, int]:
+    values: dict[str, int] = {}
+    for name in ("left", "top", "width", "height"):
+        raw = options.get(name)
+        minimum = 0 if name in {"left", "top"} else 1
+        maximum = 9_999 if name in {"left", "top"} else 10_000
+        if isinstance(raw, bool) or not str(raw).isdigit() or not minimum <= int(raw) <= maximum:
+            raise InvalidImageOptionsError
+        values[name] = int(raw)
+    return values
 def _watermark_offset(
     canvas_size: tuple[int, int], mark_size: tuple[int, int], position: str
 ) -> tuple[int, int]:
@@ -161,6 +175,12 @@ def process_image(
                 (width or image.width, height or image.height),
                 method=Image.Resampling.LANCZOS,
             )
+        elif operation == "image.crop":
+            crop = validate_image_crop_options(options)
+            right, bottom = crop["left"] + crop["width"], crop["top"] + crop["height"]
+            if right > image.width or bottom > image.height:
+                raise InvalidImageOptionsError
+            image = image.crop((crop["left"], crop["top"], right, bottom))
         elif operation == "image.rotate":
             degrees = int(options["degrees"])
             image = image.rotate(-degrees, expand=True)
