@@ -19,6 +19,7 @@ dependencies = [
   "xlsxwriter==3.3.3",
   "rembg[cpu]==2.0.87",
   "onnxruntime==1.32.0",
+  "opencv-python-headless==4.14.0.94",
 ]
 
 [dependency-groups]

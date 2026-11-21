@@ -1046,6 +1046,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'data-tool="image.meme"' in response.text
     assert 'data-tool="image.upscale"' in response.text
     assert 'data-tool="image.remove_background"' in response.text
+    assert 'data-tool="image.blur_faces"' in response.text
     assert 'data-option="remove-background-note"' in response.text
     assert 'id="upscale-dimensions"' in response.text
     assert 'id="meme-top-text"' in response.text
@@ -1062,6 +1063,12 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'upscaleScaleLabel: "Scale"' in script
     assert 'removeBackgroundTitle: "Remover fundo"' in script
     assert 'removeBackgroundTitle: "Remove background"' in script
+    assert 'blurFacesTitle: "Desfocar cara"' in script
+    assert 'blurFacesTitle: "Blur faces"' in script
+    assert 'blurFacesHint: "Desfoque local de rostos frontais e de perfil; até 40 MP."' in script
+    assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
+    assert 'data-option="blur-faces-note"' in response.text
+    assert 'imageCount: "14 available"' in script
     assert 'removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP."' in script
     assert 'removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP."' in script
     assert '"image.remove_background": "removeBackgroundTitle"' in script
@@ -1304,7 +1311,7 @@ def test_background_removal_rejects_multiple_files_and_over_40_megapixels(
         missing = client.post(
             "/api/jobs",
             content=(
-                b"--remove-bg\r\nContent-Disposition: form-data; name=\"operation\"\r\n\r\n"
+                b'--remove-bg\r\nContent-Disposition: form-data; name="operation"\r\n\r\n'
                 b"image.remove_background\r\n--remove-bg--\r\n"
             ),
             headers={"Content-Type": "multipart/form-data; boundary=remove-bg"},
@@ -1348,6 +1355,53 @@ def test_background_removal_worker_failure_has_no_partial_output(settings, jpeg_
     assert status.json()["state"] == "failed"
     assert download.status_code == 409
     assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
+
+
+def test_face_blur_no_faces_fails_without_downloadable_output(settings, jpeg_bytes, monkeypatch):
+    from i_love_open_converter import image_ops
+
+    monkeypatch.setattr(image_ops, "_detect_face_regions", lambda _image: [])
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.blur_faces", "options": json.dumps({"format": "PNG"})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"])
+        download = client.get(f"{submitted.json()['status_url']}/download")
+
+    assert status.json()["state"] == "failed"
+    assert status.json()["error"]["code"] == "no_faces_detected"
+    assert download.status_code == 409
+    assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
+
+
+def test_face_blur_rejects_multiple_files_and_over_40_megapixels(settings, jpeg_bytes, monkeypatch):
+    from i_love_open_converter import main
+
+    multiple = [
+        ("files", ("one.jpg", jpeg_bytes, "image/jpeg")),
+        ("files", ("two.jpg", jpeg_bytes, "image/jpeg")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        multiple_response = client.post(
+            "/api/jobs",
+            data={"operation": "image.blur_faces"},
+            files=multiple,
+        )
+        monkeypatch.setattr(main, "inspect_image_dimensions", lambda _path: (5000, 9000))
+        oversized = client.post(
+            "/api/jobs",
+            data={"operation": "image.blur_faces"},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+
+    assert multiple_response.status_code == 422
+    assert oversized.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
 
 
 def test_pdf_markup_tools_open_with_upload_first_screens(settings):

@@ -18,7 +18,12 @@ from .database import (
     requeue_interrupted_jobs,
 )
 from .files import safe_stem
-from .image_ops import InvalidImageError, UnsupportedImageError, process_image
+from .image_ops import (
+    InvalidImageError,
+    NoFacesDetectedError,
+    UnsupportedImageError,
+    process_image,
+)
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import (
     ExcelConversionError,
@@ -64,6 +69,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.meme",
             "image.upscale",
             "image.remove_background",
+            "image.blur_faces",
         }:
             input_artifacts = [item for item in job["artifacts"] if item["role"] == "input"]
             if not input_artifacts:
@@ -186,6 +192,15 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "office_failed",
             "Não foi possível converter o documento Office.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoFacesDetectedError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "no_faces_detected",
+            "Nenhum rosto foi detectado. Revise a imagem e tente novamente.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

@@ -9,6 +9,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 import i_love_open_converter.image_ops as image_ops
 from i_love_open_converter.image_ops import (
     InvalidImageError,
+    NoFacesDetectedError,
     UnsupportedImageError,
     _fit_meme_caption,
     convert_image,
@@ -368,3 +369,54 @@ def test_background_removal_applies_exif_orientation_before_inference(tmp_path, 
     with Image.open(destination) as result:
         assert result.size == (12, 8)
         assert result.mode == "RGBA"
+
+
+def test_face_blur_blurs_detected_region_and_preserves_dimensions(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "blurred.png"
+    image = Image.new("RGB", (100, 80), "white")
+    ImageDraw.Draw(image).rectangle((30, 20, 49, 39), fill="black")
+    image.save(source)
+    monkeypatch.setattr(image_ops, "_detect_face_regions", lambda _image: [(30, 20, 50, 40)])
+
+    process_image(source, destination, "image.blur_faces", {"format": "PNG"})
+
+    with Image.open(destination) as result:
+        assert result.size == (100, 80)
+        assert result.getpixel((10, 10)) == (255, 255, 255)
+        assert result.getpixel((40, 30)) != (0, 0, 0)
+
+
+def test_face_blur_applies_exif_orientation_before_detection(tmp_path, monkeypatch):
+    source = tmp_path / "rotated.jpg"
+    destination = tmp_path / "oriented-blur.png"
+    original = Image.new("RGB", (8, 12), "blue")
+    exif = Image.Exif()
+    exif[274] = 6
+    original.save(source, exif=exif)
+    original.close()
+    seen_sizes = []
+
+    def detect(image):
+        seen_sizes.append(image.size)
+        return [(2, 2, 8, 8)]
+
+    monkeypatch.setattr(image_ops, "_detect_face_regions", detect)
+
+    process_image(source, destination, "image.blur_faces", {"format": "PNG"})
+
+    assert seen_sizes == [(12, 8)]
+    with Image.open(destination) as result:
+        assert result.size == (12, 8)
+
+
+def test_face_blur_fails_when_no_faces_are_detected(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "blurred.png"
+    Image.new("RGB", (8, 6), "white").save(source)
+    monkeypatch.setattr(image_ops, "_detect_face_regions", lambda _image: [])
+
+    with pytest.raises(NoFacesDetectedError):
+        process_image(source, destination, "image.blur_faces", {"format": "PNG"})
+
+    assert not destination.exists()
