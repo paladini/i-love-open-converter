@@ -53,7 +53,6 @@ PDF_COMING_SOON = [
 ]
 IMAGE_COMING_SOON = [
     ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
-    ("Converter de JPG", "Convert from JPG", "img-convert", 5),
     ("Editor de fotos", "Photo editor", "img-edit", 6),
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
@@ -474,6 +473,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         supported_operations = {
             *FAMILIES,
             "image.convert",
+            "image.from_jpg",
             "image.resize",
             "image.compress",
             "image.rotate",
@@ -558,7 +558,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "As opções não são válidas."}
                 },
             )
-        image_operations = {"image.convert", "image.resize", "image.compress", "image.rotate"}
+        image_operations = {
+            "image.convert", "image.from_jpg", "image.resize", "image.compress", "image.rotate"
+        }
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
                 status_code=422,
@@ -839,7 +841,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         output_format = "PNG"
         if operation in image_operations:
             output_format = str(parsed_options.get("format", "PNG")).upper()
-            if output_format not in {"JPEG", "JPG", "PNG", "WEBP"}:
+            allowed_formats = {"PNG", "GIF"} if operation == "image.from_jpg" else {
+                "JPEG", "JPG", "PNG", "WEBP"
+            }
+            if output_format not in allowed_formats:
                 raise HTTPException(
                     status_code=422,
                     detail={
@@ -1007,6 +1012,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 original_name = safe_filename(upload.filename or "imagem")
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
+                if operation == "image.from_jpg":
+                    accepted_extensions = {".jpg", ".jpeg"}
                 is_pdf_operation = operation.startswith("pdf.")
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(
@@ -1187,6 +1194,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             },
                         ) from exc
                     if image_format not in INPUT_FORMATS or (
+                        operation == "image.from_jpg" and image_format != "JPEG"
+                    ) or (
                         is_watermark_image and image_format not in {"PNG", "JPEG", "WEBP"}
                     ):
                         raise HTTPException(

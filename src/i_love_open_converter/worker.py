@@ -18,7 +18,13 @@ from .database import (
     requeue_interrupted_jobs,
 )
 from .files import safe_stem
-from .image_ops import InvalidImageError, UnsupportedImageError, process_image
+from .image_ops import (
+    InvalidImageError,
+    UnsupportedImageError,
+    create_animated_gif,
+    inspect_image,
+    process_image,
+)
 from .office_ops import FAMILIES, OfficeConversionError, OfficeUnavailableError, convert_office
 from .pdf_ops import (
     ExcelConversionError,
@@ -58,6 +64,7 @@ def process_one_job(settings: Settings) -> bool:
             size_bytes = destination.stat().st_size
         elif job["operation"] in {
             "image.convert",
+            "image.from_jpg",
             "image.resize",
             "image.compress",
             "image.rotate",
@@ -70,19 +77,33 @@ def process_one_job(settings: Settings) -> bool:
             output_format = str(job["options"].get("format", "PNG")).upper()
             extension = "jpg" if output_format in {"JPEG", "JPG"} else output_format.lower()
             generated: list[tuple[str, str, int]] = []
-            for index, source_artifact in enumerate(input_artifacts, start=1):
-                source = (settings.data_dir / source_artifact["relative_path"]).resolve()
-                if not source.is_relative_to(settings.data_dir.resolve()):
-                    raise InvalidImageError
-                stem = safe_stem(source_artifact["name"])
-                if any(name.rsplit(".", 1)[0] == stem for name, _, _ in generated):
-                    stem = f"{stem}-{index}"
-                output_name = f"{stem}.{extension}"
+            if job["operation"] == "image.from_jpg" and output_format == "GIF":
+                sources = []
+                for artifact in input_artifacts:
+                    source = (settings.data_dir / artifact["relative_path"]).resolve()
+                    if not source.is_relative_to(settings.data_dir.resolve()):
+                        raise InvalidImageError
+                    if inspect_image(source)[0] != "JPEG":
+                        raise UnsupportedImageError
+                    sources.append(source)
+                output_name = f"{safe_stem(input_artifacts[0]['name'])}.gif"
                 destination = output_dir / output_name
-                content_type, size_bytes = process_image(
-                    source, destination, job["operation"], job["options"]
-                )
+                content_type, size_bytes = create_animated_gif(sources, destination)
                 generated.append((output_name, content_type, size_bytes))
+            else:
+                for index, source_artifact in enumerate(input_artifacts, start=1):
+                    source = (settings.data_dir / source_artifact["relative_path"]).resolve()
+                    if not source.is_relative_to(settings.data_dir.resolve()):
+                        raise InvalidImageError
+                    stem = safe_stem(source_artifact["name"])
+                    if any(name.rsplit(".", 1)[0] == stem for name, _, _ in generated):
+                        stem = f"{stem}-{index}"
+                    output_name = f"{stem}.{extension}"
+                    destination = output_dir / output_name
+                    content_type, size_bytes = process_image(
+                        source, destination, job["operation"], job["options"]
+                    )
+                    generated.append((output_name, content_type, size_bytes))
             if len(generated) == 1:
                 output_name, content_type, size_bytes = generated[0]
             else:
