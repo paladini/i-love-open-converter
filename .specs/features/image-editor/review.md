@@ -41,3 +41,7 @@ The flow uses the existing one-image upload and conversion form, fixed controls,
 - Started with `DATA_DIR=.specs/features/image-editor/review-data APP_PORT=8779`; stopped the server after inspection.
 - Used only the throwaway `review-data` directory and removed it after stopping the server. No existing app data was opened or modified.
 - No product code or tests were changed, and no commit or push was made.
+
+## Scope update
+
+After this review, the user chose a simple local first editor with text, filters, and frames, deferring stickers to a later stage. The initial reviewed PR had included stickers. This report records that earlier scope; the revised plan removes sticker criteria and a fresh independent review will cover the updated implementation.

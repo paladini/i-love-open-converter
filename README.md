@@ -40,7 +40,7 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
   ratio.
 - Compress JPEG and WebP output with a quality setting.
 - Rotate images by 90°, 180°, or 270°.
-- Edit one image with text, local filters, simple frames, and built-in vector stickers.
+- Edit one image with text, local filters, and simple frames.
 
 You can process multiple images in one job. Multi-file results download as a
 ZIP archive. Animated images are not supported.
