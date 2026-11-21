@@ -83,6 +83,7 @@ modelo U2NetP para o cache local na primeira utilização.
 - Converter PDF em um DOCX editável localmente. PDFs digitalizados exigem OCR, e layouts complexos podem diferir do original.
 - Converter PDF em uma apresentação PowerPoint editável localmente. Textos e imagens incorporadas viram objetos separados nos slides; desenhos vetoriais, gráficos, fundos de página e OCR de páginas digitalizadas não são reconstruídos.
 - Extrair tabelas detectadas e texto selecionável de um PDF para uma planilha Excel local. Tabelas e referências de página ficam na aba `Tables`; outros textos vão para `Text`. Os valores permanecem textos literais. Layouts incomuns podem não ser reconhecidos, e páginas digitalizadas exigem OCR.
+- Criar uma camada de texto pesquisável em PDFs digitalizados com OCR local em português, inglês ou nos dois idiomas. O limite é 20 páginas e a precisão depende da qualidade da digitalização; revise o resultado.
 
 - Transformar imagens em um PDF com uma página para cada imagem.
 - Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
@@ -96,6 +97,8 @@ Para limitar a memória de renderização, páginas que excedem 16 milhões de p
 A conversão de PDF para Word usa a biblioteca local `pdf2docx`, que não recebe mais manutenção ativa do projeto original. Ela aplica os mesmos limites de tamanho de página, tempo e arquivo de saída e exige o worker Linux isolado da rede configurado abaixo; outros ambientes recusam a conversão.
 A conversão de PDF para PowerPoint usa PyMuPDF e `python-pptx` para criar caixas de texto e imagens editáveis. Cada página gera um slide; OCR de páginas digitalizadas e reconstrução de desenhos vetoriais complexos, gráficos e fundos não são suportados. O limite é de 200 páginas, 20 mil objetos por apresentação, 16 milhões de pixels por página a 150 DPI, 180 segundos e 256 MiB de saída. O worker Linux isolado da rede é obrigatório; outros ambientes recusam a conversão.
 A conversão de PDF para Excel usa a detecção de tabelas do PyMuPDF e XlsxWriter. Tabelas detectadas e outros textos selecionáveis ficam em abas separadas com referências às páginas; todos os valores permanecem textos literais. Tabelas sem bordas ou com layouts incomuns podem não ser reconhecidas, números não são inferidos e páginas digitalizadas exigem OCR. Os limites são 200 páginas, 16 milhões de pixels por página a 150 DPI, 200 mil células de tabela, 100 mil linhas de texto, 180 segundos e 256 MiB de saída. O worker Linux isolado da rede é obrigatório; outros ambientes recusam a conversão.
+
+O OCR usa OCRmyPDF e Tesseract instalados na imagem Docker com os dados de português e inglês incluídos. O worker não baixa modelos ou idiomas e permanece sem acesso à rede. Cada job aceita até 20 páginas, um processo por vez e até 600 segundos; PDFs com texto selecionável são preservados. O reconhecimento pode falhar em imagens desfocadas, inclinadas, pequenas ou com baixo contraste.
 
 As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
 ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
