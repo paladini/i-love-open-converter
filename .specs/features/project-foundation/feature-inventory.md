@@ -37,7 +37,7 @@ This inventory preserves the capabilities named in the goal objective while the 
 | Compare PDFs | Implemented as a visual page comparison |
 | Redact PDF | Implemented with safeguards for tagged content |
 | Fillable PDF forms | Implemented for existing fields |
-| AI summary / translation | Deferred; no remote AI service is part of the local-first scope |
+| AI summary / translation | Local extractive PDF summary is implemented; machine translation remains planned as an offline self-hosted model |
 | PDF to Markdown | Implemented |
 
 ## Image capabilities named in the objective

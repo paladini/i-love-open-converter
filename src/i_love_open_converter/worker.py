@@ -37,8 +37,10 @@ from .pdf_ops import (
     MarkdownConversionError,
     NoEmbeddedImagesError,
     NoSpreadsheetDataError,
+    NoSummaryTextError,
     PowerPointConversionError,
     PowerPointUnavailableError,
+    SummaryLimitError,
     WordConversionError,
     WordUnavailableError,
     process_pdf,
@@ -154,6 +156,7 @@ def process_one_job(settings: Settings) -> bool:
             "pdf.to_word",
             "pdf.to_powerpoint",
             "pdf.to_excel",
+            "pdf.summary",
             "html.to_pdf",
             "html.to_image",
             "pdf.watermark",
@@ -274,6 +277,24 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "ocr_no_text",
             "Nenhum texto foi reconhecido. Confira a qualidade do documento.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoSummaryTextError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "summary_no_text",
+            "O PDF não contém texto selecionável. Execute OCR antes de gerar o resumo.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except SummaryLimitError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "summary_too_large",
+            "O PDF excede os limites do resumo local.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

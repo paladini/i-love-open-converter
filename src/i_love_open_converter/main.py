@@ -64,7 +64,6 @@ BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
-    ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
 ]
 IMAGE_COMING_SOON = [
@@ -303,6 +302,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/tools/pdf-ocr", include_in_schema=False)
     async def pdf_ocr(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-ocr.html", {"request": request})
+
+    @app.get("/tools/pdf-summary", include_in_schema=False)
+    async def pdf_summary(request: Request):
+        return TEMPLATES.TemplateResponse(request, "pdf-summary.html", {"request": request})
 
     @app.get("/tools/scan-to-pdf", include_in_schema=False)
     async def scan_to_pdf(request: Request):
@@ -547,6 +550,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.compare",
             "pdf.pdfa",
             "pdf.ocr",
+            "pdf.summary",
         }
         if operation not in supported_operations:
             raise HTTPException(
@@ -763,6 +767,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.pdfa",
             "pdf.ocr",
+            "pdf.summary",
         }
         if (
             operation in single_pdf_operations
@@ -897,6 +902,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["language"] = language
+        if operation == "pdf.summary" and parsed_options:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
+            )
         if operation == "html.to_pdf" and parsed_options:
             raise HTTPException(
                 status_code=422,
@@ -1462,6 +1472,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         )
                         pdf_page_counts.append(page_count)
                         content_type = "application/pdf"
+                        if operation == "pdf.summary" and page_count > 100:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "summary_too_large",
+                                        "message": "O PDF excede o limite de 100 páginas.",
+                                    }
+                                },
+                            )
                     except InvalidPdfError as exc:
                         raise HTTPException(
                             status_code=422,

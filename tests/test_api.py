@@ -1922,6 +1922,111 @@ def test_scan_to_pdf_page_is_available(settings):
     assert 'data-en="Scan to PDF"' in page.text
 
 
+def test_pdf_summary_is_extractive_ordered_and_limited_to_twelve_sentences(settings):
+    document = pymupdf.open()
+    page = document.new_page()
+    source_sentences = [
+        "Ocean currents influence seasonal temperatures along the coast, report 0.",
+        "Local libraries support neighborhood literacy programs, report 1.",
+        "Ancient pottery offers clues about trade routes, report 2.",
+        *[
+            f"Renewable energy policy supports clean power and stable communities, report {index}."
+            for index in range(3, 15)
+        ],
+    ]
+    for index, sentence in enumerate(source_sentences):
+        page.insert_text((40, 50 + index * 15), sentence, fontsize=8)
+    pdf_bytes = document.tobytes()
+    document.close()
+
+    with TestClient(create_app(settings)) as client:
+        created = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.summary", "options": "{}"},
+            files={"files": ("report.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert created.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(created.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        response = client.get(status["download_url"])
+
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    summary_text = response.content.decode("utf-8").replace("\r\n", "\n")
+    summary_sentences = [sentence.strip() for sentence in summary_text.split("\n\n")[1:]]
+    assert len(summary_sentences) == 12
+    assert all(sentence in source_sentences for sentence in summary_sentences), summary_sentences
+    assert all("Renewable energy policy" in sentence for sentence in summary_sentences)
+    indexes = [source_sentences.index(sentence) for sentence in summary_sentences]
+    assert indexes == sorted(indexes)
+
+
+def test_pdf_summary_reports_scanned_pdf_without_output(settings):
+    document = pymupdf.open()
+    document.new_page()
+    pdf_bytes = document.tobytes()
+    document.close()
+
+    with TestClient(create_app(settings)) as client:
+        created = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.summary", "options": "{}"},
+            files={"files": ("scan.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert created.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(created.json()["status_url"]).json()
+
+    assert status["state"] == "failed"
+    assert status["error"]["code"] == "summary_no_text"
+    assert "download_url" not in status
+
+
+def test_pdf_summary_rejects_more_than_one_hundred_pages(settings):
+    document = pymupdf.open()
+    for _ in range(101):
+        document.new_page()
+    pdf_bytes = document.tobytes()
+    document.close()
+
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.summary", "options": "{}"},
+            files={"files": ("large.pdf", pdf_bytes, "application/pdf")},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "summary_too_large"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_pdf_summary_fails_above_sentence_limit_without_output(settings, monkeypatch):
+    from i_love_open_converter import pdf_ops
+
+    monkeypatch.setattr(pdf_ops, "MAX_SUMMARY_SENTENCES", 1)
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((40, 60), "First source sentence. Second source sentence.")
+    pdf_bytes = document.tobytes()
+    document.close()
+
+    with TestClient(create_app(settings)) as client:
+        created = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.summary", "options": "{}"},
+            files={"files": ("many-sentences.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert created.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(created.json()["status_url"]).json()
+
+    assert status["state"] == "failed"
+    assert status["error"]["code"] == "summary_too_large"
+    assert "download_url" not in status
+
+
 def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_bytes):
     with pymupdf.open(stream=pdf_bytes, filetype="pdf") as source_document:
         original_sizes = [page.rect for page in source_document]

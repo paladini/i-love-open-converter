@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import html
+import math
 import os
 import re
 import socket
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from collections import Counter
 from difflib import SequenceMatcher
 from io import BytesIO
 from pathlib import Path
@@ -63,6 +65,101 @@ class ExcelUnavailableError(ExcelConversionError):
 
 class NoSpreadsheetDataError(ExcelConversionError):
     """The PDF contains no detected table cells or selectable text."""
+
+
+class NoSummaryTextError(Exception):
+    """The PDF has no selectable text to summarize."""
+
+
+class SummaryLimitError(Exception):
+    """The PDF contains more text than the local summarizer accepts."""
+
+
+MAX_SUMMARY_SENTENCES = 2_000
+MAX_SUMMARY_OUTPUT_SENTENCES = 12
+
+
+def _rank_summary_sentences(sentences: list[str]) -> list[int]:
+    if len(sentences) <= MAX_SUMMARY_OUTPUT_SENTENCES:
+        return list(range(len(sentences)))
+
+    tokenized = [
+        re.findall(r"\b[\wÀ-ÖØ-öø-ÿ]{2,}\b", sentence.casefold()) for sentence in sentences
+    ]
+    document_frequency = Counter(token for terms in tokenized for token in set(terms))
+    vectors: list[dict[str, float]] = []
+    norms: list[float] = []
+    for terms in tokenized:
+        frequencies = Counter(terms)
+        vector = {
+            token: frequency
+            * (math.log((1 + len(sentences)) / (1 + document_frequency[token])) + 1)
+            for token, frequency in frequencies.items()
+        }
+        vectors.append(vector)
+        norms.append(math.sqrt(sum(value * value for value in vector.values())))
+
+    graph: list[dict[int, float]] = [dict() for _ in sentences]
+    for left in range(len(sentences)):
+        left_vector = vectors[left]
+        for right in range(left + 1, len(sentences)):
+            right_vector = vectors[right]
+            if len(left_vector) < len(right_vector):
+                smaller, larger = left_vector, right_vector
+            else:
+                smaller, larger = right_vector, left_vector
+            dot = sum(value * larger.get(token, 0.0) for token, value in smaller.items())
+            denominator = norms[left] * norms[right]
+            similarity = dot / denominator if denominator else 0.0
+            if similarity > 0:
+                graph[left][right] = similarity
+                graph[right][left] = similarity
+
+    damping = 0.85
+    ranks = [1 / len(sentences)] * len(sentences)
+    weights = [sum(edges.values()) for edges in graph]
+    for _ in range(30):
+        updated = [(1 - damping) / len(sentences)] * len(sentences)
+        for source, edges in enumerate(graph):
+            if not weights[source]:
+                continue
+            share = damping * ranks[source] / weights[source]
+            for target, weight in edges.items():
+                updated[target] += share * weight
+        ranks = updated
+
+    selected = sorted(range(len(sentences)), key=lambda index: ranks[index], reverse=True)
+    return sorted(selected[:MAX_SUMMARY_OUTPUT_SENTENCES])
+
+
+def summarize_pdf(source: Path, destination: Path) -> None:
+    sentences: list[str] = []
+    try:
+        with pymupdf.open(source) as document:
+            if not document.is_pdf or document.needs_pass or document.page_count < 1:
+                raise InvalidPdfError
+            if document.page_count > 100:
+                raise SummaryLimitError
+            for page in document:
+                page_text = page.get_text("text")
+                sentences.extend(
+                    sentence.strip()
+                    for sentence in re.split(r"(?<=[.!?])\s+|\n+", page_text)
+                    if sentence.strip()
+                )
+                if len(sentences) > MAX_SUMMARY_SENTENCES:
+                    raise SummaryLimitError
+    except pymupdf.FileDataError as exc:
+        raise InvalidPdfError from exc
+    if not sentences:
+        raise NoSummaryTextError
+
+    selected = _rank_summary_sentences(sentences)
+    summary = "Resumo extraído / Extractive summary\n\n" + "\n\n".join(
+        sentences[index] for index in selected
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(summary + "\n", encoding="utf-8")
 
 
 def word_isolated() -> bool:
@@ -699,6 +796,12 @@ def process_pdf(
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    if operation == "pdf.summary":
+        if len(sources) != 1:
+            raise InvalidPdfError
+        destination = output_dir / "summary.txt"
+        summarize_pdf(sources[0][0], destination)
+        return [destination], "text/plain; charset=utf-8"
     if operation == "pdf.pdfa":
         if len(sources) != 1:
             raise InvalidPdfError
