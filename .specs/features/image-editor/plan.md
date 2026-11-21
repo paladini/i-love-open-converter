@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações de acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** user: "Editor simples local (Recomendado)"
-**Review:** sent at de3886a
-**Fix pass:** pending review
+**Review:** completed at 5609efb; the prior review covered the wider editor, and the user later narrowed this stage.
+**Fix pass:** done - removed stickers from the UI, API, worker, tests, and documentation; recorded AD-016 and verified the narrowed editor in both languages and at 360px.
 
 ## Problem
 
