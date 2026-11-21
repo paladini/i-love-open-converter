@@ -25,6 +25,7 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
+from .html_ops import MAX_HTML_BYTES
 from .image_ops import (
     INPUT_FORMATS,
     InvalidImageError,
@@ -51,7 +52,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
-    ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
     ("OCR PDF", "OCR PDF", "intelligence", 24),
@@ -63,7 +63,6 @@ IMAGE_COMING_SOON = [
     ("Editor de fotos", "Photo editor", "img-edit", 6),
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
-    ("Marcar IMAGEM", "Watermark IMAGE", "img-edit", 9),
     ("Gerador de memes", "Meme generator", "img-create", 10),
     ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
     ("Desfocar cara", "Blur faces", "img-security", 13),
@@ -308,6 +307,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_to_excel(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-to-excel.html", {"request": request})
 
+    @app.get("/tools/html-to-pdf", include_in_schema=False)
+    async def html_to_pdf(request: Request):
+        return TEMPLATES.TemplateResponse(request, "html-to-pdf.html", {"request": request})
+
+    @app.get("/tools/html-to-image", include_in_schema=False)
+    async def html_to_image(request: Request):
+        return TEMPLATES.TemplateResponse(request, "html-to-image.html", {"request": request})
+
     @app.get("/tools/office-to-pdf/{family}", include_in_schema=False)
     async def office_to_pdf(request: Request, family: str):
         labels = {
@@ -462,11 +469,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         operation = form.get("operation")
         options = form.get("options", "{}")
         raw_files = form.getlist("files")
+        raw_watermark_files = form.getlist("watermark_image")
         files = [item for item in raw_files if isinstance(item, UploadFile)]
+        watermark_upload = (
+            raw_watermark_files[0]
+            if len(raw_watermark_files) == 1 and isinstance(raw_watermark_files[0], UploadFile)
+            else None
+        )
         if (
             not isinstance(operation, str)
             or not isinstance(options, str)
             or len(files) != len(raw_files)
+            or len(raw_watermark_files) > 1
+            or (raw_watermark_files and watermark_upload is None)
         ):
             raise HTTPException(
                 status_code=422,
@@ -484,6 +499,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.compress",
             "image.rotate",
             "image.crop",
+            "image.watermark",
             "image.to_pdf",
             "pdf.merge",
             "pdf.split",
@@ -495,6 +511,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_word",
             "pdf.to_powerpoint",
             "pdf.to_excel",
+            "html.to_pdf",
+            "html.to_image",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -565,8 +583,111 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "As opções não são válidas."}
                 },
             )
+        validated_options: dict[str, Any] = {}
+        image_watermark_kind: str | None = None
+        if operation == "image.watermark":
+            image_watermark_kind = parsed_options.get("kind")
+            if image_watermark_kind not in {"text", "image"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Escolha texto ou imagem."}
+                    },
+                )
+            if image_watermark_kind == "image":
+                if (
+                    watermark_upload is None
+                    or not 1 <= len(files) <= settings.max_files_per_job - 1
+                ):
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "error": {
+                                "code": "invalid_options",
+                                "message": "Selecione imagens e uma marca d'água.",
+                            }
+                        },
+                    )
+                overlay_extension = Path(
+                    safe_filename(watermark_upload.filename or "overlay")
+                ).suffix.lower()
+                if overlay_extension not in {".png", ".jpg", ".jpeg", ".webp"}:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Use uma marca d'água PNG, JPG ou WebP.",
+                            }
+                        },
+                    )
+                files.append(watermark_upload)
+                validated_options["source_count"] = len(files) - 1
+            elif watermark_upload is not None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "O modo texto não aceita uma imagem de marca d'água.",
+                        }
+                    },
+                )
+            elif not 1 <= len(files) <= settings.max_files_per_job:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Selecione de 1 a 10 imagens.",
+                        }
+                    },
+                )
+            valid_positions = {
+                "top_left",
+                "top_center",
+                "top_right",
+                "center_left",
+                "center",
+                "center_right",
+                "bottom_left",
+                "bottom_center",
+                "bottom_right",
+            }
+            position = parsed_options.get("position", "center")
+            if position not in valid_positions:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Posição inválida."}},
+                )
+            opacity = parsed_options.get("opacity", 30)
+            if (
+                isinstance(opacity, bool)
+                or not str(opacity).isdigit()
+                or not 10 <= int(opacity) <= 100
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Opacidade inválida."}},
+                )
+            validated_options.update(
+                kind=image_watermark_kind, position=position, opacity=int(opacity)
+            )
+            if image_watermark_kind == "text":
+                text = parsed_options.get("text")
+                if not isinstance(text, str) or not text.strip() or len(text) > 120:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Texto inválido."}},
+                    )
+                validated_options["text"] = text.strip()
         image_operations = {
-            "image.convert", "image.resize", "image.compress", "image.rotate", "image.crop"
+            "image.convert",
+            "image.resize",
+            "image.compress",
+            "image.rotate",
+            "image.crop",
+            "image.watermark",
         }
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
@@ -594,7 +715,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.pdfa",
         }
-        if (operation in single_pdf_operations or operation in FAMILIES) and len(files) != 1:
+        if (operation in single_pdf_operations or operation in FAMILIES
+                or operation in {"html.to_pdf", "html.to_image"}) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -609,7 +731,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
-        validated_options: dict[str, Any] = {}
         if operation == "pdf.pdfa" and not pdfa_available():
             raise HTTPException(
                 status_code=503,
@@ -625,6 +746,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["language"] = language
+        if operation == "html.to_pdf" and parsed_options:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
+            )
+        if operation == "html.to_image":
+            image_format = parsed_options.get("format")
+            if set(parsed_options) != {"format"} or image_format not in {"jpg", "svg"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Escolha JPG ou SVG."}},
+                )
+            validated_options["format"] = image_format
         secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
         if operation in {"pdf.protect", "pdf.unlock"} and (
             not isinstance(secret, str)
@@ -1027,6 +1161,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff"
                 }
                 is_pdf_operation = operation.startswith("pdf.")
+                is_html_operation = operation in {"html.to_pdf", "html.to_image"}
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(
                         status_code=415,
@@ -1035,6 +1170,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     )
                 is_watermark_image = (
                     (operation == "pdf.watermark" and watermark_kind == "image")
+                    or (
+                        operation == "image.watermark"
+                        and image_watermark_kind == "image"
+                        and index == len(files) - 1
+                    )
                     or (
                         operation in {"pdf.edit", "pdf.sign"}
                         and validated_options["kind"] == "image"
@@ -1051,8 +1191,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             }
                         },
                     )
+                if is_html_operation and extension not in {".html", ".htm"}:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={"error": {"code": "unsupported_format",
+                                           "message": "Envie um arquivo HTML (.html ou .htm)."}},
+                    )
                 if (
                     not is_pdf_operation
+                    and not is_html_operation
                     and operation != "image.to_pdf"
                     and operation not in FAMILIES
                     and extension not in accepted_extensions
@@ -1072,6 +1219,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     while chunk := await upload.read(64 * 1024):
                         file_size += len(chunk)
                         total_size += len(chunk)
+                        if is_html_operation and file_size > MAX_HTML_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={"error": {"code": "file_too_large",
+                                                   "message": "O HTML excede o limite de 10 MiB."}},
+                            )
                         if file_size > settings.max_file_size_bytes:
                             raise HTTPException(
                                 status_code=413,
@@ -1095,6 +1248,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         target.write(chunk)
                 if operation in FAMILIES:
                     content_type = "application/octet-stream"
+                elif is_html_operation:
+                    content_type = "text/html"
                 elif is_pdf_operation and not is_watermark_image:
                     try:
                         page_count = (

@@ -15,7 +15,7 @@ const messages = {
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
-    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
+    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkImageTitle: "Marcar imagem", watermarkImageHint: "Texto ou imagem sobre suas fotos", watermarkModeLabel: "Tipo de marca d'água", watermarkTextMode: "Texto", watermarkOverlayMode: "Imagem", watermarkTextLabel: "Texto da marca d'água", watermarkFileLabel: "Imagem da marca d'água (PNG, JPG ou WebP)", watermarkPositionLabel: "Posição", watermarkOpacityLabel: "Transparência (%)", positionTopLeft: "Superior esquerda", positionTopCenter: "Superior central", positionTopRight: "Superior direita", positionCenterLeft: "Centro esquerda", positionCenter: "Centro", positionCenterRight: "Centro direita", positionBottomLeft: "Inferior esquerda", positionBottomCenter: "Inferior central", positionBottomRight: "Inferior direita", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -55,7 +55,7 @@ const messages = {
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
-    imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
+    imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkImageTitle: "Watermark image", watermarkImageHint: "Add text or a logo to your photos", watermarkModeLabel: "Watermark type", watermarkTextMode: "Text", watermarkOverlayMode: "Image", watermarkTextLabel: "Watermark text", watermarkFileLabel: "Watermark image (PNG, JPG, or WebP)", watermarkPositionLabel: "Position", watermarkOpacityLabel: "Opacity (%)", positionTopLeft: "Top left", positionTopCenter: "Top center", positionTopRight: "Top right", positionCenterLeft: "Center left", positionCenter: "Center", positionCenterRight: "Center right", positionBottomLeft: "Bottom left", positionBottomCenter: "Bottom center", positionBottomRight: "Bottom right", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -87,6 +87,9 @@ const selectedFile = document.querySelector("#selected-file");
 const selectedName = document.querySelector("#selected-file-name");
 const selectedSize = document.querySelector("#selected-file-size");
 const outputFormat = document.querySelector("#output-format");
+const watermarkKind = document.querySelector("#watermark-kind");
+const watermarkText = document.querySelector("#watermark-text");
+const watermarkImage = document.querySelector("#watermark-image");
 const formatRow = document.querySelector("#format-row");
 const formatTarget = document.querySelector("#format-target-label");
 const formatTargetIcon = document.querySelector("#format-target-icon");
@@ -159,6 +162,7 @@ function updateFormatTarget() {
 
 const operationTitles = {
   "image.convert": "convertTitle",
+  "image.watermark": "watermarkImageTitle",
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
@@ -179,6 +183,7 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  syncWatermarkControls();
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -210,8 +215,25 @@ function selectTool(operation) {
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
+  if (operation !== "image.watermark") {
+    watermarkImage.value = "";
+    document.querySelector("#watermark-file-name").textContent = "";
+  }
   showFiles([]);
   updateFormatTarget();
+}
+
+function syncWatermarkControls() {
+  const enabled = currentOperation === "image.watermark";
+  const imageMode = enabled && watermarkKind.value === "image";
+  const textMode = enabled && watermarkKind.value === "text";
+  document.querySelector('[data-option="watermark-kind"]').hidden = !enabled;
+  document.querySelector('[data-option="watermark-text"]').hidden = !textMode;
+  document.querySelector('[data-option="watermark-file"]').hidden = !imageMode;
+  document.querySelector('[data-option="watermark-position"]').hidden = !enabled;
+  document.querySelector('[data-option="watermark-opacity"]').hidden = !enabled;
+  watermarkText.required = textMode;
+  watermarkImage.required = imageMode;
 }
 
 const categoryOperations = {
@@ -219,13 +241,13 @@ const categoryOperations = {
   organize: ["pdf.merge", "pdf.split", "pdf.rotate"],
   optimize: ["pdf.compress", "image.compress"],
   convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.resize", "image.rotate"],
-  edit: ["pdf.watermark", "pdf.page_numbers"],
+  edit: ["pdf.watermark", "pdf.page_numbers", "image.watermark"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.crop"],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.crop", "image.watermark"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-create": [],
-  "img-edit": ["image.crop"],
+  "img-edit": ["image.crop", "image.watermark"],
   "img-convert": ["image.convert"],
   "img-security": [],
 };
@@ -367,6 +389,13 @@ async function pollJob(statusUrl) {
 }
 
 fileInput.addEventListener("change", () => showFiles(fileInput.files));
+watermarkKind.addEventListener("change", syncWatermarkControls);
+watermarkImage.addEventListener("change", () => {
+  document.querySelector("#watermark-file-name").textContent = watermarkImage.files[0]?.name || "";
+});
+document.querySelector("#watermark-opacity").addEventListener("input", (event) => {
+  document.querySelector("#watermark-opacity-value").textContent = `${event.target.value}%`;
+});
 document.querySelector("#remove-file").addEventListener("click", () => {
   fileInput.value = "";
   showFiles([]);
@@ -427,12 +456,22 @@ form.addEventListener("submit", async (event) => {
   if (currentOperation === "image.crop" && ["JPEG", "WEBP"].includes(outputFormat.value)) {
     options.quality = document.querySelector("#quality").value;
   }
+  if (currentOperation === "image.watermark") {
+    options.kind = watermarkKind.value;
+    options.position = document.querySelector("#watermark-position").value;
+    options.opacity = document.querySelector("#watermark-opacity").value;
+    if (options.kind === "text") options.text = watermarkText.value;
+  }
   if (currentOperation === "image.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.rotate") options.degrees = document.querySelector("#degrees").value;
   if (currentOperation === "pdf.split") options.ranges = document.querySelector("#ranges").value;
   body.append("operation", currentOperation);
   body.append("options", JSON.stringify(options));
   currentFiles.forEach((file) => body.append("files", file, file.name));
+  if (currentOperation === "image.watermark" && watermarkKind.value === "image" && watermarkImage.files[0]) {
+    const overlay = watermarkImage.files[0];
+    body.append("watermark_image", overlay, overlay.name);
+  }
   try {
     const response = await fetch("/api/jobs", { method: "POST", body });
     const payload = await response.json();

@@ -183,7 +183,7 @@ def test_crop_batch_returns_ordered_images_in_a_zip(settings):
             field in home.text for field in ("crop-left", "crop-top", "crop-width", "crop-height")
         )
         assert ".gif" in home.text and "image/gif" in home.text
-        assert '"img-edit": ["image.crop"]' in (
+        assert '"img-edit": ["image.crop", "image.watermark"]' in (
             Path("src/i_love_open_converter/static/js/app.js").read_text(encoding="utf-8")
         )
         response = client.post(
