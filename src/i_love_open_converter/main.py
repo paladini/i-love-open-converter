@@ -69,11 +69,8 @@ PDF_COMING_SOON = [
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
 ]
 IMAGE_COMING_SOON = [
-    ("Recortar IMAGEM", "Crop IMAGE", "img-edit", 3),
-    ("Converter de JPG", "Convert from JPG", "img-convert", 5),
-    ("Remover fundo", "Remove background", "img-edit", 8),
-    ("Desfocar cara", "Blur faces", "img-security", 13),
-    ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
+    # Keep this list for genuinely planned image tools. Shipped capabilities
+    # belong only in the active catalog cards below.
 ]
 
 
