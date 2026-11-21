@@ -4,9 +4,9 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
-INPUT_FORMATS = {"JPEG", "PNG", "WEBP", "BMP", "TIFF"}
+INPUT_FORMATS = {"JPEG", "PNG", "GIF", "WEBP", "BMP", "TIFF"}
 OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 Image.MAX_IMAGE_PIXELS = 100_000_000
 MAX_GIF_ANIMATION_PIXELS = 25_000_000
@@ -19,6 +19,111 @@ class InvalidImageError(Exception):
 
 class UnsupportedImageError(Exception):
     pass
+
+
+class InvalidImageOptionsError(Exception):
+    pass
+
+
+def validate_image_crop_options(options: dict[str, Any]) -> dict[str, int]:
+    values: dict[str, int] = {}
+    for name in ("left", "top", "width", "height"):
+        raw = options.get(name)
+        minimum = 0 if name in {"left", "top"} else 1
+        maximum = 9_999 if name in {"left", "top"} else 10_000
+        if isinstance(raw, bool) or not str(raw).isdigit() or not minimum <= int(raw) <= maximum:
+            raise InvalidImageOptionsError
+        values[name] = int(raw)
+    return values
+def _watermark_offset(
+    canvas_size: tuple[int, int], mark_size: tuple[int, int], position: str
+) -> tuple[int, int]:
+    width, height = canvas_size
+    mark_width, mark_height = mark_size
+    inset = max(4, round(min(width, height) * 0.02))
+    horizontal = position.rsplit("_", 1)[-1] if "_" in position else position
+    vertical = position.split("_", 1)[0] if "_" in position else position
+    x = (
+        inset
+        if horizontal == "left"
+        else width - mark_width - inset
+        if horizontal == "right"
+        else (width - mark_width) // 2
+    )
+    y = (
+        inset
+        if vertical == "top"
+        else height - mark_height - inset
+        if vertical == "bottom"
+        else (height - mark_height) // 2
+    )
+    return max(0, x), max(0, y)
+
+
+def _apply_image_watermark(
+    image: Image.Image, options: dict[str, Any], watermark_path: Path | None
+) -> Image.Image:
+    base = image.convert("RGBA")
+    opacity = int(options["opacity"])
+    position = str(options["position"])
+    if options["kind"] == "text":
+        text = str(options["text"])
+        inset = max(4, round(min(base.size) * 0.02))
+        available_width = max(1, base.width - 2 * inset)
+        font_size = max(12, round(min(base.size) * 0.05))
+        font = ImageFont.load_default(size=font_size)
+        measure = ImageDraw.Draw(base)
+        bounds = measure.textbbox((0, 0), text, font=font, stroke_width=2)
+        if bounds[2] - bounds[0] > available_width:
+            font_size = max(1, round(font_size * available_width / (bounds[2] - bounds[0])))
+            font = ImageFont.load_default(size=font_size)
+            bounds = measure.textbbox((0, 0), text, font=font, stroke_width=2)
+        mark_size = (bounds[2] - bounds[0], bounds[3] - bounds[1])
+        x, y = _watermark_offset(base.size, mark_size, position)
+        mark = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        ImageDraw.Draw(mark).text(
+            (x - bounds[0], y - bounds[1]),
+            text,
+            font=font,
+            fill=(255, 255, 255, round(255 * opacity / 100)),
+            stroke_width=2,
+            stroke_fill=(0, 0, 0, round(255 * opacity / 100)),
+        )
+        base.alpha_composite(mark)
+        mark.close()
+        return base
+
+    if watermark_path is None:
+        base.close()
+        raise UnsupportedImageError
+    with Image.open(watermark_path) as opened_mark:
+        if (opened_mark.format or "").upper() not in {"PNG", "JPEG", "WEBP"}:
+            base.close()
+            raise UnsupportedImageError
+        mark = ImageOps.exif_transpose(opened_mark).convert("RGBA")
+    try:
+        max_side = max(1, int(min(base.size) * 0.25))
+        scale = min(1.0, max_side / max(mark.size))
+        if scale < 1.0:
+            resized = mark.resize(
+                (max(1, round(mark.width * scale)), max(1, round(mark.height * scale))),
+                Image.Resampling.LANCZOS,
+            )
+            mark.close()
+            mark = resized
+        alpha = mark.getchannel("A")
+        adjusted_alpha = alpha.point(lambda value: round(value * opacity / 100))
+        alpha.close()
+        mark.putalpha(adjusted_alpha)
+        adjusted_alpha.close()
+        x, y = _watermark_offset(base.size, mark.size, position)
+        base.alpha_composite(mark, (x, y))
+        return base
+    except Exception:
+        base.close()
+        raise
+    finally:
+        mark.close()
 
 
 def inspect_image(path: Path) -> tuple[str, str]:
@@ -47,6 +152,7 @@ def process_image(
     destination: Path,
     operation: str,
     options: dict[str, Any],
+    watermark_path: Path | None = None,
 ) -> tuple[str, int]:
     output_format = str(options.get("format", "PNG")).upper()
     output_format = output_format.upper()
@@ -73,9 +179,17 @@ def process_image(
                 (width or image.width, height or image.height),
                 method=Image.Resampling.LANCZOS,
             )
+        elif operation == "image.crop":
+            crop = validate_image_crop_options(options)
+            right, bottom = crop["left"] + crop["width"], crop["top"] + crop["height"]
+            if right > image.width or bottom > image.height:
+                raise InvalidImageOptionsError
+            image = image.crop((crop["left"], crop["top"], right, bottom))
         elif operation == "image.rotate":
             degrees = int(options["degrees"])
             image = image.rotate(-degrees, expand=True)
+        elif operation == "image.watermark":
+            image = _apply_image_watermark(image, options, watermark_path)
         if output_format == "JPEG":
             if image.mode in {"RGBA", "LA"} or (image.mode == "P" and "transparency" in image.info):
                 rgba = image.convert("RGBA")

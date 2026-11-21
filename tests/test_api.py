@@ -1035,7 +1035,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert "PDF" in response.text
     assert "image.convert" in response.text
     assert "https://" not in response.text
-    assert response.text.count('class="tool-card"') + response.text.count('class="tool-card ') == 44
+    assert response.text.count('class="tool-card"') + response.text.count('class="tool-card ') == 47
     assert "Fluxos de trabalho" in response.text
     assert "PDF para Markdown" in response.text
     assert "Desfocar cara" in response.text
