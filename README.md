@@ -39,6 +39,7 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 - Resize images by width, height, or both while keeping the original aspect
   ratio.
 - Compress JPEG and WebP output with a quality setting.
+- Convert one or more JPG images to PNG or combine them into an animated GIF.
 - Rotate images by 90°, 180°, or 270°.
 
 You can process multiple images in one job. Multi-file results download as a

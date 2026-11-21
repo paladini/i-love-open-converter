@@ -9,7 +9,7 @@ const messages = {
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
     imageGroup: "Imagens", imageCount: "13 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
-    convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", resizeTitle: "Redimensionar imagem",
+    convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", mergeTitle: "Mesclar PDF",
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
@@ -21,7 +21,7 @@ const messages = {
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
     widthLabel: "Largura (px)", heightLabel: "Altura (px)", qualityLabel: "Qualidade", degreesLabel: "Rotação",
     dropTitle: "Solte sua imagem aqui", dropOr: "ou", browse: "escolha um arquivo",
-    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · até {maxFileMb} MB", outputLabel: "Converter para",
+    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · até {maxFileMb} MB", jpgFileTypes: "JPG · até {maxFileMb} MB", outputLabel: "Converter para",
     pdfFileTypes: "PDF · até {maxFileMb} MB",
     resultFormat: "Formato de saída", localNote: "Seu arquivo é processado no servidor que você controla.",
     convertButton: "Converter imagem", downloadButton: "Baixar arquivo", startAgain: "Converter outro arquivo",
@@ -49,7 +49,7 @@ const messages = {
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
     imageGroup: "Images", imageCount: "13 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
-    convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", resizeTitle: "Resize image",
+    convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", mergeTitle: "Merge PDF",
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
@@ -61,7 +61,7 @@ const messages = {
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
     widthLabel: "Width (px)", heightLabel: "Height (px)", qualityLabel: "Quality", degreesLabel: "Rotation",
     dropTitle: "Drop your image here", dropOr: "or", browse: "choose a file",
-    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · up to {maxFileMb} MB", outputLabel: "Convert to",
+    fileTypes: "JPG, PNG, WEBP, BMP, TIFF · up to {maxFileMb} MB", jpgFileTypes: "JPG · up to {maxFileMb} MB", outputLabel: "Convert to",
     pdfFileTypes: "PDF · up to {maxFileMb} MB",
     resultFormat: "Output format", localNote: "Your file is processed on the server you control.",
     convertButton: "Convert image", downloadButton: "Download file", startAgain: "Convert another file",
@@ -132,7 +132,11 @@ function applyLanguage(language) {
   const isPdf = currentOperation.startsWith("pdf.");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf
+    ? "pdfFileTypes"
+    : currentOperation === "image.from_jpg"
+      ? "jpgFileTypes"
+      : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
   else if (currentStatusKey) jobStatusText.textContent = t(currentStatusKey);
@@ -153,8 +157,19 @@ function updateFormatTarget() {
   formatTargetIcon.textContent = format;
 }
 
+function syncOutputFormats(operation) {
+  const allowed = operation === "image.from_jpg"
+    ? ["PNG", "GIF"]
+    : ["PNG", "JPEG", "WEBP"];
+  for (const option of outputFormat.options) {
+    option.hidden = !allowed.includes(option.value);
+  }
+  if (!allowed.includes(outputFormat.value)) outputFormat.value = allowed[0];
+}
+
 const operationTitles = {
   "image.convert": "convertTitle",
+  "image.from_jpg": "fromJpgTitle",
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
@@ -174,6 +189,7 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  syncOutputFormats(operation);
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -191,11 +207,15 @@ function selectTool(operation) {
   document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
-  fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
+  fileInput.accept = isPdf
+    ? ".pdf,application/pdf"
+    : operation === "image.from_jpg"
+      ? ".jpg,.jpeg,image/jpeg"
+      : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
   fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || operation.startsWith("image.");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
@@ -206,15 +226,15 @@ const categoryOperations = {
   workflows: [],
   organize: ["pdf.merge", "pdf.split", "pdf.rotate"],
   optimize: ["pdf.compress", "image.compress"],
-  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.resize", "image.rotate"],
+  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.from_jpg", "image.resize", "image.rotate"],
   edit: ["pdf.watermark", "pdf.page_numbers"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf"],
+  images: ["image.convert", "image.from_jpg", "image.resize", "image.compress", "image.rotate", "image.to_pdf"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-create": [],
   "img-edit": [],
-  "img-convert": ["image.convert"],
+  "img-convert": ["image.convert", "image.from_jpg"],
   "img-security": [],
 };
 document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {

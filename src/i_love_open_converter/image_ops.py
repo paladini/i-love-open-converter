@@ -7,8 +7,9 @@ from typing import Any
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 INPUT_FORMATS = {"JPEG", "PNG", "WEBP", "BMP", "TIFF"}
-OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP"}
+OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 Image.MAX_IMAGE_PIXELS = 100_000_000
+MAX_GIF_ANIMATION_PIXELS = 25_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
 
 
@@ -55,7 +56,10 @@ def process_image(
         raise UnsupportedImageError
 
     with Image.open(source) as opened:
-        if (opened.format or "").upper() not in INPUT_FORMATS:
+        opened_format = (opened.format or "").upper()
+        if opened_format not in INPUT_FORMATS:
+            raise UnsupportedImageError
+        if operation == "image.from_jpg" and opened_format != "JPEG":
             raise UnsupportedImageError
         if getattr(opened, "n_frames", 1) != 1:
             raise UnsupportedImageError
@@ -91,6 +95,9 @@ def process_image(
         elif output_format == "PNG":
             image.save(destination, format="PNG", optimize=True, icc_profile=icc_profile)
             content_type = "image/png"
+        elif output_format == "GIF":
+            image.convert("RGB").save(destination, format="GIF", optimize=False)
+            content_type = "image/gif"
         else:
             image.save(
                 destination,
@@ -102,6 +109,49 @@ def process_image(
             content_type = "image/webp"
 
     return content_type, destination.stat().st_size
+
+
+def create_animated_gif(sources: list[Path], destination: Path) -> tuple[str, int]:
+    if not sources:
+        raise InvalidImageError
+    opened_images: list[Image.Image] = []
+    try:
+        for source in sources:
+            with Image.open(source) as opened:
+                if (opened.format or "").upper() != "JPEG" or getattr(opened, "n_frames", 1) != 1:
+                    raise UnsupportedImageError
+                opened_images.append(ImageOps.exif_transpose(opened).convert("RGB"))
+        canvas_size = (
+            max(image.width for image in opened_images),
+            max(image.height for image in opened_images),
+        )
+        if canvas_size[0] * canvas_size[1] * len(opened_images) > MAX_GIF_ANIMATION_PIXELS:
+            raise InvalidImageError
+        frames: list[Image.Image] = []
+        for image in opened_images:
+            frame = Image.new("RGB", canvas_size, "white")
+            position = (
+                (canvas_size[0] - image.width) // 2,
+                (canvas_size[1] - image.height) // 2,
+            )
+            frame.paste(image, position)
+            frames.append(frame)
+        frames[0].save(
+            destination,
+            format="GIF",
+            save_all=True,
+            append_images=frames[1:],
+            duration=500,
+            loop=0,
+            disposal=2,
+            optimize=False,
+        )
+        return "image/gif", destination.stat().st_size
+    except (OSError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise InvalidImageError from exc
+    finally:
+        for image in opened_images:
+            image.close()
 
 
 def convert_image(source: Path, destination: Path, output_format: str) -> tuple[str, int]:
