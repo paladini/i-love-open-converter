@@ -47,9 +47,45 @@ def _tabular_pdf():
     return data
 
 
+def _ordered_pdf():
+    pdf = pymupdf.open()
+    for page_number in (1, 2):
+        page = pdf.new_page(width=360, height=260)
+        table_regions = [(36, 80, 324, 140)]
+        if page_number == 1:
+            table_regions.append((36, 168, 324, 228))
+        for left, top, right, bottom in table_regions:
+            page.draw_rect(pymupdf.Rect(left, top, right, bottom), width=1)
+            page.draw_line((180, top), (180, bottom), width=1)
+            middle = (top + bottom) / 2
+            page.draw_line((left, middle), (right, middle), width=1)
+        page.insert_text((36, 32), f"Page {page_number} first line")
+        page.insert_text((36, 48), f"Page {page_number} second line")
+        for table_number, (left, top, _right, _bottom) in enumerate(table_regions, start=1):
+            page.insert_text((left + 8, top + 20), f"P{page_number} T{table_number} H1")
+            page.insert_text((188, top + 20), f"P{page_number} T{table_number} H2")
+            page.insert_text((left + 8, top + 50), f"P{page_number} T{table_number} R1")
+            page.insert_text((188, top + 50), f"P{page_number} T{table_number} R2")
+    data = pdf.tobytes()
+    pdf.close()
+    return data
+
+
 def _sheet_text(archive, name):
     root = ElementTree.fromstring(archive.read(name))
     return "".join(node.text or "" for node in root.iter() if node.tag.endswith("}t"))
+
+
+def _sheet_rows(archive, name):
+    root = ElementTree.fromstring(archive.read(name))
+    namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    rows = []
+    for row in root.iter(f"{namespace}row"):
+        rows.append([
+            "".join(node.text or "" for node in cell.iter() if node.tag.endswith("}t"))
+            for cell in row.findall(f"{namespace}c")
+        ])
+    return rows
 
 
 def test_pdf_to_excel_extracts_tables_and_text_as_literal_strings(settings, monkeypatch):
@@ -137,6 +173,13 @@ def test_scanned_image_without_text_fails_without_empty_workbook(settings, monke
 
 def test_pdf_to_excel_requires_isolated_worker(settings, pdf_bytes, monkeypatch):
     monkeypatch.setattr(pdf_ops, "word_isolated", lambda: False)
+    open_calls = []
+
+    def forbidden_open(*_args, **_kwargs):
+        open_calls.append(True)
+        raise AssertionError("the PDF must not be opened before isolation is checked")
+
+    monkeypatch.setattr(pdf_ops, "_open_pdf", forbidden_open)
     with TestClient(create_app(settings)) as client:
         response = client.post(
             "/api/jobs", data={"operation": "pdf.to_excel"},
@@ -147,6 +190,40 @@ def test_pdf_to_excel_requires_isolated_worker(settings, pdf_bytes, monkeypatch)
         status = client.get(response.json()["status_url"]).json()
         assert status["state"] == "failed" and status["error"]["code"] == "excel_unavailable"
         assert client.get(response.json()["status_url"] + "/download").status_code != 200
+    assert open_calls == []
+
+
+def test_pdf_to_excel_preserves_table_and_text_order_with_source_references(
+    settings, monkeypatch
+):
+    _run_worker(monkeypatch)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_excel"},
+            files={"files": ("ordered.pdf", _ordered_pdf(), "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(response.json()["status_url"] + "/download")
+        assert download.status_code == 200
+
+    with ZipFile(BytesIO(download.content)) as archive:
+        assert _sheet_rows(archive, "xl/worksheets/sheet1.xml") == [
+            ["Source page", "Table", "Row", "Column 1", "Column 2"],
+            ["1", "1", "1", "P1 T1 H1", "P1 T1 H2"],
+            ["1", "1", "2", "P1 T1 R1", "P1 T1 R2"],
+            ["1", "2", "1", "P1 T2 H1", "P1 T2 H2"],
+            ["1", "2", "2", "P1 T2 R1", "P1 T2 R2"],
+            ["2", "1", "1", "P2 T1 H1", "P2 T1 H2"],
+            ["2", "1", "2", "P2 T1 R1", "P2 T1 R2"],
+        ]
+        assert _sheet_rows(archive, "xl/worksheets/sheet2.xml") == [
+            ["Source page", "Line", "Text"],
+            ["1", "1", "Page 1 first line"],
+            ["1", "2", "Page 1 second line"],
+            ["2", "3", "Page 2 first line"],
+            ["2", "4", "Page 2 second line"],
+        ]
 
 
 def test_excel_worker_rejects_more_than_two_hundred_pages(settings, tmp_path, monkeypatch):

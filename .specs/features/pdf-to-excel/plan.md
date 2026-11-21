@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\\Users\\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at d0573c7
+**Fix pass:** done - move PDF Office isolation checks before PDF parsing and assert workbook source ordering
 
 ## Problem
 
@@ -104,6 +104,10 @@ New: no entities or relations - the existing job and artifact records hold opera
 | Processing bounds | 200 pages, 16 MP/page at 150 DPI, 200k table cells, 100k text lines, 180 seconds and 256 MiB output | Bounds resource use in the self-hosted service. | y - user delegated |
 
 **Open questions:** none - the user delegated sequencing and technical defaults while requiring the complete roadmap.
+
+**Review:** sent at d0573c7
+
+**Fix pass:** pending review
 
 ## Differences from the source
 

@@ -840,11 +840,17 @@ def process_pdf(
     if len(sources) != 1:
         raise InvalidPdfError
     source, original_name = sources[0]
+    if operation in {"pdf.to_word", "pdf.to_powerpoint", "pdf.to_excel"}:
+        if not word_isolated():
+            unavailable_errors = {
+                "pdf.to_word": WordUnavailableError,
+                "pdf.to_powerpoint": PowerPointUnavailableError,
+                "pdf.to_excel": ExcelUnavailableError,
+            }
+            raise unavailable_errors[operation]
     document = _open_pdf(source)
     try:
         if operation == "pdf.to_word":
-            if not word_isolated():
-                raise WordUnavailableError
             destination = output_dir / "converted.docx"
             try:
                 completed = subprocess.run(
@@ -868,8 +874,6 @@ def process_pdf(
             return [destination], content_type
 
         if operation == "pdf.to_powerpoint":
-            if not word_isolated():
-                raise PowerPointUnavailableError
             destination = output_dir / "presentation.pptx"
             try:
                 completed = subprocess.run(
@@ -906,8 +910,6 @@ def process_pdf(
             return [destination], content_type
 
         if operation == "pdf.to_excel":
-            if not word_isolated():
-                raise ExcelUnavailableError
             destination = output_dir / "extracted-data.xlsx"
             try:
                 completed = subprocess.run(
