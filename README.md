@@ -35,10 +35,11 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 
 ### Images
 
-- Convert static JPEG, PNG, WebP, BMP, and TIFF images to JPEG, PNG, or WebP.
+- Convert static JPEG, PNG, GIF, WebP, BMP, and TIFF images to JPEG, PNG, or WebP.
 - Resize images by width, height, or both while keeping the original aspect
   ratio.
 - Compress JPEG and WebP output with a quality setting.
+- Convert one or more JPG images to PNG or combine them into an animated GIF.
 - Rotate images by 90°, 180°, or 270°.
 - Upscale one image by 2x or 4x with local Lanczos resampling and light
   sharpening. This interpolation does not reconstruct details absent from the
@@ -47,9 +48,12 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
   rendered locally in JPEG, PNG, or WebP. Captions wrap and scale to fit; on
   small images, captions that still do not fit end with an ellipsis. JPEG output
   flattens transparent pixels onto white.
+- Edit one image with text, local filters, simple frames, and built-in vector stickers.
+- Crop images with pixel coordinates and dimensions after applying EXIF orientation.
+- Add text or image watermarks to image batches with placement and opacity controls.
 
 You can process multiple images in one job. Multi-file results download as a
-ZIP archive. Animated images are not supported.
+ZIP archive. Static GIF images are supported; animated images are not supported.
 
 ### PDF
 
@@ -69,6 +73,8 @@ ZIP archive. Animated images are not supported.
 - Convert a PDF to an editable Word DOCX locally. Scanned PDFs need OCR, and complex layouts may differ from the original.
 - Convert a PDF to an editable PowerPoint presentation locally. Text and embedded images become separate slide objects; vector drawings, charts, page backgrounds and scanned-page OCR are not reconstructed.
 - Extract detected tables and selectable text from a PDF to an Excel workbook locally. Table rows and page references go to `Tables`; other text goes to `Text`. Values remain literal strings. Unusual table layouts can be missed, and scanned pages require OCR.
+- Convert one local `.html` or `.htm` file to PDF. Inline CSS and embedded `data:` resources are supported; relative files, remote URLs and JavaScript execution are not. The renderer is WeasyPrint and requires the isolated Linux worker.
+- Export each page of one local `.html` or `.htm` file as JPG or SVG in a ZIP. Inline CSS and embedded `data:` resources are supported; relative files, remote URLs and JavaScript execution are not.
 
 - Turn images into a PDF with one page per image.
 - Add a text or image watermark to every page. Choose its position and
@@ -81,6 +87,8 @@ To bound rendering memory, pages exceeding 16 million pixels at 150 DPI are reje
 PDF-to-Word uses the local `pdf2docx` library, which its upstream no longer actively maintains. It applies the same page-size, time and output-size limits. It requires the network-isolated Linux worker configured below; other environments fail closed.
 PDF-to-PowerPoint uses PyMuPDF and `python-pptx` to create editable text boxes and picture shapes. One slide represents each page; scanned-page OCR and complex vector artwork, chart and background reconstruction are not supported. The conversion is limited to 200 pages, 20,000 slide objects, 16 million page pixels at 150 DPI, 180 seconds and 256 MiB of output. It requires the network-isolated Linux worker; other environments fail closed.
 PDF-to-Excel uses PyMuPDF table detection and XlsxWriter. Detected tables and other selectable text are placed on separate worksheets with source page references; every value remains literal text. Unbordered or unusual tables may not be detected, numeric values are not inferred, and scanned pages need OCR. Limits are 200 pages, 16 million page pixels at 150 DPI, 200,000 table cells, 100,000 text lines, 180 seconds and 256 MiB of output. It requires the network-isolated Linux worker; other environments fail closed.
+HTML-to-PDF uses WeasyPrint 70.0. It accepts one local HTML file up to 10 MiB, renders at most 100 pages, and limits the child to 120 seconds, 2 GiB of address space and 256 MiB of output. Only embedded `data:` resources are loaded; the custom URL fetcher rejects remote and local-file references. It requires a Linux worker with no external network and Landlock; unsupported environments fail closed. JavaScript is not executed and CSS support may differ from a browser.
+HTML-to-image uses the same isolated renderer. It exports every page as JPG at 144 DPI or SVG in a ZIP. Documents are limited to 100 pages, 40 megapixels per JPG page and 256 MiB of output; only inline content and embedded `data:` resources are supported.
 
 PDF tools accept unencrypted PDFs. A split or multi-page PDF-to-JPG result
 downloads as a ZIP archive.
@@ -89,9 +97,11 @@ downloads as a ZIP archive.
 
 | Input | Available operations | Output |
 | --- | --- | --- |
-| JPEG, PNG, WebP, BMP, TIFF | Convert, resize, compress, rotate | JPEG, PNG, WebP |
+| JPEG, PNG, GIF, WebP, BMP, TIFF | Convert, resize, compress, rotate, crop, watermark, photo edit | JPEG, PNG, WebP |
 | Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown, Word, PowerPoint or Excel, extract images, watermark, page numbers | PDF, DOCX, PPTX, XLSX, HTML, JPG, or ZIP |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
+| HTML (`.html`, `.htm`) | Local HTML to PDF; embedded `data:` resources only | PDF |
+| HTML (`.html`, `.htm`) | Local HTML to image; JPG at 144 DPI or SVG; embedded `data:` resources only | ZIP of numbered page images |
 | Password-protected PDF | Unlock with the current password | PDF |
 | Static image | Images to PDF | PDF |
 
