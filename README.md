@@ -40,6 +40,10 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
   ratio.
 - Compress JPEG and WebP output with a quality setting.
 - Rotate images by 90°, 180°, or 270°.
+- Create a meme from one uploaded image with optional top and bottom captions,
+  rendered locally in JPEG, PNG, or WebP. Captions wrap and scale to fit; on
+  small images, captions that still do not fit end with an ellipsis. JPEG output
+  flattens transparent pixels onto white.
 
 You can process multiple images in one job. Multi-file results download as a
 ZIP archive. Animated images are not supported.

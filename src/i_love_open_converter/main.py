@@ -58,7 +58,6 @@ IMAGE_COMING_SOON = [
     ("Melhorar Imagem", "Upscale image", "img-create", 7),
     ("Remover fundo", "Remove background", "img-edit", 8),
     ("Marcar IMAGEM", "Watermark IMAGE", "img-edit", 9),
-    ("Gerador de memes", "Meme generator", "img-create", 10),
     ("HTML para IMAGEM", "HTML to IMAGE", "img-convert", 12),
     ("Desfocar cara", "Blur faces", "img-security", 13),
 ]
@@ -294,9 +293,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/tools/pdf-to-powerpoint", include_in_schema=False)
     async def pdf_to_powerpoint(request: Request):
-        return TEMPLATES.TemplateResponse(
-            request, "pdf-to-powerpoint.html", {"request": request}
-        )
+        return TEMPLATES.TemplateResponse(request, "pdf-to-powerpoint.html", {"request": request})
 
     @app.get("/tools/pdf-to-excel", include_in_schema=False)
     async def pdf_to_excel(request: Request):
@@ -313,8 +310,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404)
         title, extensions = labels[family]
         return TEMPLATES.TemplateResponse(
-            request, "office-to-pdf.html", {"request": request, "family": family,
-                                           "title": title, "extensions": extensions}
+            request,
+            "office-to-pdf.html",
+            {"request": request, "family": family, "title": title, "extensions": extensions},
         )
 
     @app.get("/tools/pdf-compare", include_in_schema=False)
@@ -477,6 +475,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.resize",
             "image.compress",
             "image.rotate",
+            "image.meme",
             "image.to_pdf",
             "pdf.merge",
             "pdf.split",
@@ -558,7 +557,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "error": {"code": "invalid_options", "message": "As opções não são válidas."}
                 },
             )
-        image_operations = {"image.convert", "image.resize", "image.compress", "image.rotate"}
+        image_operations = {
+            "image.convert",
+            "image.resize",
+            "image.compress",
+            "image.rotate",
+            "image.meme",
+        }
         if operation == "pdf.merge" and not 2 <= len(files) <= settings.max_files_per_job:
             raise HTTPException(
                 status_code=422,
@@ -585,7 +590,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.pdfa",
         }
-        if (operation in single_pdf_operations or operation in FAMILIES) and len(files) != 1:
+        if (
+            operation in single_pdf_operations or operation in FAMILIES or operation == "image.meme"
+        ) and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -838,7 +845,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         output_format = "PNG"
         if operation in image_operations:
-            output_format = str(parsed_options.get("format", "PNG")).upper()
+            default_format = "JPEG" if operation == "image.meme" else "PNG"
+            output_format = str(parsed_options.get("format", default_format)).upper()
             if output_format not in {"JPEG", "JPG", "PNG", "WEBP"}:
                 raise HTTPException(
                     status_code=422,
@@ -881,6 +889,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     detail={"error": {"code": "invalid_options", "message": "Ângulo inválido."}},
                 )
             validated_options["degrees"] = int(degrees)
+        if operation == "image.meme":
+            captions = {}
+            for name in ("top_text", "bottom_text"):
+                value = parsed_options.get(name, "")
+                if not isinstance(value, str) or len(value) > 300:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": {"code": "invalid_options", "message": "Texto inválido."}},
+                    )
+                captions[name] = value
+            if not any(value.strip() for value in captions.values()):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Informe ao menos uma legenda.",
+                        }
+                    },
+                )
+            validated_options.update(captions)
         if operation == "pdf.rotate":
             degrees = parsed_options.get("degrees")
             if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
@@ -1011,8 +1040,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(
                         status_code=415,
-                        detail={"error": {"code": "unsupported_format",
-                                          "message": "Formato de documento não suportado."}},
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Formato de documento não suportado.",
+                            }
+                        },
                     )
                 is_watermark_image = (
                     (operation == "pdf.watermark" and watermark_kind == "image")
