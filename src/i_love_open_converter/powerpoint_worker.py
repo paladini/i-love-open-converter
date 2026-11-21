@@ -59,7 +59,8 @@ def _add_text_line(slide, line: dict, transform) -> None:
         run = paragraph.add_run()
         run.text = content
         run.font.name = _safe_font_name(span.get("font", "Arial"))
-        run.font.size = Pt(max(1, min(200, span.get("size", 12) * transform.scale)))
+        font_size_pt = span.get("size", 12) * transform.scale * 72
+        run.font.size = Pt(max(1, min(200, font_size_pt)))
         flags = span.get("flags", 0)
         run.font.bold = bool(flags & 16)
         run.font.italic = bool(flags & 2)

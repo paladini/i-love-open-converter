@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.util import Inches
 
 from i_love_open_converter import pdf_ops, powerpoint_worker
 from i_love_open_converter.main import create_app
@@ -68,6 +69,26 @@ def test_pdf_to_powerpoint_creates_editable_text_and_picture_shapes(settings, mo
     assert any(shape.shape_type == MSO_SHAPE_TYPE.PICTURE
                for shape in presentation.slides[0].shapes)
     assert all(slide.shapes.title is None for slide in presentation.slides)
+
+    first_slide, second_slide = presentation.slides
+    assert presentation.slide_width == Inches(13.333333)
+    assert abs(presentation.slide_height - Inches(240 * 13.333333 / 360)) < 1000
+    first_text = next(shape for shape in first_slide.shapes
+                      if shape.has_text_frame and "Editable slide one" in shape.text)
+    second_text = next(shape for shape in second_slide.shapes
+                       if shape.has_text_frame and "Editable slide two" in shape.text)
+    expected_scale = 13.333333 / 360
+    assert abs(first_text.left - Inches(48 * expected_scale)) < 1000
+    second_scale = presentation.slide_height.inches / 360
+    expected_second_left = (presentation.slide_width.inches - 240 * second_scale) / 2
+    assert abs(second_text.left - Inches(expected_second_left + 36 * second_scale)) < 1000
+    for slide in presentation.slides:
+        assert all(shape.left >= 0 and shape.top >= 0
+                   and shape.left + shape.width <= presentation.slide_width
+                   and shape.top + shape.height <= presentation.slide_height
+                   for shape in slide.shapes)
+    font_size_pt = first_text.text_frame.paragraphs[0].runs[0].font.size.pt
+    assert abs(font_size_pt - 11 * expected_scale * 72) < 0.1
 
 
 def test_pdf_to_powerpoint_rejects_invalid_multiple_and_encrypted_files(settings, pdf_bytes):
@@ -133,6 +154,74 @@ def test_powerpoint_worker_rejects_more_than_two_hundred_pages(settings, tmp_pat
         assert status["state"] == "failed"
         assert status["error"]["code"] == "powerpoint_failed"
         assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_powerpoint_rejects_page_over_pixel_limit_without_download(settings, tmp_path, monkeypatch):
+    _run_worker(monkeypatch)
+    pdf = pymupdf.open()
+    pdf.new_page(width=5000, height=5000)
+    source = tmp_path / "oversized-page.pdf"
+    pdf.save(source)
+    pdf.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_powerpoint"},
+            files={"files": ("oversized-page.pdf", source.read_bytes(), "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "powerpoint_failed"
+        assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_powerpoint_rejects_shape_limit_without_download(settings, pdf_bytes, monkeypatch):
+    _run_worker(monkeypatch)
+    assert powerpoint_worker.MAX_SHAPES == 20_000
+    monkeypatch.setattr(powerpoint_worker, "MAX_SHAPES", 1)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_powerpoint"},
+            files={"files": ("input.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "powerpoint_failed"
+        assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_powerpoint_timeout_fails_without_download(settings, pdf_bytes, monkeypatch):
+    monkeypatch.setattr(pdf_ops, "word_isolated", lambda: True)
+
+    def timeout(command, **_kwargs):
+        raise pdf_ops.subprocess.TimeoutExpired(command, 180)
+
+    monkeypatch.setattr(pdf_ops.subprocess, "run", timeout)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs", data={"operation": "pdf.to_powerpoint"},
+            files={"files": ("input.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"]).json()
+        assert status["state"] == "failed" and status["error"]["code"] == "powerpoint_failed"
+        assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_powerpoint_output_limit_removes_partial_presentation(tmp_path, monkeypatch, pdf_bytes):
+    monkeypatch.setattr(powerpoint_worker, "_limit_resources", lambda: None)
+    monkeypatch.setattr(powerpoint_worker, "MAX_OUTPUT_BYTES", 1)
+    source, destination = tmp_path / "input.pdf", tmp_path / "partial.pptx"
+    source.write_bytes(pdf_bytes)
+    try:
+        powerpoint_worker.main(source, destination)
+    except ValueError as exc:
+        assert "output limit" in str(exc)
+    else:
+        raise AssertionError("output limit was not enforced")
+    assert not destination.exists()
 
 
 def test_powerpoint_output_contains_slide_content_types(settings, monkeypatch, pdf_bytes, tmp_path):

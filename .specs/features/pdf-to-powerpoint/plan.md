@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\\Users\\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** none
-**Review:** pending implementation
-**Fix pass:** pending review
+**Review:** sent at 4b4a533
+**Fix pass:** done - scaled editable font sizes from PDF points through slide inches into PowerPoint points; expanded regression tests for source-relative positioning, centering and slide bounds plus page-pixel, shape-count, timeout and output-size failures without download; confirmed the final Linux PPTX remains readable in LibreOffice.
 
 ## Problem
 
