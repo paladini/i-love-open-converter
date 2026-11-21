@@ -79,6 +79,7 @@ small U2NetP model into its local cache on first use.
 - Rotate every page by 90°, 180°, or 270°.
 - Optimize a PDF with local lossless structural compression.
 - Render each PDF page as a JPG image.
+- Capture or select document pages in the browser, arrange and rotate them, and create a PDF locally.
 - Convert Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) and Excel (`.xls`, `.xlsx`) documents to PDF using local LibreOffice.
 - Extract embedded PDF images as PNG files in a ZIP, preserving transparency. Repeated image objects are included once; inline images are included at each occurrence.
 - Convert PDFs to Markdown with locally extracted text, tables and figures in a portable ZIP. Scanned pages require OCR, which is not part of this conversion; complex layouts may not be reconstructed faithfully.

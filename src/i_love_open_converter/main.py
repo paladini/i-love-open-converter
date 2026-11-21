@@ -64,13 +64,15 @@ BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
-    ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
     ("Resumir com IA", "AI summary", "intelligence", 29),
     ("Traduzir PDF", "Translate PDF", "intelligence", 30),
 ]
 IMAGE_COMING_SOON = [
-    # Keep this list for genuinely planned image tools. Shipped capabilities
-    # belong only in the active catalog cards below.
+    ("Desfocar placas", "Blur license plates", "img-security", 14),
+    ("Desfocar objetos", "Blur objects", "img-security", 15),
+    ("Converter de SVG", "Convert from SVG", "img-convert", 16),
+    ("Converter de PSD", "Convert from PSD", "img-convert", 17),
+    ("Converter de HEIC/RAW", "Convert from HEIC/RAW", "img-convert", 18),
 ]
 
 
@@ -301,6 +303,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/tools/pdf-ocr", include_in_schema=False)
     async def pdf_ocr(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-ocr.html", {"request": request})
+
+    @app.get("/tools/scan-to-pdf", include_in_schema=False)
+    async def scan_to_pdf(request: Request):
+        return TEMPLATES.TemplateResponse(request, "scan-to-pdf.html", {"request": request})
 
     @app.get("/tools/pdf-to-word", include_in_schema=False)
     async def pdf_to_word(request: Request):
@@ -599,6 +605,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 },
             )
         validated_options: dict[str, Any] = {}
+        if operation == "image.to_pdf":
+            rotations = parsed_options.get("rotations", [0] * len(files))
+            if (
+                set(parsed_options) - {"rotations"}
+                or not isinstance(rotations, list)
+                or len(rotations) != len(files)
+                or any(
+                    type(value) is not int or value not in {0, 90, 180, 270}
+                    for value in rotations
+                )
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "Rotações inválidas."}},
+                )
+            validated_options["rotations"] = rotations
         image_watermark_kind: str | None = None
         if operation == "image.watermark":
             image_watermark_kind = parsed_options.get("kind")
@@ -1380,7 +1402,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if (
                     not is_pdf_operation
                     and not is_html_operation
-                    and operation != "image.to_pdf"
                     and operation not in FAMILIES
                     and extension not in accepted_extensions
                 ):

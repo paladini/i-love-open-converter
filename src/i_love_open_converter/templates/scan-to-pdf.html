@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Digitalize e transforme em PDF · I Love Open Converter</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script defer src="/static/js/scan-to-pdf.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">I Love <strong>Open Converter</strong></a>
+    <label class="language-picker"><span class="sr-only">Idioma / Language</span><select id="language"><option value="pt-BR">PT</option><option value="en">EN</option></select></label>
+  </header>
+  <main class="pdf-tool">
+    <nav class="breadcrumbs"><a href="/" data-pt="Todas as ferramentas" data-en="All tools">Todas as ferramentas</a></nav>
+    <section class="pdf-tool-heading">
+      <span class="pdf-tool-icon">▧</span>
+      <h1 data-pt="Digitalize e transforme em PDF" data-en="Scan to PDF">Digitalize e transforme em PDF</h1>
+      <p data-pt="Capture páginas com a câmera do celular ou escolha imagens. Organize e gire cada página antes de criar o PDF." data-en="Capture pages with your phone camera or choose images. Arrange and rotate each page before creating the PDF.">Capture páginas com a câmera do celular ou escolha imagens. Organize e gire cada página antes de criar o PDF.</p>
+    </section>
+    <section class="pdf-tool-card">
+      <label class="pdf-upload" for="page-input">
+        <strong data-pt="Capturar ou selecionar páginas" data-en="Capture or select pages">Capturar ou selecionar páginas</strong>
+        <input id="page-input" type="file" accept="image/jpeg,image/png,image/webp,image/bmp,image/tiff,.jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff" capture="environment" multiple>
+        <span data-pt="JPG, PNG, WebP, BMP ou TIFF" data-en="JPG, PNG, WebP, BMP, or TIFF">JPG, PNG, WebP, BMP ou TIFF</span>
+      </label>
+      <p id="empty-state" class="scan-empty-state" data-pt="Adicione pelo menos uma página para criar o PDF." data-en="Add at least one page to create a PDF.">Adicione pelo menos uma página para criar o PDF.</p>
+      <ol id="scan-pages" class="scan-page-list" aria-label="Páginas" hidden></ol>
+      <button id="add-pages" type="button" class="secondary-button" data-pt="Adicionar mais páginas" data-en="Add more pages">Adicionar mais páginas</button>
+      <p class="scan-disclosure" data-pt="Os arquivos são processados no servidor que você controla. A ordem exibida será a ordem das páginas no PDF." data-en="Files are processed on the server you control. The order shown here will be the page order in the PDF.">Os arquivos são processados no servidor que você controla. A ordem exibida será a ordem das páginas no PDF.</p>
+      <button id="submit" class="primary-button" type="button" disabled data-pt="Criar PDF" data-en="Create PDF">Criar PDF</button>
+      <p id="message" role="status" aria-live="polite"></p>
+      <a id="download" class="download-button" hidden data-pt="Baixar PDF" data-en="Download PDF">Baixar PDF</a>
+    </section>
+  </main>
+</body>
+</html>

@@ -1880,6 +1880,31 @@ def test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected(settings, jpeg_
             assert document.page_count == 2
             assert document[0].rect.width == 842
 
+        scanned = client.post(
+            "/api/jobs",
+            data={"operation": "image.to_pdf", "options": json.dumps({"rotations": [90, 0]})},
+            files=[
+                ("files", ("page-1.jpg", jpeg_bytes, "image/jpeg")),
+                ("files", ("page-2.jpg", jpeg_bytes, "image/jpeg")),
+            ],
+        )
+        assert scanned.status_code == 202
+        assert process_one_job(settings)
+        scan_pdf = client.get(f"/api/jobs/{scanned.json()['job_id']}/download")
+        with pymupdf.open(stream=scan_pdf.content, filetype="pdf") as document:
+            assert document[0].rect.width == 595
+            assert document[1].rect.width == 842
+
+        invalid_rotation = client.post(
+            "/api/jobs",
+            data={"operation": "image.to_pdf", "options": json.dumps({"rotations": [45]})},
+            files={"files": ("page.jpg", jpeg_bytes, "image/jpeg")},
+        )
+        assert invalid_rotation.status_code == 422
+        assert invalid_rotation.json()["error"]["code"] == "invalid_options"
+        with sqlite3.connect(settings.database_path) as connection:
+            assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 2
+
         invalid = client.post(
             "/api/jobs",
             data={"operation": "pdf.rotate", "options": '{"degrees":90}'},
@@ -1887,6 +1912,14 @@ def test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected(settings, jpeg_
         )
         assert invalid.status_code == 422
         assert invalid.json()["error"]["code"] == "invalid_file"
+
+
+def test_scan_to_pdf_page_is_available(settings):
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/tools/scan-to-pdf")
+    assert page.status_code == 200
+    assert 'capture="environment"' in page.text
+    assert 'data-en="Scan to PDF"' in page.text
 
 
 def test_pdf_text_watermark_and_page_numbers_apply_to_every_page(settings, pdf_bytes):

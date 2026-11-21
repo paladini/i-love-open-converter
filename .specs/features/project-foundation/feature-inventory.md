@@ -32,7 +32,7 @@ This inventory preserves the capabilities named in the goal objective while the 
 | PDF/A conversion | Implemented as locally converted and independently validated PDF/A-2b when dependencies are available |
 | Repair damaged PDF | Implemented as best-effort local repair |
 | Add page numbers | Implemented |
-| Scan capture to PDF | Deferred; uploading images and converting them to PDF is available |
+| Scan capture to PDF | Implemented with mobile camera capture or image selection, page ordering, and rotation |
 | OCR / searchable PDF | Implemented locally for Portuguese and English |
 | Compare PDFs | Implemented as a visual page comparison |
 | Redact PDF | Implemented with safeguards for tagged content |

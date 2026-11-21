@@ -81,6 +81,7 @@ modelo U2NetP para o cache local na primeira utilização.
 - Girar todas as páginas em 90°, 180° ou 270°.
 - Otimizar PDFs com compressão estrutural local sem perdas.
 - Renderizar cada página de um PDF como imagem JPG.
+- Capturar ou selecionar páginas no navegador, organizá-las, girá-las e criar um PDF localmente.
 - Converter documentos Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) e Excel (`.xls`, `.xlsx`) em PDF usando LibreOffice local.
 - Extrair imagens incorporadas do PDF em PNG dentro de um ZIP, preservando a transparência. Objetos de imagem repetidos são incluídos uma vez; imagens inline são incluídas em cada ocorrência.
 - Converter PDFs para Markdown com texto, tabelas e figuras extraídos localmente em um ZIP portátil. Páginas digitalizadas exigem OCR, que não faz parte desta conversão; layouts complexos podem não ser reconstruídos fielmente.
