@@ -15,48 +15,48 @@ This inventory preserves the capabilities named in the goal objective while the 
 
 | Capability | Current state |
 | --- | --- |
-| Merge PDFs | Present |
-| Split by page/range | Present; current split returns selected ranges as separate PDFs |
-| Compress PDF | Present; current implementation uses PyMuPDF garbage collection and deflate |
-| Office documents to PDF (Word, PowerPoint, Excel) | Missing |
-| PDF to Word, PowerPoint, Excel | Missing |
-| Edit PDF (text, images, shapes, annotations) | Missing |
-| PDF to JPG / extract images | PDF pages to JPG present; embedded image extraction missing |
-| JPG/images to PDF | Present for supported static raster images |
-| Sign PDF | Missing |
-| PDF watermark | Missing |
-| Rotate PDF | Present |
-| HTML to PDF | Missing |
-| Unlock / protect PDF | Missing |
-| Reorder, delete, insert PDF pages | Missing |
-| PDF/A conversion | Missing |
-| Repair damaged PDF | Missing |
-| Add page numbers | Missing |
-| Scan capture to PDF | Missing |
-| OCR / searchable PDF | Missing |
-| Compare PDFs | Missing |
-| Redact PDF | Missing |
-| Fillable PDF forms | Missing |
-| AI summary / translation | Missing |
-| PDF to Markdown | Missing |
+| Merge PDFs | Implemented |
+| Split by page/range | Implemented; selected ranges are returned as separate PDFs |
+| Compress PDF | Implemented with local PyMuPDF optimization |
+| Office documents to PDF (Word, PowerPoint, Excel) | Implemented with isolated local LibreOffice worker |
+| PDF to Word, PowerPoint, Excel | Implemented with local conversion and extraction pipelines |
+| Edit PDF (text, images, shapes, annotations) | Implemented |
+| PDF to JPG / extract images | Implemented, including embedded image extraction |
+| JPG/images to PDF | Implemented for supported raster images |
+| Sign PDF | Implemented as a visual signature; it does not claim cryptographic validity |
+| PDF watermark | Implemented |
+| Rotate PDF | Implemented |
+| HTML to PDF | Implemented for local HTML with embedded resources |
+| Unlock / protect PDF | Implemented |
+| Reorder, delete, insert PDF pages | Implemented |
+| PDF/A conversion | Implemented as locally converted and independently validated PDF/A-2b when dependencies are available |
+| Repair damaged PDF | Implemented as best-effort local repair |
+| Add page numbers | Implemented |
+| Scan capture to PDF | Deferred; uploading images and converting them to PDF is available |
+| OCR / searchable PDF | Implemented locally for Portuguese and English |
+| Compare PDFs | Implemented as a visual page comparison |
+| Redact PDF | Implemented with safeguards for tagged content |
+| Fillable PDF forms | Implemented for existing fields |
+| AI summary / translation | Deferred; no remote AI service is part of the local-first scope |
+| PDF to Markdown | Implemented |
 
 ## Image capabilities named in the objective
 
 | Capability | Current state |
 | --- | --- |
-| Compress image | Present for supported static raster formats |
-| Resize image | Present |
-| Crop image | Missing |
-| Convert to JPG | Present for supported static raster inputs, including PNG, WebP, BMP and TIFF |
-| Convert from JPG to PNG or GIF; create animated GIF | PNG output present; GIF output and animation missing |
-| Photo editor (text, effects, frames, stickers) | Missing |
-| Image upscaling | Missing |
-| Background removal | Missing |
-| Image watermark | Missing |
-| Meme generator | Missing |
-| Rotate image | Present |
-| HTML page to image | Missing |
-| Face/plate/object blur | Missing |
+| Compress image | Implemented for supported static raster formats |
+| Resize image | Implemented |
+| Crop image | Implemented |
+| Convert to JPG | Implemented for supported static raster inputs, including PNG, WebP, BMP and TIFF |
+| Convert from JPG to PNG or GIF; create animated GIF | Implemented for PNG and animated GIF output |
+| Photo editor (text, effects, frames, stickers) | Implemented in stages: text, filters, and frames; stickers are also available as a separate editor stage |
+| Image upscaling | Implemented locally without AI |
+| Background removal | Implemented locally |
+| Image watermark | Implemented |
+| Meme generator | Implemented |
+| Rotate image | Implemented |
+| HTML page to image | Implemented for local HTML |
+| Face/plate/object blur | Face blur is implemented; plate and arbitrary-object blur are deferred |
 
 ## Cross-cutting requirement
 

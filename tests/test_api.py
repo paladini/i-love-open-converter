@@ -1068,7 +1068,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP."' in script
     assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
     assert 'data-option="blur-faces-note"' in response.text
-    assert 'imageCount: "16 available"' in script
+    assert 'imageCount: "12 available"' in script
     assert 'removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP."' in script
     assert 'removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP."' in script
     assert '"image.remove_background": "removeBackgroundTitle"' in script
