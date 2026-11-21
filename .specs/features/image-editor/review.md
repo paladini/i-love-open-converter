@@ -45,3 +45,34 @@ The flow uses the existing one-image upload and conversion form, fixed controls,
 ## Scope update
 
 After this review, the user chose a simple local first editor with text, filters, and frames, deferring stickers to a later stage. The initial reviewed PR had included stickers. This report records that earlier scope; the revised plan removes sticker criteria and a fresh independent review will cover the updated implementation.
+
+## Independent review of the narrowed scope
+
+**Reviewed commit:** `c66c735896afff3f02ed184a0eecc498b542ad8f` (merge of the editor feature with the current `main`). The feature diff against `origin/main` contains the narrowed editor implementation and its specification. The merge also includes crop, watermark, JPG conversion, and HTML tools from `main`; those are outside this editor verdict.
+
+**Verdict: changes requested (P2 test coverage gap).** No functional defect was found in the narrowed editor. The editor is active under the image editing category; API validation enforces one input and bounded options; the worker applies EXIF orientation, filter, frame, then text, and preserves dimensions. Stickers are absent from the narrowed implementation.
+
+### P2 - Combined edit test does not assert the combined artifact
+
+`tests/test_image_editor.py::test_editor_combines_filter_frame_and_text` creates `frame`, `text`, and `combined` outputs, but never reads or asserts `text`; the `text` and `combined` calls use the same options. The test checks that `combined` differs from `frame` somewhere in the text region, but does not assert that a text-colored pixel overlays the frame where they overlap. As a result, the test would still pass if text were rendered before the frame and the frame covered it, contrary to the plan's required frame-then-text composition order. Add a pixel assertion in the overlap area that proves the chosen text color is visible over the frame; remove the unused duplicate output if it serves no other check.
+
+### Criterion mapping
+
+| Plan criterion | Evidence | Assessment |
+| --- | --- | --- |
+| S1.1 bilingual single-image controls | `test_editor_card_and_controls_are_active_and_bilingual`; form markup and message dictionaries | Covered by regression checks; no live browser capture repeated in this review. |
+| S1.2 EXIF, local edits and oriented dimensions | `test_editor_text_is_positioned_after_exif_orientation`; filter, frame and worker tests | Covered for orientation and dimensions. Composition ordering is the finding above. |
+| S1.3 selected text anchor, size, color and opacity | `test_editor_places_text_with_color_size_and_opacity`; all-anchor helper parameterization | Partial but meaningful; selected values are exercised, not every value combination. |
+| S1.4 filter pixels before overlays | Parametrized grayscale, sepia and invert pixel tests; combined test | Transformations are checked; combined operation order is not fully protected. |
+| S1.5 invalid settings rejected before queueing | Parametrized invalid settings and source-count tests assert no job is created | Covered for listed invalid values. |
+| S1.6 one selected output and no partial failure artifact | PNG/JPEG/WebP result tests and worker failure test | Covered. |
+| S1.7 360 px no-overflow | Narrow-layout test checks wrapping CSS and markup; prior author fix pass recorded manual 360 px inspection | The 360 px behavior was not re-run by this independent review. |
+
+### Verification
+
+- `uv run pytest -q tests/test_image_editor.py tests/test_image_crop.py`: 56 passed.
+- `uv run ruff check .`: passed.
+- `node --check src/i_love_open_converter/static/js/app.js`: passed.
+- Reviewed the feature diff against `origin/main` at `c66c735896afff3f02ed184a0eecc498b542ad8f`.
+
+**Fix pass:** done - removed the redundant text-only render and added a pixel-level assertion that the combined output changes a red frame pixel, proving text renders above the frame. The focused regression passed; full suite and lint validation are recorded with this commit. No second review was performed.

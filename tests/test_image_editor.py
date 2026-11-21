@@ -257,6 +257,14 @@ def test_editor_combines_filter_frame_sticker_and_text_in_layer_order(settings):
     assert frame.size == sticker.size == text.size == combined.size == (80, 80)
     assert frame.getpixel((0, 40))[:3] == (220, 53, 69)
     assert combined.getpixel((40, 40))[:3] == (235, 175, 55)
+    frame_overlays = [
+        (x, y, combined.getpixel((x, y))[:3])
+        for y in range(80)
+        for x in range(80)
+        if frame.getpixel((x, y))[:3] == (220, 53, 69)
+        and combined.getpixel((x, y))[:3] != (220, 53, 69)
+    ]
+    assert frame_overlays, frame_overlays[:20]
     assert any(
         sticker.getpixel((x, y)) != frame.getpixel((x, y))
         for y in range(4, 20)
