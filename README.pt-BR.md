@@ -64,6 +64,7 @@ são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
 - Converter PDF em um DOCX editável localmente. PDFs digitalizados exigem OCR, e layouts complexos podem diferir do original.
 - Converter PDF em uma apresentação PowerPoint editável localmente. Textos e imagens incorporadas viram objetos separados nos slides; desenhos vetoriais, gráficos, fundos de página e OCR de páginas digitalizadas não são reconstruídos.
 - Extrair tabelas detectadas e texto selecionável de um PDF para uma planilha Excel local. Tabelas e referências de página ficam na aba `Tables`; outros textos vão para `Text`. Os valores permanecem textos literais. Layouts incomuns podem não ser reconhecidos, e páginas digitalizadas exigem OCR.
+- Converter um arquivo HTML local `.html` ou `.htm` para PDF. CSS incorporado e recursos `data:` são aceitos; arquivos relativos, URLs remotas e execução de JavaScript não são suportados. O renderizador é o WeasyPrint e exige o worker Linux isolado.
 
 - Transformar imagens em um PDF com uma página para cada imagem.
 - Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
@@ -77,6 +78,7 @@ Para limitar a memória de renderização, páginas que excedem 16 milhões de p
 A conversão de PDF para Word usa a biblioteca local `pdf2docx`, que não recebe mais manutenção ativa do projeto original. Ela aplica os mesmos limites de tamanho de página, tempo e arquivo de saída e exige o worker Linux isolado da rede configurado abaixo; outros ambientes recusam a conversão.
 A conversão de PDF para PowerPoint usa PyMuPDF e `python-pptx` para criar caixas de texto e imagens editáveis. Cada página gera um slide; OCR de páginas digitalizadas e reconstrução de desenhos vetoriais complexos, gráficos e fundos não são suportados. O limite é de 200 páginas, 20 mil objetos por apresentação, 16 milhões de pixels por página a 150 DPI, 180 segundos e 256 MiB de saída. O worker Linux isolado da rede é obrigatório; outros ambientes recusam a conversão.
 A conversão de PDF para Excel usa a detecção de tabelas do PyMuPDF e XlsxWriter. Tabelas detectadas e outros textos selecionáveis ficam em abas separadas com referências às páginas; todos os valores permanecem textos literais. Tabelas sem bordas ou com layouts incomuns podem não ser reconhecidas, números não são inferidos e páginas digitalizadas exigem OCR. Os limites são 200 páginas, 16 milhões de pixels por página a 150 DPI, 200 mil células de tabela, 100 mil linhas de texto, 180 segundos e 256 MiB de saída. O worker Linux isolado da rede é obrigatório; outros ambientes recusam a conversão.
+HTML para PDF usa WeasyPrint 70.0. Aceita um HTML local de até 10 MiB, renderiza no máximo 100 páginas e limita o processo filho a 120 segundos, 2 GiB de memória virtual e 256 MiB de saída. Apenas recursos incorporados como `data:` são carregados; o fetcher bloqueia URLs remotas e arquivos locais. Exige worker Linux sem rede externa e com Landlock; ambientes incompatíveis falham fechados. JavaScript não é executado e o suporte a CSS pode diferir de um navegador.
 
 As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
 ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
@@ -88,6 +90,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | JPEG, PNG, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
+| HTML (`.html`, `.htm`) | HTML local para PDF; somente recursos `data:` incorporados | PDF |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |
 | Imagem estática | Imagens para PDF | PDF |
 

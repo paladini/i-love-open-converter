@@ -25,6 +25,7 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
+from .html_ops import MAX_HTML_BYTES
 from .image_ops import INPUT_FORMATS, InvalidImageError, UnsupportedImageError, inspect_image
 from .office_ops import FAMILIES
 from .pdf_archive import pdfa_available
@@ -44,7 +45,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
-    ("HTML para PDF", "HTML to PDF", "convert", 16),
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
     ("Digitalize e transforme em PDF", "Scan to PDF", "workflows", 23),
     ("OCR PDF", "OCR PDF", "intelligence", 24),
@@ -302,6 +302,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def pdf_to_excel(request: Request):
         return TEMPLATES.TemplateResponse(request, "pdf-to-excel.html", {"request": request})
 
+    @app.get("/tools/html-to-pdf", include_in_schema=False)
+    async def html_to_pdf(request: Request):
+        return TEMPLATES.TemplateResponse(request, "html-to-pdf.html", {"request": request})
+
     @app.get("/tools/office-to-pdf/{family}", include_in_schema=False)
     async def office_to_pdf(request: Request, family: str):
         labels = {
@@ -488,6 +492,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.to_word",
             "pdf.to_powerpoint",
             "pdf.to_excel",
+            "html.to_pdf",
             "pdf.watermark",
             "pdf.page_numbers",
             "pdf.organize",
@@ -585,7 +590,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.repair",
             "pdf.pdfa",
         }
-        if (operation in single_pdf_operations or operation in FAMILIES) and len(files) != 1:
+        if (operation in single_pdf_operations or operation in FAMILIES
+                or operation == "html.to_pdf") and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -616,6 +622,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["language"] = language
+        if operation == "html.to_pdf" and parsed_options:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
+            )
         secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
         if operation in {"pdf.protect", "pdf.unlock"} and (
             not isinstance(secret, str)
@@ -1008,6 +1019,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
                 is_pdf_operation = operation.startswith("pdf.")
+                is_html_operation = operation == "html.to_pdf"
                 if operation in FAMILIES and extension not in FAMILIES[operation]:
                     raise HTTPException(
                         status_code=415,
@@ -1032,8 +1044,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             }
                         },
                     )
+                if is_html_operation and extension not in {".html", ".htm"}:
+                    raise HTTPException(
+                        status_code=415,
+                        detail={"error": {"code": "unsupported_format",
+                                           "message": "Envie um arquivo HTML (.html ou .htm)."}},
+                    )
                 if (
                     not is_pdf_operation
+                    and not is_html_operation
                     and operation != "image.to_pdf"
                     and operation not in FAMILIES
                     and extension not in accepted_extensions
@@ -1053,6 +1072,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     while chunk := await upload.read(64 * 1024):
                         file_size += len(chunk)
                         total_size += len(chunk)
+                        if is_html_operation and file_size > MAX_HTML_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={"error": {"code": "file_too_large",
+                                                   "message": "O HTML excede o limite de 10 MiB."}},
+                            )
                         if file_size > settings.max_file_size_bytes:
                             raise HTTPException(
                                 status_code=413,
@@ -1076,6 +1101,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         target.write(chunk)
                 if operation in FAMILIES:
                     content_type = "application/octet-stream"
+                elif is_html_operation:
+                    content_type = "text/html"
                 elif is_pdf_operation and not is_watermark_image:
                     try:
                         page_count = (
