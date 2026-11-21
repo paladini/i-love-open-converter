@@ -35,14 +35,15 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
 
 ### Images
 
-- Convert static JPEG, PNG, WebP, BMP, and TIFF images to JPEG, PNG, or WebP.
+- Convert static JPEG, PNG, GIF, WebP, BMP, and TIFF images to JPEG, PNG, or WebP.
 - Resize images by width, height, or both while keeping the original aspect
   ratio.
 - Compress JPEG and WebP output with a quality setting.
 - Rotate images by 90°, 180°, or 270°.
+- Crop images with pixel coordinates and dimensions after applying EXIF orientation.
 
 You can process multiple images in one job. Multi-file results download as a
-ZIP archive. Animated images are not supported.
+ZIP archive. Static GIF images are supported; animated images are not supported.
 
 ### PDF
 
