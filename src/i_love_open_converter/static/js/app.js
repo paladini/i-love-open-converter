@@ -16,6 +16,7 @@ const messages = {
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
     imageToPdfHint: "Uma página para cada imagem", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números ao seu PDF", rangesLabel: "Intervalos (ex.: 1-3,5)",
+    memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -56,6 +57,7 @@ const messages = {
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
     imageToPdfHint: "One page for each image", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add numbers throughout your PDF", rangesLabel: "Page ranges (e.g. 1-3,5)",
+    memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -126,6 +128,9 @@ function applyLanguage(language) {
     if (element.id === "hero-title") element.innerHTML = value;
     else element.textContent = value;
   });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    element.placeholder = t(element.dataset.i18nPlaceholder);
+  });
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAria));
   });
@@ -158,6 +163,7 @@ const operationTitles = {
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
   "image.rotate": "rotateImageTitle",
+  "image.meme": "memeTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
@@ -174,6 +180,7 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  if (operation === "image.meme") outputFormat.value = "JPEG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -189,10 +196,13 @@ function selectTool(operation) {
   document.querySelector('[data-option="quality"]').hidden = operation !== "image.compress";
   document.querySelector('[data-option="degrees"]').hidden = !["image.rotate", "pdf.rotate"].includes(operation);
   document.querySelector('[data-option="ranges"]').hidden = operation !== "pdf.split";
+  document.querySelector('[data-option="meme-top"]').hidden = operation !== "image.meme";
+  document.querySelector('[data-option="meme-bottom"]').hidden = operation !== "image.meme";
+  if (operation === "image.meme") submitButton.querySelector("[data-i18n]").textContent = t("memeButton");
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
   fileInput.accept = isPdf ? ".pdf,application/pdf" : ".jpg,.jpeg,.png,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || operation.startsWith("image.");
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.meme");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
   fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : "fileTypes";
@@ -210,9 +220,9 @@ const categoryOperations = {
   edit: ["pdf.watermark", "pdf.page_numbers"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf"],
+  images: ["image.convert", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
-  "img-create": [],
+  "img-create": ["image.meme"],
   "img-edit": [],
   "img-convert": ["image.convert"],
   "img-security": [],
@@ -400,6 +410,10 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   const body = new FormData();
   const options = { format: outputFormat.value };
+  if (currentOperation === "image.meme") {
+    options.top_text = document.querySelector("#meme-top-text").value;
+    options.bottom_text = document.querySelector("#meme-bottom-text").value;
+  }
   if (currentOperation === "image.resize") {
     if (document.querySelector("#width").value) options.width = document.querySelector("#width").value;
     if (document.querySelector("#height").value) options.height = document.querySelector("#height").value;

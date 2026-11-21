@@ -78,7 +78,8 @@ def test_extracts_image_in_annotation_appearance(settings):
     document.close()
     with TestClient(create_app(settings)) as client:
         submitted = client.post(
-            "/api/jobs", data={"operation": "pdf.extract_images"},
+            "/api/jobs",
+            data={"operation": "pdf.extract_images"},
             files=_multipart("annotation.pdf", source, "application/pdf"),
         )
         assert submitted.status_code == 202
@@ -1041,6 +1042,87 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert "Desfocar cara" in response.text
     assert 'data-category="workflows"' in response.text
     assert 'data-category="img-optimize"' in response.text
+    assert 'data-tool="image.meme"' in response.text
+    assert 'id="meme-top-text"' in response.text
+
+
+def test_meme_generator_creates_local_jpeg_and_rejects_invalid_requests(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.meme",
+                "options": json.dumps({"top_text": "WHEN IT WORKS", "bottom_text": "FIRST TRY"}),
+            },
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(f"/api/jobs/{submitted.json()['job_id']}/download")
+
+        empty = client.post(
+            "/api/jobs",
+            data={"operation": "image.meme", "options": json.dumps({"top_text": "  "})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        too_long = client.post(
+            "/api/jobs",
+            data={"operation": "image.meme", "options": json.dumps({"bottom_text": "x" * 301})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        multiple = client.post(
+            "/api/jobs",
+            data={"operation": "image.meme", "options": json.dumps({"top_text": "MEME"})},
+            files=[
+                ("files", ("one.jpg", jpeg_bytes, "image/jpeg")),
+                ("files", ("two.jpg", jpeg_bytes, "image/jpeg")),
+            ],
+        )
+        unsupported_extension = client.post(
+            "/api/jobs",
+            data={"operation": "image.meme", "options": json.dumps({"top_text": "MEME"})},
+            files=_multipart("photo.gif", jpeg_bytes),
+        )
+        invalid_content = client.post(
+            "/api/jobs",
+            data={"operation": "image.meme", "options": json.dumps({"top_text": "MEME"})},
+            files=_multipart("photo.jpg", b"not an image"),
+        )
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "image/jpeg"
+    with Image.open(BytesIO(download.content)) as meme:
+        assert meme.format == "JPEG"
+        assert meme.size == (16, 12)
+    for response in (empty, too_long, multiple):
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "invalid_options"
+    assert unsupported_extension.status_code == 415
+    assert invalid_content.status_code == 422
+
+
+def test_meme_worker_failure_has_no_partial_download(settings, jpeg_bytes, monkeypatch):
+    from i_love_open_converter import worker
+    from i_love_open_converter.image_ops import InvalidImageError
+
+    def fail_processing(*_args, **_kwargs):
+        raise InvalidImageError
+
+    monkeypatch.setattr(worker, "process_image", fail_processing)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.meme", "options": json.dumps({"top_text": "MEME"})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"])
+        download = client.get(f"{submitted.json()['status_url']}/download")
+
+    assert status.json()["state"] == "failed"
+    assert download.status_code == 409
+    assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
 
 
 def test_pdf_markup_tools_open_with_upload_first_screens(settings):

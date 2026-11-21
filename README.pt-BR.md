@@ -42,6 +42,10 @@ futuras do projeto.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Girar imagens em 90°, 180° ou 270°.
+- Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
+  e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
+  à imagem; em imagens pequenas, o texto que não couber termina com reticências.
+  No JPEG, áreas transparentes viram brancas.
 
 Você pode processar várias imagens em um job. Resultados com vários arquivos
 são baixados em um arquivo ZIP. Imagens animadas não são suportadas.
