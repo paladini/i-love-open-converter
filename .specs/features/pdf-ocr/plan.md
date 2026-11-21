@@ -2,7 +2,7 @@
 
 **Approved**: 2026-11-21 - user delegated roadmap implementation through completion.
 **Settled mid-build:** none
-**Review:** pending
+**Review:** sent at 8177cd4
 **Fix pass:** pending review
 
 ## Problem
@@ -107,3 +107,11 @@ None - activate the existing OCR catalog item and retain its searchable/selectab
 - [OCRmyPDF documentation](https://ocrmypdf.readthedocs.io/en/latest/) - required local software and OCR behavior.
 - [OCRmyPDF security documentation](https://github.com/ocrmypdf/OCRmyPDF/blob/main/docs/cloud.md) - deployment notes for untrusted PDFs.
 - [OCRmyPDF PyPI 17.14.2](https://pypi.org/project/ocrmypdf/17.14.2/) - pinned release and Python package metadata.
+
+## Build evidence
+
+- `uv run ruff check src/i_love_open_converter tests` passed.
+- `uv run pytest -q` passed for the full repository suite.
+- `node --check src/i_love_open_converter/static/js/pdf-ocr.js`, `docker compose config --quiet`, and `validate_plan.py pdf-ocr` passed.
+- Built the Docker image with OCRmyPDF and installed `eng`/`por` Tesseract data. A generated scanned PDF processed inside the image returned selectable text `Documento de teste OCR 2026`.
+- Browser inspection verified English and Portuguese page copy, all three language choices, and a 360px viewport with document/body scroll width 345px and no horizontal overflow.
