@@ -93,6 +93,36 @@ def test_make_searchable_rejects_result_without_selectable_text_and_removes_it(
     assert not destination.exists()
 
 
+def test_make_searchable_rejects_changed_visible_page_content(tmp_path, monkeypatch):
+    source = tmp_path / "source.pdf"
+    destination = tmp_path / "output.pdf"
+    _make_pdf(source, text=False)
+
+    class ChangedProcess:
+        def __init__(self, command, **_kwargs):
+            document = pymupdf.open()
+            page = document.new_page(width=240, height=120)
+            page.insert_text((25, 50), "Recognized text")
+            document.save(command[-1])
+            document.close()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr(ocr_ops.subprocess, "Popen", ChangedProcess)
+
+    with pytest.raises(OcrProcessingError):
+        ocr_ops.make_searchable_pdf(source, destination, "eng")
+
+    assert not destination.exists()
+
+
 def test_make_searchable_timeout_kills_process_group_and_removes_partial_output(
     tmp_path, monkeypatch
 ):

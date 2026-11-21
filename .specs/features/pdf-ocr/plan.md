@@ -3,7 +3,7 @@
 **Approved**: 2026-11-21 - user delegated roadmap implementation through completion.
 **Settled mid-build:** none
 **Review:** sent at 8177cd4
-**Fix pass:** pending review
+**Fix pass:** done - require bounded rendered-page equality and run real OCR, text preservation, and appearance checks during the Docker image build; confirmed the cited homepage catalog at 731x720 and the tool at 360px.
 
 ## Problem
 
@@ -114,4 +114,5 @@ None - activate the existing OCR catalog item and retain its searchable/selectab
 - `uv run pytest -q` passed for the full repository suite.
 - `node --check src/i_love_open_converter/static/js/pdf-ocr.js`, `docker compose config --quiet`, and `validate_plan.py pdf-ocr` passed.
 - Built the Docker image with OCRmyPDF and installed `eng`/`por` Tesseract data. A generated scanned PDF processed inside the image returned selectable text `Documento de teste OCR 2026`.
-- Browser inspection verified English and Portuguese page copy, all three language choices, and a 360px viewport with document/body scroll width 345px and no horizontal overflow.
+- The image-build smoke test also checks unchanged page count, retained existing selectable text, and rendered pixel equality for both pages.
+- Browser inspection verified the active OCR catalog link and source order at the cited homepage capture size of 731x720, English and Portuguese page copy, all three language choices, and a 360px viewport with document/body scroll width 345px and no horizontal overflow.

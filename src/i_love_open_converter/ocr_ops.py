@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import signal
 import subprocess
@@ -11,6 +12,7 @@ import pymupdf
 MAX_OCR_PAGES = 20
 MAX_OCR_OUTPUT_BYTES = 256 * 1024 * 1024
 OCR_TIMEOUT_SECONDS = 600
+MAX_RENDERED_PAGE_PIXELS = 1_000_000
 
 
 class OcrProcessingError(Exception):
@@ -21,6 +23,18 @@ class NoOcrTextError(OcrProcessingError):
     """The result contains no selectable text."""
 
 
+def _page_appearance(page: pymupdf.Page) -> bytes:
+    scale = min(1.0, (MAX_RENDERED_PAGE_PIXELS**0.5) / max(page.rect.width, page.rect.height))
+    pixmap = page.get_pixmap(
+        matrix=pymupdf.Matrix(scale, scale), colorspace=pymupdf.csRGB, alpha=False
+    )
+    digest = hashlib.sha256()
+    digest.update(pixmap.width.to_bytes(4, "big"))
+    digest.update(pixmap.height.to_bytes(4, "big"))
+    digest.update(pixmap.samples)
+    return digest.digest()
+
+
 def make_searchable_pdf(source: Path, destination: Path, language: str) -> Path:
     try:
         with pymupdf.open(source) as original:
@@ -29,7 +43,8 @@ def make_searchable_pdf(source: Path, destination: Path, language: str) -> Path:
             if not 1 <= original.page_count <= MAX_OCR_PAGES:
                 raise OcrProcessingError
             original_pages = [
-                (page.rect, page.rotation, page.get_text("text")) for page in original
+                (page.rect, page.rotation, page.get_text("text"), _page_appearance(page))
+                for page in original
             ]
 
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -103,6 +118,7 @@ def make_searchable_pdf(source: Path, destination: Path, language: str) -> Path:
                 abs(original_page[0].width - result_page.rect.width) > 0.01
                 or abs(original_page[0].height - result_page.rect.height) > 0.01
                 or original_page[1] != result_page.rotation
+                or original_page[3] != _page_appearance(result_page)
                 for original_page, result_page in zip(original_pages, converted_pages, strict=True)
             ):
                 raise OcrProcessingError
