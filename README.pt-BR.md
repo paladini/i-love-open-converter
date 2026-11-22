@@ -84,7 +84,7 @@ retenção por 24 horas.
   cada job até 10 arquivos. Jobs e arquivos são removidos após 24 horas. Altere
   esses padrões em `.env`.
 
-## Início rápido
+## Início rápido com Docker
 
 Requisitos: Docker Engine e Docker Compose v2.
 
@@ -105,7 +105,7 @@ resultados.
 Altere `APP_PORT` em `.env` para mudar a porta. Veja os padrões na tabela
 abaixo. Use `docker compose ps` e `docker compose logs -f web worker` para
 inspecionar os serviços, `docker compose pull && docker compose up -d` para
-atualizar e `docker compose down` para pará-los.
+atualizar e `docker compose down` para parar sem apagar os arquivos.
 
 ## Configuração
 

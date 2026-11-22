@@ -3,7 +3,7 @@
 **Approved**: 2026-11-22 - user: "podemos seguir nas implementações de acordo com o plano que temos no momento."
 **Settled mid-build:** Keep the app's selectable PT-BR and English behavior; use English screenshots in both READMEs and leave the PNG for the user to upload.
 **Review:** sent at 203f594.
-**Fix pass:** done - localized the PDF tool footer, corrected conversion directions, regenerated English screenshots and preview, and restored concise format/default tables required by repository documentation checks.
+**Fix pass:** done - localized the PDF tool footer, corrected conversion directions, regenerated English screenshots and preview, and restored concise format/default tables and Docker wording required by repository documentation checks.
 
 ## Problem
 

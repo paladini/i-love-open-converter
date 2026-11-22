@@ -80,7 +80,7 @@ retention.
   per job. Jobs and files are removed after 24 hours. Configure these defaults
   in `.env`.
 
-## Quick start
+## Quick start with Docker
 
 Requirements: Docker Engine and Docker Compose v2.
 
@@ -100,7 +100,7 @@ worker. Data is stored in `./data`; back it up to preserve jobs and results.
 Set `APP_PORT` in `.env` to change the host port. See the configuration
 defaults below. Use `docker compose ps` and `docker compose logs -f web worker`
 to inspect services, `docker compose pull && docker compose up -d` to update,
-and `docker compose down` to stop them.
+and `docker compose down` to stop without deleting its files.
 
 ## Configuration
 
