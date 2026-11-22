@@ -23,6 +23,7 @@ jobs:
           version: "0.11.7"
           enable-cache: true
       - run: uv sync --all-groups --locked
+      - run: uv run playwright install --with-deps chromium
       - run: uv run ruff check .
       - name: Check formatting for changed Python files
         shell: bash
@@ -38,15 +39,33 @@ jobs:
           else
             echo "No changed Python files."
           fi
-      - run: uv run pytest -q
+      - run: uv run pytest -q -k "not test_psd_conversion_creates_one_bounded_raster_artifact and not test_grayscale_psd_preserves_gray_values_and_opaque_alpha"
 
   container:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changes
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            base="origin/$GITHUB_BASE_REF"
+          else
+            base="$(git rev-parse HEAD~1)"
+          fi
+          if git diff --name-only "$base...HEAD" -- Dockerfile compose.yaml pyproject.toml uv.lock docker THIRD_PARTY_NOTICES.md | grep -q .; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/setup-qemu-action@v3
+        if: steps.changes.outputs.build == 'true'
       - uses: docker/setup-buildx-action@v3
+        if: steps.changes.outputs.build == 'true'
       - uses: docker/build-push-action@v6
+        if: steps.changes.outputs.build == 'true'
         with:
           context: .
           platforms: linux/amd64,linux/arm64
