@@ -9,7 +9,7 @@ This inventory reconciles the capabilities named in the goal objective with the 
 | Image | Static JPEG, PNG, GIF, WebP, BMP and TIFF conversion; SVG, PSD, HEIC/HEIF and camera RAW to raster; resize, compress, rotate, crop, watermark, photo editing and privacy tools; batch processing; image to PDF |
 | PDF | Editing, merge, split, organize, security, OCR, summary, offline PT-BR/English translation, office conversion, HTML rendering and image workflows |
 | App | Self-hosted Docker Compose web and worker, local SQLite queue and files, Portuguese (Brazil) and English UI, no external analytics |
-| Document conversion | Local Office, PDF/A, PDF, HTML and image conversion pipelines; some require the isolated Linux worker or optional local tools |
+| Document conversion | Local Office, PDF/A, PDF, HTML and image conversion pipelines; public URL rendering snapshots bounded static resources before the isolated offline worker; some features require local tools | 
 
 ## PDF capabilities named in the objective
 

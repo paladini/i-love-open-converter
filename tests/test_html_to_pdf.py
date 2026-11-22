@@ -11,6 +11,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from i_love_open_converter import html_ops, pdf_ops
+from i_love_open_converter import main as main_module
+from i_love_open_converter.database import get_job
 from i_love_open_converter.html_ops import HtmlExternalResourceError
 from i_love_open_converter.main import create_app
 from i_love_open_converter.worker import process_one_job
@@ -47,8 +49,9 @@ def test_html_to_pdf_page_is_bilingual_and_explains_local_resource_limits(settin
 
     assert page.status_code == 200
     assert 'accept=".html,.htm,text/html"' in page.text
-    assert 'data-en="Convert a local HTML file.' in page.text
-    assert "remote URL references are blocked" in page.text
+    assert 'value="url"' in page.text
+    assert "Public URL" in page.text
+    assert "JavaScript and login pages are unsupported" in page.text
     assert "HTML local" in home.text
     assert "HTML to PDF" in home.text
     assert "html.to_pdf" in script.text
@@ -106,7 +109,7 @@ def test_html_to_pdf_creates_pdf_artifact_and_downloads_it(settings, monkeypatch
             client,
             [("files", ("sample.html", b"Local HTML content", "text/html"))],
         )
-        assert response.status_code == 202
+        assert response.status_code == 202, response.text
         assert process_one_job(settings)
         status = client.get(response.json()["status_url"])
         download = client.get(response.json()["status_url"] + "/download")
@@ -118,6 +121,51 @@ def test_html_to_pdf_creates_pdf_artifact_and_downloads_it(settings, monkeypatch
     with pymupdf.open(stream=download.content, filetype="pdf") as document:
         assert document.page_count == 1
         assert "Local HTML content" in document[0].get_text()
+
+
+def test_html_to_pdf_captures_public_url_without_persisting_the_url(settings, monkeypatch):
+    requested = []
+    monkeypatch.setattr(
+        main_module,
+        "fetch_public_html",
+        lambda url: requested.append(url) or b"<h1>Public page</h1>",
+    )
+    monkeypatch.setattr(pdf_ops, "convert_html", _fake_convert)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "html.to_pdf", "url": "https://public.example/page?token=secret"},
+            files={"multipart-marker": ("marker.txt", b"x", "text/plain")},
+        )
+        assert response.status_code == 202
+        job = get_job(settings.database_path, response.json()["job_id"])
+        assert job["options"] == {}
+        assert job["artifacts"][0]["name"] == "website.html"
+        stored_html = (settings.data_dir / job["artifacts"][0]["relative_path"]).read_bytes()
+        assert b"Public page" in stored_html
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"])
+
+    assert requested == ["https://public.example/page?token=secret"]
+    assert status.json()["state"] == "succeeded"
+    assert "secret" not in str(job)
+
+
+def test_html_to_pdf_url_fetch_failure_creates_no_job(settings, monkeypatch):
+    def reject_url(_url):
+        raise main_module.UrlSnapshotError
+
+    monkeypatch.setattr(main_module, "fetch_public_html", reject_url)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "html.to_pdf", "url": "http://127.0.0.1/admin"},
+            files={"multipart-marker": ("marker.txt", b"x", "text/plain")},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_file", response.text
+    assert _job_count(settings) == 0
 
 
 def test_html_to_pdf_marks_blocked_resources_failed_without_download(settings, monkeypatch):

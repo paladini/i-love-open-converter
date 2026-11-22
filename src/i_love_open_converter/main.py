@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import tempfile
+import threading
 from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
@@ -19,6 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import FormData, Headers, UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
 
@@ -64,8 +66,16 @@ from .pdf_ops import (
 from .psd_ops import InvalidPsdError, inspect_psd
 from .raw_ops import MAX_RAW_INPUT_BYTES, RAW_EXTENSIONS
 from .svg_ops import MAX_SVG_BYTES, InvalidSvgError, inspect_svg
+from .url_snapshot import (
+    MAX_URL_TOTAL_BYTES,
+    UrlSnapshotError,
+    UrlSnapshotTooLargeError,
+    UrlSnapshotUnsupportedError,
+    fetch_public_html,
+)
 
 logger = logging.getLogger(__name__)
+_URL_FETCH_SLOTS = threading.BoundedSemaphore(4)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
@@ -502,6 +512,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         operation = form.get("operation")
         options = form.get("options", "{}")
         raw_files = form.getlist("files")
+        raw_urls = form.getlist("url")
+        url_input = raw_urls[0] if len(raw_urls) == 1 else None
+        url_mode = bool(raw_urls)
         raw_watermark_files = form.getlist("watermark_image")
         files = [item for item in raw_files if isinstance(item, UploadFile)]
         watermark_upload = (
@@ -513,6 +526,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             not isinstance(operation, str)
             or not isinstance(options, str)
             or len(files) != len(raw_files)
+            or len(raw_urls) > 1
+            or (url_mode and (operation not in {"html.to_pdf", "html.to_image"} or raw_files))
             or len(raw_watermark_files) > 1
             or (raw_watermark_files and watermark_upload is None)
         ):
@@ -592,7 +607,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     }
                 },
             )
-        if not files:
+        if not files and not url_mode:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -815,7 +830,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "image.remove_background",
                 "image.blur_faces",
             }
-        ) and len(files) != 1:
+        ) and len(files) != 1 and not (url_mode and operation in {"html.to_pdf", "html.to_image"}):
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -974,6 +989,65 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     detail={"error": {"code": "invalid_options", "message": "Escolha JPG ou SVG."}},
                 )
             validated_options["format"] = image_format
+        if url_mode:
+            if not isinstance(url_input, str) or not url_input.strip() or len(url_input) > 4096:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"error": {"code": "invalid_options", "message": "URL invÃ¡lida."}},
+                )
+            try:
+                if not _URL_FETCH_SLOTS.acquire(blocking=False):
+                    raise HTTPException(
+                        status_code=429,
+                        detail={
+                            "error": {
+                                "code": "url_fetch_busy",
+                                "message": "Muitas capturas de URL estÃ£o em andamento.",
+                            }
+                        },
+                    )
+                try:
+                    html_snapshot = await run_in_threadpool(fetch_public_html, url_input.strip())
+                finally:
+                    _URL_FETCH_SLOTS.release()
+            except UrlSnapshotTooLargeError as exc:
+                raise HTTPException(
+                    status_code=413,
+                    detail={
+                        "error": {
+                            "code": "request_too_large",
+                            "message": "A pÃ¡gina excede os limites de captura.",
+                        }
+                    },
+                ) from exc
+            except UrlSnapshotUnsupportedError as exc:
+                raise HTTPException(
+                    status_code=415,
+                    detail={
+                        "error": {
+                            "code": "unsupported_format",
+                            "message": "A URL must return an HTML page.",
+                        }
+                    },
+                ) from exc
+            except UrlSnapshotError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_file",
+                            "message": "NÃ£o foi possÃ­vel capturar a pÃ¡gina pÃºblica solicitada.",
+                        }
+                    },
+                ) from exc
+            files = [
+                UploadFile(
+                    file=BytesIO(html_snapshot),
+                    size=len(html_snapshot),
+                    filename="website.html",
+                    headers=Headers({"content-type": "text/html; charset=utf-8"}),
+                )
+            ]
         secret = form.get("password") if operation in {"pdf.protect", "pdf.unlock"} else None
         if operation in {"pdf.protect", "pdf.unlock"} and (
             not isinstance(secret, str)
@@ -1533,11 +1607,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     while chunk := await upload.read(64 * 1024):
                         file_size += len(chunk)
                         total_size += len(chunk)
-                        if is_html_operation and file_size > MAX_HTML_BYTES:
+                        html_limit = MAX_URL_TOTAL_BYTES if url_mode else MAX_HTML_BYTES
+                        if is_html_operation and file_size > html_limit:
                             raise HTTPException(
                                 status_code=413,
                                 detail={"error": {"code": "file_too_large",
-                                                   "message": "O HTML excede o limite de 10 MiB."}},
+                                                   "message": "O HTML capturado excede o limite."}},
                             )
                         if file_size > settings.max_file_size_bytes:
                             raise HTTPException(
