@@ -2,8 +2,8 @@
 
 **Approved:** 2026-11-22 - user authorized continuing the planned work and creating/merging PRs; issue #39 is a focused repository-health task, not application modularization.
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at f815521.
+**Fix pass:** done - addressed all three review findings with GitHub Report content/support routing, explicit feature-form operation/reproduction prompts, and PR CI that checks the uv lock, Ruff, tests, and two-architecture container builds.
 
 ## Problem
 
@@ -48,6 +48,7 @@ Data: none - this feature changes repository guidance and GitHub repository sett
 | Decision | Chosen behavior | Alternative |
 | --- | --- | --- |
 | Security contact | Use GitHub private vulnerability reporting; public issue templates never request security details. | Untracked email or public issue. |
+| Conduct reports | Use GitHub's Report content flow; if the repository-admin route is not available, use GitHub Support's abuse-report form. | Inventing maintainer email or repurposing the vulnerability-only route. |
 | Release history | Start with `Unreleased`; do not backfill unverified tags. | Guessing past release contents. |
 | Dependabot labels | Omit custom labels because the repository does not currently define a dependency label. | Configure a nonexistent label and risk failed PR creation. |
 
@@ -70,7 +71,7 @@ Data: none - this feature changes repository guidance and GitHub repository sett
 1. WHEN a contributor opens the repository THEN GitHub SHALL surface conduct, security, support, and contribution guidance without publishing unselected maintainer contact details.
 2. WHEN a visitor opens a bug or feature form THEN it SHALL request version/profile, host architecture, operation, and sanitized reproduction details, and SHALL warn against sharing private files or secrets; security reports SHALL use the enabled private reporting route.
 3. WHEN a contributor opens the PR template THEN it SHALL ask for validation, docs/spec updates, and third-party dependency/model review.
-4. WHEN Dependabot runs THEN it SHALL check uv, Dockerfile, Docker Compose, and GitHub Actions weekly with bounded open PR counts; uv updates SHALL retain a lockfile update.
+4. WHEN Dependabot runs THEN it SHALL check uv, Dockerfile, Docker Compose, and GitHub Actions weekly with bounded open PR counts; pull-request CI SHALL check the locked uv environment, Ruff, tests, and multi-architecture image build before merge.
 5. WHEN the changelog is opened THEN it SHALL begin with Unreleased and contain no unverified release history.
 6. WHEN README or CONTRIBUTING are opened THEN they SHALL link to applicable community files, and existing development setup instructions SHALL remain intact.
 
@@ -94,10 +95,16 @@ Data: none - this feature changes repository guidance and GitHub repository sett
 - GitHub issue #39 - requested community health and dependency automation scope.
 - GitHub repository metadata - confirmed Discussions are disabled and private vulnerability reporting was initially disabled.
 - GitHub Dependabot ecosystem documentation - `uv`, Docker, and GitHub Actions are supported package ecosystems.
+- GitHub abuse-report documentation - Report content can be routed to repository admins when available or to GitHub Support.
 
 ## Build evidence
 
 - GitHub private vulnerability reporting enabled and read back as enabled.
 - `uv` (with its `uv.lock`), Dockerfile, Compose file, and GitHub Actions configured for weekly bounded updates.
 - `validate_plan.py community-health` passed with 0 errors and 0 warnings.
-- PyYAML parsed all four GitHub YAML files successfully; `git diff --check` passed.
+- PyYAML parsed all five GitHub YAML files successfully; `git diff --check` passed.
+- Pull-request CI now runs `uv sync --all-groups --locked`, Ruff check/format, the test suite, and a non-publishing `linux/amd64` plus `linux/arm64` container build.
+
+## Review fix pass
+
+Addressed the independent review findings: conduct reporting now uses GitHub's Report content flow and Support abuse-report form without inventing contact details; feature forms explicitly request related operation and sanitized reproduction details; added pull-request CI for locked uv dependencies, Ruff, tests, and `linux/amd64` plus `linux/arm64` image builds. The CI runs on every pull request and main push; maintainers must merge only after its checks pass.

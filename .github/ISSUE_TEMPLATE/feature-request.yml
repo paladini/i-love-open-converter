@@ -27,6 +27,20 @@ body:
       description: Explain what you want to do and how you expect the tool to behave.
     validations:
       required: true
+  - type: input
+    id: operation
+    attributes:
+      label: Related operation or tool
+      description: Name the existing operation, or say that this would be a new tool.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Sanitized example or reproduction details
+      description: Use synthetic examples only. Do not attach private source files, personal data, or secrets.
+    validations:
+      required: true
   - type: textarea
     id: alternatives
     attributes:
