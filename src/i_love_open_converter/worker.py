@@ -52,6 +52,12 @@ from .pdf_translation import (
     TranslationPageOverflowError,
     TranslationUnavailableError,
 )
+from .svg_ops import (
+    InvalidSvgError,
+    SvgConversionError,
+    SvgUnavailableError,
+    convert_svg_to_image,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +84,7 @@ def process_one_job(settings: Settings) -> bool:
         elif job["operation"] in {
             "image.convert",
             "image.from_jpg",
+            "image.from_svg",
             "image.resize",
             "image.compress",
             "image.rotate",
@@ -135,13 +142,22 @@ def process_one_job(settings: Settings) -> bool:
                         stem = f"{stem}-{index}"
                     output_name = f"{stem}.{extension}"
                     destination = output_dir / output_name
-                    content_type, size_bytes = process_image(
-                        source,
-                        destination,
-                        job["operation"],
-                        job["options"],
-                        watermark_path=watermark_path,
-                    )
+                    if job["operation"] == "image.from_svg":
+                        content_type, size_bytes = convert_svg_to_image(
+                            source,
+                            destination,
+                            output_format,
+                            int(job["options"]["width"]),
+                            int(job["options"]["height"]),
+                        )
+                    else:
+                        content_type, size_bytes = process_image(
+                            source,
+                            destination,
+                            job["operation"],
+                            job["options"],
+                            watermark_path=watermark_path,
+                        )
                     generated.append((output_name, content_type, size_bytes))
             if len(generated) == 1:
                 output_name, content_type, size_bytes = generated[0]
@@ -287,6 +303,33 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "no_plates_detected",
             "Nenhuma placa foi detectada. Confira a imagem ou selecione as regiões manualmente.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except InvalidSvgError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "invalid_file",
+            "O SVG não é válido ou usa recursos não suportados.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except SvgUnavailableError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "svg_unavailable",
+            "A conversão de SVG exige um worker Linux isolado.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except SvgConversionError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "conversion_failed",
+            "Não foi possível converter este SVG dentro dos limites locais.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

@@ -8,7 +8,8 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
-    imageGroup: "Imagens", imageCount: "14 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    imageGroup: "Imagens", imageCount: "15 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    fromSvgTitle: "Converter de SVG", fromSvgHint: "PNG, JPG ou WebP até 40 MP", fromSvgNote: "Conversão local de SVG estático. Scripts, animações e recursos externos são recusados.", svgFileTypes: "SVG estático · até 10 MiB", svgUnavailable: "A conversão de SVG exige um worker Linux isolado.",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
@@ -59,7 +60,8 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
-    imageGroup: "Images", imageCount: "14 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    imageGroup: "Images", imageCount: "15 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    fromSvgTitle: "Convert from SVG", fromSvgHint: "PNG, JPG, or WebP up to 40 MP", fromSvgNote: "Local static SVG conversion. Scripts, animations, and external resources are rejected.", svgFileTypes: "Static SVG · up to 10 MiB", svgUnavailable: "SVG conversion requires an isolated Linux worker.",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
@@ -178,6 +180,8 @@ function applyLanguage(language) {
     ? "pdfFileTypes"
     : currentOperation === "image.from_jpg"
       ? "jpgFileTypes"
+      : currentOperation === "image.from_svg"
+        ? "svgFileTypes"
       : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
@@ -217,6 +221,7 @@ function syncOutputFormats(operation) {
 const operationTitles = {
   "image.convert": "convertTitle",
   "image.from_jpg": "fromJpgTitle",
+  "image.from_svg": "fromSvgTitle",
   "image.watermark": "watermarkImageTitle",
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
@@ -253,6 +258,7 @@ function selectTool(operation) {
   if (operation === "image.upscale") outputFormat.value = "PNG";
   if (operation === "image.remove_background") outputFormat.value = "PNG";
   if (operation === "image.blur_faces") outputFormat.value = "PNG";
+  if (operation === "image.from_svg") outputFormat.value = "PNG";
   if (["image.blur_plates", "image.blur_regions"].includes(operation)) outputFormat.value = "PNG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
@@ -284,20 +290,23 @@ function selectTool(operation) {
   document.querySelector('[data-option="blur-faces-note"]').hidden = operation !== "image.blur_faces";
   document.querySelector('[data-option="blur-plates-note"]').hidden = operation !== "image.blur_plates";
   document.querySelector('[data-option="blur-regions-note"]').hidden = operation !== "image.blur_regions";
+  document.querySelector('[data-option="svg-note"]').hidden = operation !== "image.from_svg";
   document.querySelectorAll('[data-option^="editor-"]').forEach((field) => {
     field.hidden = operation !== "image.editor";
   });
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
-  fileInput.accept = isPdf
+  fileInput.accept = operation === "image.from_svg"
+    ? ".svg,image/svg+xml"
+    : isPdf
     ? ".pdf,application/pdf"
     : operation === "image.from_jpg"
       ? ".jpg,.jpeg,image/jpeg"
       : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions");
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions" && operation !== "image.from_svg");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : operation === "image.from_svg" ? "svgFileTypes" : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
@@ -330,10 +339,10 @@ const categoryOperations = {
   edit: ["pdf.watermark", "pdf.page_numbers", "image.watermark"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.from_jpg", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background", "image.blur_faces", "image.editor", "image.crop", "image.watermark"],
+  images: ["image.convert", "image.from_jpg", "image.from_svg", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background", "image.blur_faces", "image.editor", "image.crop", "image.watermark"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-edit": ["image.crop", "image.watermark", "image.editor", "image.remove_background"],
-  "img-convert": ["image.convert", "image.from_jpg"],
+  "img-convert": ["image.convert", "image.from_jpg", "image.from_svg"],
   "img-create": ["image.meme", "image.upscale"],
   "img-security": ["image.blur_faces", "image.blur_plates", "image.blur_regions"],
 };
@@ -455,6 +464,7 @@ function apiErrorKey(code) {
     request_too_large: "requestTooLarge", processing_failed: "processingFailed", invalid_options: "invalidOptions",
     too_many_files: "tooManyFiles",
     crop_out_of_bounds: "cropOutOfBounds", no_plates_detected: "noPlatesDetected",
+    svg_unavailable: "svgUnavailable",
   };
   return codes[code] || "genericError";
 }

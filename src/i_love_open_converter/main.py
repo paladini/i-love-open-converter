@@ -60,6 +60,7 @@ from .pdf_ops import (
     validate_page_ranges,
     validate_redactions,
 )
+from .svg_ops import MAX_SVG_BYTES, InvalidSvgError, inspect_svg
 
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
@@ -68,7 +69,6 @@ PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
 ]
 IMAGE_COMING_SOON = [
-    ("Converter de SVG", "Convert from SVG", "img-convert", 16),
     ("Converter de PSD", "Convert from PSD", "img-convert", 17),
     ("Converter de HEIC/RAW", "Convert from HEIC/RAW", "img-convert", 18),
 ]
@@ -522,6 +522,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             *FAMILIES,
             "image.convert",
             "image.from_jpg",
+            "image.from_svg",
             "image.resize",
             "image.compress",
             "image.rotate",
@@ -747,10 +748,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.blur_regions",
             "image.editor",
             "image.from_jpg",
+            "image.from_svg",
             "image.crop",
             "image.watermark",
         }
-        if operation == "image.editor" and len(files) != 1:
+        if operation in {"image.editor", "image.from_svg"} and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione uma imagem."}},
@@ -1258,6 +1260,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["regions"] = parsed_options["regions"]
+        if operation == "image.from_svg" and set(parsed_options) - {"format"}:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "OpÃ§Ãµes invÃ¡lidas."}},
+            )
         if operation == "image.rotate":
             degrees = parsed_options.get("degrees")
             if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
@@ -1425,6 +1432,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 }
                 if operation == "image.from_jpg":
                     accepted_extensions = {".jpg", ".jpeg"}
+                elif operation == "image.from_svg":
+                    accepted_extensions = {".svg"}
                 elif operation == "image.meme":
                     accepted_extensions.discard(".gif")
                 is_pdf_operation = operation.startswith("pdf.")
@@ -1504,6 +1513,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                         "message": "O arquivo excede o limite configurado.",
                                     }
                                 },
+                            )
+                        if operation == "image.from_svg" and file_size > MAX_SVG_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={"error": {"code": "file_too_large",
+                                                   "message": "O SVG excede o limite de 10 MiB."}},
                             )
                         if total_size > settings.max_total_upload_bytes:
                             raise HTTPException(
@@ -1631,6 +1646,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     }
                                 },
                             ) from exc
+                elif operation == "image.from_svg":
+                    try:
+                        width, height = inspect_svg(destination)
+                    except InvalidSvgError as exc:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "invalid_file",
+                                    "message": "O SVG não é válido ou usa recursos não suportados.",
+                                }
+                            },
+                        ) from exc
+                    content_type = "image/svg+xml"
+                    validated_options.update(width=width, height=height)
                 else:
                     try:
                         image_format, content_type = inspect_image(destination)

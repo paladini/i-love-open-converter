@@ -1068,7 +1068,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP."' in script
     assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
     assert 'data-option="blur-faces-note"' in response.text
-    assert 'imageCount: "14 available"' in script
+    assert 'imageCount: "15 available"' in script
     assert 'data-tool="image.blur_plates"' in response.text
     assert 'data-tool="image.blur_regions"' in response.text
     assert 'data-i18n-aria="blurRegionsLabel"' in response.text
@@ -2458,3 +2458,67 @@ def test_interrupted_processing_job_is_requeued_and_partial_output_removed(setti
     assert not output_dir.exists()
     with TestClient(create_app(settings)) as client:
         assert client.get(f"/api/jobs/{job_id}").json()["state"] == "queued"
+
+
+@pytest.mark.parametrize("output_format", ["PNG", "JPEG", "WEBP"])
+def test_svg_conversion_job_is_queued_with_bounded_dimensions(settings, output_format):
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480"/>'
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.from_svg", "options": json.dumps({"format": output_format})},
+            files={"files": ("drawing.svg", svg, "image/svg+xml")},
+        )
+        assert response.status_code == 202
+        from i_love_open_converter.database import get_job
+
+        job = get_job(settings.database_path, response.json()["job_id"])
+        assert job["state"] == "queued"
+        assert job["options"]["format"] == output_format
+        assert (job["options"]["width"], job["options"]["height"]) == (640, 480)
+
+
+@pytest.mark.parametrize(
+    "filename,content,options,status,error_code",
+    [
+        (
+            "drawing.png",
+            b'<svg xmlns="http://www.w3.org/2000/svg"/>',
+            {"format": "PNG"},
+            415,
+            "unsupported_format",
+        ),
+        (
+            "drawing.svg",
+            b'<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>',
+            {"format": "PNG"},
+            422,
+            "invalid_file",
+        ),
+        (
+            "drawing.svg",
+            b'<svg xmlns="http://www.w3.org/2000/svg"/>',
+            {"format": "BMP"},
+            422,
+            "invalid_options",
+        ),
+        (
+            "drawing.svg",
+            b'<svg xmlns="http://www.w3.org/2000/svg"/>',
+            {"format": "PNG", "width": 1},
+            422,
+            "invalid_options",
+        ),
+    ],
+)
+def test_svg_conversion_rejects_invalid_request_before_queue(
+    settings, filename, content, options, status, error_code
+):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.from_svg", "options": json.dumps(options)},
+            files={"files": (filename, content, "image/svg+xml")},
+        )
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == error_code
