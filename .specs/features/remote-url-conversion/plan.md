@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-22 - user: "É pra seguir, e ir criando PRs de tudo, mergeando, até finalizar completamente a implementação do nosso plano original!"
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at 05ebc54 - independent review recorded one P2 test coverage gap in `review.md`.
+**Fix pass:** done - added deterministic tests for credential rejection, redirect and resource limits, aggregate bytes and elapsed time, and verified URL secrecy in API responses and captured logs; added a post-fetch deadline check.
 
 ## Problem
 

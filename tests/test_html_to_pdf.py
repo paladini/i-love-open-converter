@@ -123,7 +123,7 @@ def test_html_to_pdf_creates_pdf_artifact_and_downloads_it(settings, monkeypatch
         assert "Local HTML content" in document[0].get_text()
 
 
-def test_html_to_pdf_captures_public_url_without_persisting_the_url(settings, monkeypatch):
+def test_html_to_pdf_captures_public_url_without_persisting_the_url(settings, monkeypatch, caplog):
     requested = []
     monkeypatch.setattr(
         main_module,
@@ -138,6 +138,7 @@ def test_html_to_pdf_captures_public_url_without_persisting_the_url(settings, mo
             files={"multipart-marker": ("marker.txt", b"x", "text/plain")},
         )
         assert response.status_code == 202
+        assert "secret" not in response.text
         job = get_job(settings.database_path, response.json()["job_id"])
         assert job["options"] == {}
         assert job["artifacts"][0]["name"] == "website.html"
@@ -149,6 +150,7 @@ def test_html_to_pdf_captures_public_url_without_persisting_the_url(settings, mo
     assert requested == ["https://public.example/page?token=secret"]
     assert status.json()["state"] == "succeeded"
     assert "secret" not in str(job)
+    assert all("secret" not in record.getMessage() for record in caplog.records)
 
 
 def test_html_to_pdf_url_fetch_failure_creates_no_job(settings, monkeypatch):

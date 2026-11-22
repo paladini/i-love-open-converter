@@ -282,6 +282,8 @@ def fetch_public_html(url: str) -> bytes:
     if not isinstance(url, str):
         raise UrlSnapshotError
     response = _get(url, deadline, MAX_URL_PAGE_BYTES)
+    if time.monotonic() > deadline:
+        raise UrlSnapshotTooLargeError
     if response.content_type not in {"text/html", "application/xhtml+xml"}:
         raise UrlSnapshotUnsupportedError
     total_bytes += len(response.body)
