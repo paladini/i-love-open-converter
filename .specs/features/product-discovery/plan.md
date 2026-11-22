@@ -2,8 +2,8 @@
 
 **Approved:** 2026-11-22 - user authorized continuing planned work and PRs; issue #38 is a focused presentation task, not application refactoring.
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at 571b613.
+**Fix pass:** done - no changes needed.
 
 ## Build record
 
