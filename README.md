@@ -46,6 +46,26 @@ The home page lists available tools. Some optional operations, such as PDF/A
 conversion, need additional local dependencies. See the
 [project roadmap](.specs/features/project-foundation/plan.md) for scope.
 
+### Formats and limits
+
+| Input | Available operations | Output |
+| --- | --- | --- |
+| JPEG, PNG, static GIF, WebP, BMP, TIFF | Generic image conversion | JPEG, PNG, WebP, or one-frame static GIF per input |
+| JPEG (.jpg, .jpeg) | Convert to PNG or create an animated GIF from ordered JPEG inputs | PNG or animated GIF |
+| SVG (.svg) | Local static conversion | JPEG, PNG, or WebP; scripts and external resources are rejected |
+| PSD (.psd) | Convert flattened composite locally | JPEG, PNG, or WebP |
+| HEIC, HEIF, HIF | Convert one static image locally | JPEG |
+| Camera RAW (.3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw) | Develop locally; camera support varies | JPEG; up to 100 MiB per file |
+| Unencrypted PDF | Merge, split, organize, edit, protect, OCR, translate, repair, compare, redact, and more | PDF |
+| PDF | Convert to editable Office files | DOCX, PPTX, or XLSX |
+| PDF | Export to Markdown or extract embedded images | ZIP archive |
+| Word, PowerPoint, Excel | Convert to PDF | PDF |
+| HTML (.html, .htm) or public URL | HTML to PDF | PDF |
+| HTML (.html, .htm) or public URL | HTML to images | ZIP archive |
+
+Per-job defaults: 100 MB per file, 500 MB per request, 10 files, and 24-hour
+retention.
+
 ## Important limits
 
 - This is a set of supported PDF and image workflows, not a converter for any
@@ -77,10 +97,26 @@ On Windows PowerShell, use `Copy-Item .env.example .env` and
 Open <http://localhost:8080>. The Compose setup runs the web app and a separate
 worker. Data is stored in `./data`; back it up to preserve jobs and results.
 
-Set `APP_PORT` in `.env` to change the host port. For other settings, see
-[`.env.example`](.env.example). Use `docker compose logs -f web worker` to view
-logs, `docker compose pull && docker compose up -d` to update, and
-`docker compose down` to stop the services.
+Set `APP_PORT` in `.env` to change the host port. See the configuration
+defaults below. Use `docker compose ps` and `docker compose logs -f web worker`
+to inspect services, `docker compose pull && docker compose up -d` to update,
+and `docker compose down` to stop them.
+
+## Configuration
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `APP_PORT` | `8080` | Host port |
+| `IMAGE_TAG` | `latest` | Container image tag |
+| `MAX_FILE_SIZE_MB` | `100` | Maximum file size |
+| `MAX_TOTAL_UPLOAD_MB` | `500` | Maximum request size |
+| `MAX_FILES_PER_JOB` | `10` | Maximum files per job |
+| `JOB_RETENTION_HOURS` | `24` | Job and file retention |
+| `WORKER_POLL_SECONDS` | `1` | Queue polling interval |
+| `PUID` | `1000` | Data directory user ID |
+| `PGID` | `1000` | Data directory group ID |
+
+Copy [`.env.example`](.env.example) to `.env` before changing settings.
 
 ## Privacy and security
 

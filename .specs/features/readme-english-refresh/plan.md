@@ -3,7 +3,7 @@
 **Approved**: 2026-11-22 - user: "podemos seguir nas implementações de acordo com o plano que temos no momento."
 **Settled mid-build:** Keep the app's selectable PT-BR and English behavior; use English screenshots in both READMEs and leave the PNG for the user to upload.
 **Review:** sent at 203f594.
-**Fix pass:** done - localized the PDF tool footer in both selectable languages, corrected conversion directions, and regenerated the English screenshots and preview.
+**Fix pass:** done - localized the PDF tool footer, corrected conversion directions, regenerated English screenshots and preview, and restored concise format/default tables required by repository documentation checks.
 
 ## Problem
 
@@ -67,7 +67,7 @@ Visitors can review the product using concise documentation and English screensh
 
 1. WHEN a visitor opens either README THEN the system SHALL retain the title, tagline, link and badge blocks, and screenshot arrangement before the body text.
 2. WHEN a visitor reads either README THEN the system SHALL show the same three real application screenshots with the interface in English and alt text in the README's language.
-3. WHEN a visitor reads either README THEN the system SHALL describe only supported conversion directions, summarize key tool limits, and explain Docker startup, privacy, development setup, and the license concisely.
+3. WHEN a visitor reads either README THEN the system SHALL describe only supported conversion directions, list supported format paths and all nine Compose defaults, and explain Docker startup, privacy, development setup, and the license concisely.
 4. WHEN the English language is selected on a PDF tool page THEN the system SHALL show “Your space. Your files. No fuss.” in the footer.
 5. WHEN the repository owner downloads `docs/social-preview.png` THEN the image SHALL be 1280x640 pixels, under 1 MiB, and show the existing English social-preview design with the English screenshots.
 6. IF a screenshot or preview uses app text THEN the captured interface SHALL be in English; this does not change the app's selectable languages or default behavior.

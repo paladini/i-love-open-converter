@@ -48,6 +48,26 @@ A página inicial lista as ferramentas disponíveis. Algumas operações
 opcionais, como a conversão para PDF/A, precisam de dependências locais extras.
 Consulte o [roadmap do projeto](.specs/features/project-foundation/plan.md).
 
+### Formatos e limites
+
+| Entrada | Operações disponíveis | Saída |
+| --- | --- | --- |
+| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Conversão genérica de imagens | JPEG, PNG, WebP ou GIF estático de um quadro por entrada |
+| JPEG (`.jpg`, `.jpeg`) | Converter para PNG ou criar GIF animado com JPEGs na ordem escolhida | PNG ou GIF animado |
+| SVG (`.svg`) | Conversão local de SVG estático | JPEG, PNG ou WebP; scripts e recursos externos são recusados |
+| PSD (`.psd`) | Converter a imagem achatada localmente | JPEG, PNG ou WebP |
+| HEIC, HEIF, HIF | Converter uma imagem estática localmente | JPEG |
+| Camera RAW (.3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw) | Revelar localmente; suporte varia conforme a câmera | JPEG; até 100 MiB por arquivo |
+| PDF sem criptografia | Mesclar, dividir, organizar, editar, proteger, aplicar OCR, traduzir, reparar, comparar, ocultar conteúdo e mais | PDF |
+| PDF | Converter para arquivos Office editáveis | DOCX, PPTX ou XLSX |
+| PDF | Exportar para Markdown ou extrair imagens incorporadas | Arquivo ZIP |
+| Word, PowerPoint, Excel | Converter para PDF | PDF |
+| HTML (`.html`, `.htm`) ou URL pública | HTML para PDF | PDF |
+| HTML (`.html`, `.htm`) ou URL pública | HTML para imagens | Arquivo ZIP |
+
+Limites por job: 100 MB por arquivo, 500 MB por requisição, 10 arquivos e
+retenção por 24 horas.
+
 ## Limites importantes
 
 - O projeto oferece fluxos compatíveis para PDF e imagens; não converte
@@ -82,10 +102,26 @@ No Windows PowerShell, use `Copy-Item .env.example .env` e
 separado. Os dados ficam em `./data`; faça backup para preservar jobs e
 resultados.
 
-Altere `APP_PORT` em `.env` para mudar a porta. Consulte os demais ajustes em
-[`.env.example`](.env.example). Use `docker compose logs -f web worker` para
-ver logs, `docker compose pull && docker compose up -d` para atualizar e
-`docker compose down` para parar os serviços.
+Altere `APP_PORT` em `.env` para mudar a porta. Veja os padrões na tabela
+abaixo. Use `docker compose ps` e `docker compose logs -f web worker` para
+inspecionar os serviços, `docker compose pull && docker compose up -d` para
+atualizar e `docker compose down` para pará-los.
+
+## Configuração
+
+| Configuração | Padrão | Finalidade |
+| --- | --- | --- |
+| `APP_PORT` | `8080` | Porta do host |
+| `IMAGE_TAG` | `latest` | Tag da imagem de contêiner |
+| `MAX_FILE_SIZE_MB` | `100` | Tamanho máximo por arquivo |
+| `MAX_TOTAL_UPLOAD_MB` | `500` | Tamanho máximo por requisição |
+| `MAX_FILES_PER_JOB` | `10` | Máximo de arquivos por job |
+| `JOB_RETENTION_HOURS` | `24` | Retenção de jobs e arquivos |
+| `WORKER_POLL_SECONDS` | `1` | Intervalo de consulta da fila |
+| `PUID` | `1000` | ID do usuário da pasta de dados |
+| `PGID` | `1000` | ID do grupo da pasta de dados |
+
+Copie [`.env.example`](.env.example) para `.env` antes de alterar as opções.
 
 ## Privacidade e segurança
 
