@@ -9,7 +9,10 @@ interface. Processing and file storage stay on your own server.
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/releases">Releases</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Container image</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="CONTRIBUTING.md">Contributing</a> Â·
+  <a href="SUPPORT.md">Support</a> Â·
+  <a href="SECURITY.md">Security</a> Â·
+  <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 <p align="center">

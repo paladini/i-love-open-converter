@@ -10,7 +10,10 @@ web simples. O processamento e o armazenamento ficam no seu próprio servidor.
   <a href="README.md">English</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/releases">Versões</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Imagem de container</a> ·
-  <a href="CONTRIBUTING.md">Como contribuir</a>
+  <a href="CONTRIBUTING.md">Como contribuir</a> Â·
+  <a href="SUPPORT.md">Suporte</a> Â·
+  <a href="SECURITY.md">Segurança</a> Â·
+  <a href="CHANGELOG.md">Histórico de alterações</a>
 </p>
 
 <p align="center">

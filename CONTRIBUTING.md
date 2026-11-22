@@ -2,6 +2,8 @@
 
 Thanks for helping improve I Love Open Converter.
 
+Please read the [Code of Conduct](CODE_OF_CONDUCT.md), [Support guide](SUPPORT.md), and [Security policy](SECURITY.md) before participating. Suspected vulnerabilities must be reported privately, not through a public issue.
+
 ## Development setup
 
 Requirements: Python 3.14 and [uv](https://docs.astral.sh/uv/).
