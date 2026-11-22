@@ -18,6 +18,13 @@ from .database import (
     requeue_interrupted_jobs,
 )
 from .files import safe_stem
+from .heic_ops import (
+    HeicConversionError,
+    HeicImageTooLargeError,
+    HeicUnavailableError,
+    InvalidHeicError,
+    convert_heic_to_image,
+)
 from .html_ops import HtmlConversionError, HtmlExternalResourceError, HtmlUnavailableError
 from .image_ops import (
     InvalidImageError,
@@ -90,6 +97,7 @@ def process_one_job(settings: Settings) -> bool:
         elif job["operation"] in {
             "image.convert",
             "image.from_jpg",
+            "image.from_heic",
             "image.from_psd",
             "image.from_svg",
             "image.resize",
@@ -156,6 +164,12 @@ def process_one_job(settings: Settings) -> bool:
                             output_format,
                             int(job["options"]["width"]),
                             int(job["options"]["height"]),
+                        )
+                    elif job["operation"] == "image.from_heic":
+                        content_type, size_bytes = convert_heic_to_image(
+                            source,
+                            destination,
+                            output_format,
                         )
                     elif job["operation"] == "image.from_psd":
                         content_type, size_bytes = convert_psd_to_image(
@@ -345,6 +359,45 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "conversion_failed",
             "Não foi possível converter este SVG dentro dos limites locais.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except HeicImageTooLargeError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "image_too_large",
+            "A imagem HEIC/HEIF excede o limite de 40 MP ou a dimensão máxima.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except InvalidHeicError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "invalid_file",
+            (
+                "O HEIC/HEIF está inválido, não tem uma imagem principal compatível "
+                "ou contém mais de uma imagem."
+            ),
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except HeicUnavailableError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "heic_unavailable",
+            "A conversão de HEIC exige um worker Linux isolado com o decodificador local.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except HeicConversionError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "conversion_failed",
+            "Não foi possível converter este HEIC/HEIF dentro dos limites locais.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
