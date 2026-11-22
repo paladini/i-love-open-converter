@@ -40,6 +40,10 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
   ratio.
 - Compress JPEG and WebP output with a quality setting.
 - Convert one or more JPG images to PNG or combine them into an animated GIF.
+- Convert one static SVG up to 10 MiB to PNG, JPEG, or WebP locally. Output is
+  capped at 40 megapixels; SVG scripts, animation, foreign content, and external
+  resources are rejected. PNG and WebP preserve transparency; JPEG uses a white
+  background.
 - Rotate images by 90°, 180°, or 270°.
 - Upscale one image by 2x or 4x with local Lanczos resampling and light
   sharpening. This interpolation does not reconstruct details absent from the

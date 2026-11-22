@@ -42,6 +42,10 @@ futuras do projeto.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
 - Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
 - Converter JPG para PNG ou combinar várias imagens em um GIF animado.
+- Converter um SVG estático de até 10 MiB localmente para PNG, JPEG ou WebP. A
+  saída é limitada a 40 megapixels; scripts, animações, conteúdo externo e
+  recursos remotos são recusados. PNG e WebP preservam a transparência; JPEG
+  usa fundo branco.
 - Girar imagens em 90°, 180° ou 270°.
 - Ampliar uma imagem em 2x ou 4x com interpolação Lanczos e nitidez leve, tudo
   localmente. Essa interpolação não recupera detalhes que não existem no
