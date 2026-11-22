@@ -10,6 +10,10 @@ The rembg source library is licensed under MIT. ONNX Runtime is licensed under M
 
 The face-blurring feature uses the OpenCV headless Python package and its bundled Haar cascade classifiers. OpenCV 4.5 and later are licensed under Apache License 2.0; the package license is distributed with the installed dependency.
 
+## PSD conversion
+
+PSD parsing and compositing uses [psd-tools](https://github.com/psd-tools/psd-tools), copyright Kota Yamaguchi, licensed under MIT. The license is distributed with the installed package.
+
 ## Searchable PDF OCR
 
 OCR uses OCRmyPDF (MPL-2.0), Tesseract OCR (Apache-2.0), and the `eng` and `por` traineddata files (Apache-2.0). OCRmyPDF's Python dependencies and the Debian packages distribute their respective license texts with the installed packages.

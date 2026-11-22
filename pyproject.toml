@@ -24,6 +24,7 @@ dependencies = [
   "weasyprint==70.0",
   "ctranslate2==4.9.0",
   "sentencepiece==0.2.3",
+  "psd-tools[composite]==1.27.0",
 ]
 
 [dependency-groups]

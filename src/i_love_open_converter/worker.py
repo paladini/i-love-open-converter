@@ -52,6 +52,12 @@ from .pdf_translation import (
     TranslationPageOverflowError,
     TranslationUnavailableError,
 )
+from .psd_ops import (
+    InvalidPsdError,
+    PsdConversionError,
+    PsdUnavailableError,
+    convert_psd_to_image,
+)
 from .svg_ops import (
     InvalidSvgError,
     SvgConversionError,
@@ -84,6 +90,7 @@ def process_one_job(settings: Settings) -> bool:
         elif job["operation"] in {
             "image.convert",
             "image.from_jpg",
+            "image.from_psd",
             "image.from_svg",
             "image.resize",
             "image.compress",
@@ -144,6 +151,14 @@ def process_one_job(settings: Settings) -> bool:
                     destination = output_dir / output_name
                     if job["operation"] == "image.from_svg":
                         content_type, size_bytes = convert_svg_to_image(
+                            source,
+                            destination,
+                            output_format,
+                            int(job["options"]["width"]),
+                            int(job["options"]["height"]),
+                        )
+                    elif job["operation"] == "image.from_psd":
+                        content_type, size_bytes = convert_psd_to_image(
                             source,
                             destination,
                             output_format,
@@ -330,6 +345,33 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "conversion_failed",
             "Não foi possível converter este SVG dentro dos limites locais.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except InvalidPsdError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "invalid_file",
+            "O PSD é inválido ou contém recursos não suportados.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except PsdUnavailableError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "psd_unavailable",
+            "A conversão de PSD exige um worker Linux isolado.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except PsdConversionError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "conversion_failed",
+            "Não foi possível converter este PSD dentro dos limites locais.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)

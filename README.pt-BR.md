@@ -37,6 +37,11 @@ futuras do projeto.
 
 ### Imagens
 
+- Converter localmente um PSD em PNG, JPEG ou WebP achatado. O limite padrão
+  de envio é 100 MB e o canvas pode ter até 40 megapixels; somente RGB ou escala
+  de cinza de 8 bits são aceitos, documentos com objetos inteligentes são
+  recusados e a imagem gerada pode diferir do Photoshop.
+
 - Converter imagens estáticas JPEG, PNG, GIF, WebP, BMP e TIFF para JPEG, PNG ou
   WebP.
 - Redimensionar por largura, altura ou ambas, preservando a proporção original.
@@ -126,6 +131,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
+| PSD (`.psd`) | Converter a imagem achatada; RGB ou escala de cinza em 8 bits, até 40 megapixels | JPEG, PNG, WebP |
 | JPEG, PNG, GIF, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, recortar, marcar e editar fotos | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
