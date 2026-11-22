@@ -25,6 +25,7 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 from .config import Settings, get_settings
 from .database import create_job, get_job, initialize
 from .files import safe_filename
+from .heic_ops import MAX_HEIC_INPUT_BYTES, InvalidHeicError, inspect_heic_header
 from .html_ops import MAX_HTML_BYTES
 from .image_ops import (
     EDITOR_COLORS,
@@ -70,7 +71,7 @@ PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
 ]
 IMAGE_COMING_SOON = [
-    ("Converter de HEIC/RAW", "Convert from HEIC/RAW", "img-convert", 18),
+    ("Converter de RAW", "Convert from RAW", "img-convert", 19),
 ]
 
 
@@ -522,6 +523,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             *FAMILIES,
             "image.convert",
             "image.from_jpg",
+            "image.from_heic",
             "image.from_psd",
             "image.from_svg",
             "image.resize",
@@ -749,6 +751,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.blur_regions",
             "image.editor",
             "image.from_jpg",
+            "image.from_heic",
             "image.from_psd",
             "image.from_svg",
             "image.crop",
@@ -1185,11 +1188,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         output_format = "PNG"
         if operation in image_operations:
-            default_format = "JPEG" if operation == "image.meme" else "PNG"
+            default_format = "JPEG" if operation in {"image.meme", "image.from_heic"} else "PNG"
             output_format = str(parsed_options.get("format", default_format)).upper()
-            allowed_formats = {"PNG", "GIF"} if operation == "image.from_jpg" else {
-                "JPEG", "JPG", "PNG", "WEBP"
-            }
+            if operation == "image.from_jpg":
+                allowed_formats = {"PNG", "GIF"}
+            elif operation == "image.from_heic":
+                allowed_formats = {"JPEG", "JPG"}
+            else:
+                allowed_formats = {"JPEG", "JPG", "PNG", "WEBP"}
             if output_format not in allowed_formats:
                 raise HTTPException(
                     status_code=422,
@@ -1262,7 +1268,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["regions"] = parsed_options["regions"]
-        if operation in {"image.from_psd", "image.from_svg"} and set(parsed_options) - {"format"}:
+        if (
+            operation in {"image.from_heic", "image.from_psd", "image.from_svg"}
+            and set(parsed_options) - {"format"}
+        ):
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "OpÃ§Ãµes invÃ¡lidas."}},
@@ -1394,7 +1403,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
         if operation == "image.compress" or (
-            operation in image_operations and output_format in {"JPEG", "JPG", "WEBP"}
+            operation in image_operations
+            and operation != "image.from_heic"
+            and output_format in {"JPEG", "JPG", "WEBP"}
         ):
             quality = parsed_options.get("quality", 85)
             if (
@@ -1434,6 +1445,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 }
                 if operation == "image.from_jpg":
                     accepted_extensions = {".jpg", ".jpeg"}
+                elif operation == "image.from_heic":
+                    accepted_extensions = {".heic", ".heif", ".hif"}
                 elif operation == "image.from_svg":
                     accepted_extensions = {".svg"}
                 elif operation == "image.from_psd":
@@ -1515,6 +1528,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     "error": {
                                         "code": "file_too_large",
                                         "message": "O arquivo excede o limite configurado.",
+                                    }
+                                },
+                            )
+                        if operation == "image.from_heic" and file_size > MAX_HEIC_INPUT_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={
+                                    "error": {
+                                        "code": "file_too_large",
+                                        "message": "O HEIC/HEIF excede o limite de 100 MiB.",
                                     }
                                 },
                             )
@@ -1683,6 +1706,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         ) from exc
                     content_type = "image/vnd.adobe.photoshop"
                     validated_options.update(width=width, height=height)
+                elif operation == "image.from_heic":
+                    try:
+                        inspect_heic_header(destination)
+                    except InvalidHeicError as exc:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "invalid_file",
+                                    "message": "O arquivo não contém uma imagem HEIC/HEIF válida.",
+                                }
+                            },
+                        ) from exc
+                    content_type = "image/heic"
                 else:
                     try:
                         image_format, content_type = inspect_image(destination)

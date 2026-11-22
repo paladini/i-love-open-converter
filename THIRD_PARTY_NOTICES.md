@@ -14,6 +14,10 @@ The face-blurring feature uses the OpenCV headless Python package and its bundle
 
 PSD parsing and compositing uses [psd-tools](https://github.com/psd-tools/psd-tools), copyright Kota Yamaguchi, licensed under MIT. The license is distributed with the installed package.
 
+## HEIC/HEIF conversion
+
+HEIC/HEIF decoding uses [libheif 1.23.7](https://github.com/strukturag/libheif/tree/v1.23.7), licensed under LGPL-3.0-or-later. Its example command-line programs `heif-info` and `heif-dec` are licensed under MIT. The build enables the `libde265` HEVC decoder (LGPL-3.0-or-later) and JPEG encoding through libjpeg-turbo. The Docker image includes libheif and example-program license texts at `/app/licenses/heif`; Debian package copyright notices for the runtime codec libraries remain under `/usr/share/doc/`.
+
 ## Searchable PDF OCR
 
 OCR uses OCRmyPDF (MPL-2.0), Tesseract OCR (Apache-2.0), and the `eng` and `por` traineddata files (Apache-2.0). OCRmyPDF's Python dependencies and the Debian packages distribute their respective license texts with the installed packages.

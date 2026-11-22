@@ -8,9 +8,10 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
-    imageGroup: "Imagens", imageCount: "16 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    imageGroup: "Imagens", imageCount: "17 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     fromSvgTitle: "Converter de SVG", fromSvgHint: "PNG, JPG ou WebP até 40 MP", fromSvgNote: "Conversão local de SVG estático. Scripts, animações e recursos externos são recusados.", svgFileTypes: "SVG estático · até 10 MiB", svgUnavailable: "A conversão de SVG exige um worker Linux isolado.",
     fromPsdTitle: "Converter de PSD", fromPsdHint: "PNG, JPG ou WebP até 40 MP", fromPsdNote: "O PSD é achatado localmente em uma imagem. Documentos com objetos inteligentes não são aceitos.", psdFileTypes: "PSD · RGB ou escala de cinza, 8 bits · até {maxFileMb} MB · 40 MP", psdUnavailable: "A conversão de PSD exige um worker Linux isolado.",
+    fromHeicTitle: "Converter de HEIC", fromHeicHint: "JPG local · até 40 MP e 32.768 px por lado", fromHeicNote: "Conversão HEIC/HEIF local para JPG. Cada arquivo deve conter uma imagem estática de até 40 MP e 32.768 px por lado.", heicFileTypes: "HEIC, HEIF ou HIF · até {maxFileMb} MB · 40 MP · 32.768 px por lado", heicUnavailable: "A conversão de HEIC exige um worker Linux isolado com o decodificador local.", heicTooLarge: "A imagem HEIC/HEIF excede o limite de 40 MP ou a dimensão máxima.",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
@@ -61,9 +62,10 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
-    imageGroup: "Images", imageCount: "16 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    imageGroup: "Images", imageCount: "17 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     fromSvgTitle: "Convert from SVG", fromSvgHint: "PNG, JPG, or WebP up to 40 MP", fromSvgNote: "Local static SVG conversion. Scripts, animations, and external resources are rejected.", svgFileTypes: "Static SVG · up to 10 MiB", svgUnavailable: "SVG conversion requires an isolated Linux worker.",
     fromPsdTitle: "Convert from PSD", fromPsdHint: "PNG, JPG, or WebP up to 40 MP", fromPsdNote: "PSD files are flattened into one image locally. Documents with smart objects are not supported.", psdFileTypes: "PSD · RGB or grayscale, 8-bit · up to {maxFileMb} MB · 40 MP", psdUnavailable: "PSD conversion requires an isolated Linux worker.",
+    fromHeicTitle: "Convert from HEIC", fromHeicHint: "Local JPG · up to 40 MP and 32,768 px on either side", fromHeicNote: "Local HEIC/HEIF to JPG conversion. Each file must contain one static image up to 40 MP and 32,768 px on either side.", heicFileTypes: "HEIC, HEIF, or HIF · up to {maxFileMb} MB · 40 MP · 32,768 px on either side", heicUnavailable: "HEIC conversion requires an isolated Linux worker with the local decoder.", heicTooLarge: "The HEIC/HEIF image is over the 40 MP or maximum dimension limit.",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
@@ -186,7 +188,9 @@ function applyLanguage(language) {
         ? "svgFileTypes"
         : currentOperation === "image.from_psd"
           ? "psdFileTypes"
-      : "fileTypes";
+        : currentOperation === "image.from_heic"
+          ? "heicFileTypes"
+          : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
   else if (currentStatusKey) jobStatusText.textContent = t(currentStatusKey);
@@ -215,7 +219,9 @@ function updateFormatTarget() {
 function syncOutputFormats(operation) {
   const allowed = operation === "image.from_jpg"
     ? ["PNG", "GIF"]
-    : ["PNG", "JPEG", "WEBP"];
+    : operation === "image.from_heic"
+      ? ["JPEG"]
+      : ["PNG", "JPEG", "WEBP"];
   for (const option of outputFormat.options) {
     option.hidden = !allowed.includes(option.value);
   }
@@ -227,6 +233,7 @@ const operationTitles = {
   "image.from_jpg": "fromJpgTitle",
   "image.from_svg": "fromSvgTitle",
   "image.from_psd": "fromPsdTitle",
+  "image.from_heic": "fromHeicTitle",
   "image.watermark": "watermarkImageTitle",
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
@@ -265,6 +272,7 @@ function selectTool(operation) {
   if (operation === "image.blur_faces") outputFormat.value = "PNG";
   if (operation === "image.from_svg") outputFormat.value = "PNG";
   if (operation === "image.from_psd") outputFormat.value = "PNG";
+  if (operation === "image.from_heic") outputFormat.value = "JPEG";
   if (["image.blur_plates", "image.blur_regions"].includes(operation)) outputFormat.value = "PNG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
@@ -298,24 +306,27 @@ function selectTool(operation) {
   document.querySelector('[data-option="blur-regions-note"]').hidden = operation !== "image.blur_regions";
   document.querySelector('[data-option="svg-note"]').hidden = operation !== "image.from_svg";
   document.querySelector('[data-option="psd-note"]').hidden = operation !== "image.from_psd";
+  document.querySelector('[data-option="heic-note"]').hidden = operation !== "image.from_heic";
   document.querySelectorAll('[data-option^="editor-"]').forEach((field) => {
     field.hidden = operation !== "image.editor";
   });
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
-  fileInput.accept = operation === "image.from_psd"
-    ? ".psd,image/vnd.adobe.photoshop"
-    : operation === "image.from_svg"
-      ? ".svg,image/svg+xml"
-    : isPdf
-    ? ".pdf,application/pdf"
-    : operation === "image.from_jpg"
-      ? ".jpg,.jpeg,image/jpeg"
-      : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
+  fileInput.accept = operation === "image.from_heic"
+    ? ".heic,.heif,.hif,image/heic,image/heif"
+    : operation === "image.from_psd"
+      ? ".psd,image/vnd.adobe.photoshop"
+      : operation === "image.from_svg"
+        ? ".svg,image/svg+xml"
+        : isPdf
+          ? ".pdf,application/pdf"
+          : operation === "image.from_jpg"
+            ? ".jpg,.jpeg,image/jpeg"
+            : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
   fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions" && operation !== "image.from_svg" && operation !== "image.from_psd");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : operation === "image.from_svg" ? "svgFileTypes" : operation === "image.from_psd" ? "psdFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : operation === "image.from_svg" ? "svgFileTypes" : operation === "image.from_psd" ? "psdFileTypes" : operation === "image.from_heic" ? "heicFileTypes" : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
@@ -474,6 +485,7 @@ function apiErrorKey(code) {
     too_many_files: "tooManyFiles",
     crop_out_of_bounds: "cropOutOfBounds", no_plates_detected: "noPlatesDetected",
     svg_unavailable: "svgUnavailable", psd_unavailable: "psdUnavailable",
+    heic_unavailable: "heicUnavailable", image_too_large: "heicTooLarge",
   };
   return codes[code] || "genericError";
 }
