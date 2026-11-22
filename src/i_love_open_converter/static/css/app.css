@@ -124,6 +124,13 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.045em; font-weight: 720; }
 .selected-file-list button { width: 22px; height: 22px; margin-left: 4px; color: #6a5bdc; border: 1px solid #e5e2fb; border-radius: 6px; background: white; cursor: pointer; }
 .selected-file-list button:disabled { opacity: .3; cursor: default; }
 .selected-file-size { margin-left: auto; color: #8f929d; font-size: 10px; white-space: nowrap; }
+.blur-region-editor { margin: 1rem 0; padding: 1rem; border: 1px solid #e6e7ec; border-radius: 12px; }
+.blur-region-editor p { margin: 0 0 .75rem; }
+#blur-region-canvas { display: block; width: auto; max-width: 100%; height: auto; max-height: 65vh; margin: auto; border-radius: 8px; background: #f3f4f7; cursor: crosshair; touch-action: none; }
+.blur-region-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .75rem; }
+#blur-region-clear, #blur-region-list button { padding: .45rem .7rem; border: 1px solid #d8dbe4; border-radius: 7px; background: white; cursor: pointer; }
+#blur-region-list { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0; list-style: none; }
+#blur-region-list li { display: flex; align-items: center; gap: .35rem; }
 .remove-file { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; color: #8b8d97; border: 0; border-radius: 8px; background: transparent; font-size: 20px; cursor: pointer; }
 .remove-file:hover { color: #ba4350; background: #fff0f1; }
 .format-row { display: grid; grid-template-columns: 1fr 42px 1fr; align-items: center; gap: 11px; margin-top: 16px; }

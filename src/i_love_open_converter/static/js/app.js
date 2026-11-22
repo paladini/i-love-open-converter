@@ -8,7 +8,7 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
-    imageGroup: "Imagens", imageCount: "12 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    imageGroup: "Imagens", imageCount: "14 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
@@ -26,7 +26,7 @@ const messages = {
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
-    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkImageTitle: "Marcar imagem", watermarkImageHint: "Texto ou imagem sobre suas fotos", watermarkModeLabel: "Tipo de marca d'água", watermarkTextMode: "Texto", watermarkOverlayMode: "Imagem", watermarkTextLabel: "Texto da marca d'água", watermarkFileLabel: "Imagem da marca d'água (PNG, JPG ou WebP)", watermarkPositionLabel: "Posição", watermarkOpacityLabel: "Transparência (%)", positionTopLeft: "Superior esquerda", positionTopCenter: "Superior central", positionTopRight: "Superior direita", positionCenterLeft: "Centro esquerda", positionCenter: "Centro", positionCenterRight: "Centro direita", positionBottomLeft: "Inferior esquerda", positionBottomCenter: "Inferior central", positionBottomRight: "Inferior direita", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números de página", rangesLabel: "Intervalos (ex.: 1-3,5)", memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme", upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).", removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.", blurFacesTitle: "Desfocar cara", blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP.", blurFacesNote: "A detecção pode não encontrar todos os rostos. Placas e outros objetos não são detectados; revise a imagem antes de compartilhar.", noFacesDetected: "Nenhum rosto foi detectado. Revise a imagem e tente novamente.",
+    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkImageTitle: "Marcar imagem", watermarkImageHint: "Texto ou imagem sobre suas fotos", watermarkModeLabel: "Tipo de marca d'água", watermarkTextMode: "Texto", watermarkOverlayMode: "Imagem", watermarkTextLabel: "Texto da marca d'água", watermarkFileLabel: "Imagem da marca d'água (PNG, JPG ou WebP)", watermarkPositionLabel: "Posição", watermarkOpacityLabel: "Transparência (%)", positionTopLeft: "Superior esquerda", positionTopCenter: "Superior central", positionTopRight: "Superior direita", positionCenterLeft: "Centro esquerda", positionCenter: "Centro", positionCenterRight: "Centro direita", positionBottomLeft: "Inferior esquerda", positionBottomCenter: "Inferior central", positionBottomRight: "Inferior direita", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números de página", rangesLabel: "Intervalos (ex.: 1-3,5)", memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme", upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).", removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.", blurFacesTitle: "Desfocar cara", blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP.", blurFacesNote: "A detecção pode não encontrar todos os rostos. Revise a imagem antes de compartilhar.", noFacesDetected: "Nenhum rosto foi detectado. Revise a imagem e tente novamente.", blurPlatesTitle: "Desfocar placas", blurPlatesHint: "Detecção local até 40 MP; selecione uma imagem.", blurPlatesNote: "A detecção automática pode não encontrar todas as placas. Revise a imagem antes de compartilhar.", noPlatesDetected: "Nenhuma placa foi detectada. Confira a imagem ou selecione as regiões manualmente.", blurRegionsTitle: "Desfocar objetos", blurRegionsHint: "Marque regiões manualmente em uma imagem de até 40 MP.", blurRegionsNote: "Marque as áreas que deseja ocultar na prévia. Apenas as regiões selecionadas serão desfocadas.", blurRegionsLabel: "Seleção de regiões", blurRegionsPreviewLabel: "Prévia da imagem para seleção de regiões", blurRegionsInstructions: "Arraste sobre a imagem para marcar uma região. O máximo é 20 regiões.", blurRegionsClear: "Limpar regiões", blurRegionsSelected: "Regiões selecionadas: {count}/20", blurRegionRemove: "Remover região {index}", blurRegionTooSmall: "A região precisa ter pelo menos 4 pixels de largura e altura.", blurRegionLimit: "Você pode marcar até 20 regiões.", blurRegionRequired: "Marque pelo menos uma região na imagem.", previewFailed: "Não foi possível abrir a prévia desta imagem.",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -59,7 +59,7 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
-    imageGroup: "Images", imageCount: "12 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    imageGroup: "Images", imageCount: "14 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
@@ -79,7 +79,7 @@ const messages = {
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
     imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkImageTitle: "Watermark image", watermarkImageHint: "Add text or a logo to your photos", watermarkModeLabel: "Watermark type", watermarkTextMode: "Text", watermarkOverlayMode: "Image", watermarkTextLabel: "Watermark text", watermarkFileLabel: "Watermark image (PNG, JPG, or WebP)", watermarkPositionLabel: "Position", watermarkOpacityLabel: "Opacity (%)", positionTopLeft: "Top left", positionTopCenter: "Top center", positionTopRight: "Top right", positionCenterLeft: "Center left", positionCenter: "Center", positionCenterRight: "Center right", positionBottomLeft: "Bottom left", positionBottomCenter: "Bottom center", positionBottomRight: "Bottom right", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add page numbers", rangesLabel: "Page ranges (e.g. 1-3,5)", memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme", upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
     removeBackgroundTitle: "Remove background", removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP.", removeBackgroundNote: "The model runs locally. Results depend on the image and may not remove every edge perfectly.",
-    blurFacesTitle: "Blur faces", blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP.", blurFacesNote: "Detection may miss faces. License plates and other objects are not detected; review the image before sharing.", noFacesDetected: "No faces were detected. Review the image and try again.",
+    blurFacesTitle: "Blur faces", blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP.", blurFacesNote: "Detection may miss faces. Review the image before sharing.", noFacesDetected: "No faces were detected. Review the image and try again.", blurPlatesTitle: "Blur license plates", blurPlatesHint: "Local detection up to 40 MP; choose one image.", blurPlatesNote: "Automatic detection may miss plates. Review the image before sharing.", noPlatesDetected: "No plate was detected. Check the image or select regions manually.", blurRegionsTitle: "Blur objects", blurRegionsHint: "Mark regions manually on one image up to 40 MP.", blurRegionsNote: "Mark the areas you want to hide on the preview. Only selected regions are blurred.", blurRegionsLabel: "Region selection", blurRegionsPreviewLabel: "Image preview for region selection", blurRegionsInstructions: "Drag over the image to mark a region. You can mark up to 20 regions.", blurRegionsClear: "Clear regions", blurRegionsSelected: "Selected regions: {count}/20", blurRegionRemove: "Remove region {index}", blurRegionTooSmall: "A region must be at least 4 pixels wide and high.", blurRegionLimit: "You can mark up to 20 regions.", blurRegionRequired: "Mark at least one region on the image.", previewFailed: "This image preview could not be opened.",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
     pdfConvertButton: "Process PDF", imageToPdfButton: "Create PDF",
     comingSoon: "Coming soon", soon: "Soon", selectedTool: "SELECTED TOOL",
@@ -127,6 +127,15 @@ const resultName = document.querySelector("#result-name");
 const downloadButton = document.querySelector("#download-button");
 const resetButton = document.querySelector("#reset-button");
 const submitButton = document.querySelector("#submit-button");
+const blurRegionEditor = document.querySelector("#blur-region-editor");
+const blurRegionCanvas = document.querySelector("#blur-region-canvas");
+const blurRegionContext = blurRegionCanvas.getContext("2d");
+const blurRegionCount = document.querySelector("#blur-region-count");
+const blurRegionList = document.querySelector("#blur-region-list");
+let blurRegions = [];
+let blurPreviewBitmap = null;
+let blurPointerStart = null;
+let blurPreviewRequest = 0;
 const languageSelect = document.querySelector("#language");
 let currentFiles = [];
 let currentOperation = "image.convert";
@@ -174,6 +183,7 @@ function applyLanguage(language) {
   if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
   else if (currentStatusKey) jobStatusText.textContent = t(currentStatusKey);
   if (currentResultPayload && !jobResult.hidden) renderResult(currentResultPayload);
+  if (blurPreviewBitmap) renderBlurRegions();
   if (operationTitles[currentOperation]) {
     const title = t(operationTitles[currentOperation]);
     document.querySelector("#converter-title").textContent = title;
@@ -215,6 +225,8 @@ const operationTitles = {
   "image.upscale": "upscaleTitle",
   "image.remove_background": "removeBackgroundTitle",
   "image.blur_faces": "blurFacesTitle",
+  "image.blur_plates": "blurPlatesTitle",
+  "image.blur_regions": "blurRegionsTitle",
   "image.editor": "editorTitle",
   "image.crop": "cropImageTitle",
   "pdf.merge": "mergeTitle", "pdf.split": "splitTitle", "pdf.rotate": "rotatePdfTitle",
@@ -233,12 +245,15 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  blurRegionEditor.hidden = operation !== "image.blur_regions" || !currentFiles.length;
+  if (operation === "image.blur_regions" && currentFiles.length) void loadBlurRegionPreview();
   syncOutputFormats(operation);
   syncWatermarkControls();
   if (operation === "image.meme") outputFormat.value = "JPEG";
   if (operation === "image.upscale") outputFormat.value = "PNG";
   if (operation === "image.remove_background") outputFormat.value = "PNG";
   if (operation === "image.blur_faces") outputFormat.value = "PNG";
+  if (["image.blur_plates", "image.blur_regions"].includes(operation)) outputFormat.value = "PNG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
     const selected = tool.dataset.tool === operation;
@@ -267,6 +282,8 @@ function selectTool(operation) {
   document.querySelector('[data-option="upscale-limit"]').hidden = operation !== "image.upscale";
   document.querySelector('[data-option="remove-background-note"]').hidden = operation !== "image.remove_background";
   document.querySelector('[data-option="blur-faces-note"]').hidden = operation !== "image.blur_faces";
+  document.querySelector('[data-option="blur-plates-note"]').hidden = operation !== "image.blur_plates";
+  document.querySelector('[data-option="blur-regions-note"]').hidden = operation !== "image.blur_regions";
   document.querySelectorAll('[data-option^="editor-"]').forEach((field) => {
     field.hidden = operation !== "image.editor";
   });
@@ -277,7 +294,7 @@ function selectTool(operation) {
     : operation === "image.from_jpg"
       ? ".jpg,.jpeg,image/jpeg"
       : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces");
+  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
   fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : "fileTypes";
@@ -318,7 +335,7 @@ const categoryOperations = {
   "img-edit": ["image.crop", "image.watermark", "image.editor", "image.remove_background"],
   "img-convert": ["image.convert", "image.from_jpg"],
   "img-create": ["image.meme", "image.upscale"],
-  "img-security": ["image.blur_faces"],
+  "img-security": ["image.blur_faces", "image.blur_plates", "image.blur_regions"],
 };
 document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
   document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
@@ -354,6 +371,7 @@ function showFiles(files) {
     return;
   }
   currentFiles = incoming;
+  if (currentOperation === "image.blur_regions") void loadBlurRegionPreview();
   void updateUpscaleDimensions();
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
@@ -436,10 +454,91 @@ function apiErrorKey(code) {
     invalid_file: "invalidFile", unsupported_format: "unsupportedFormat", file_too_large: "fileTooLarge",
     request_too_large: "requestTooLarge", processing_failed: "processingFailed", invalid_options: "invalidOptions",
     too_many_files: "tooManyFiles",
-    crop_out_of_bounds: "cropOutOfBounds",
+    crop_out_of_bounds: "cropOutOfBounds", no_plates_detected: "noPlatesDetected",
   };
   return codes[code] || "genericError";
 }
+
+function renderBlurRegions() {
+  if (!blurPreviewBitmap) return;
+  blurRegionContext.clearRect(0, 0, blurRegionCanvas.width, blurRegionCanvas.height);
+  blurRegionContext.drawImage(blurPreviewBitmap, 0, 0, blurRegionCanvas.width, blurRegionCanvas.height);
+  blurRegionContext.lineWidth = Math.max(2, blurRegionCanvas.width / 500);
+  blurRegions.forEach((region, index) => {
+    const x = region.x * blurRegionCanvas.width;
+    const y = region.y * blurRegionCanvas.height;
+    const width = region.width * blurRegionCanvas.width;
+    const height = region.height * blurRegionCanvas.height;
+    blurRegionContext.fillStyle = "rgba(36, 87, 255, .28)";
+    blurRegionContext.strokeStyle = "#2457ff";
+    blurRegionContext.fillRect(x, y, width, height);
+    blurRegionContext.strokeRect(x, y, width, height);
+    blurRegionContext.fillStyle = "#fff";
+    blurRegionContext.fillText(String(index + 1), x + 4, y + 16);
+  });
+  blurRegionCount.textContent = t("blurRegionsSelected").replace("{count}", blurRegions.length);
+  blurRegionList.replaceChildren();
+  blurRegions.forEach((_, index) => {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = String(index + 1);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", t("blurRegionRemove").replace("{index}", index + 1));
+    remove.addEventListener("click", () => { blurRegions.splice(index, 1); renderBlurRegions(); });
+    item.append(label, remove);
+    blurRegionList.append(item);
+  });
+}
+
+async function loadBlurRegionPreview() {
+  const request = ++blurPreviewRequest;
+  blurRegions = [];
+  blurPreviewBitmap?.close();
+  blurPreviewBitmap = null;
+  blurRegionEditor.hidden = currentOperation !== "image.blur_regions" || !currentFiles.length;
+  blurRegionList.replaceChildren();
+  if (blurRegionEditor.hidden) return;
+  try {
+    const bitmap = await createImageBitmap(currentFiles[0]);
+    if (request !== blurPreviewRequest || currentOperation !== "image.blur_regions") { bitmap.close(); return; }
+    blurPreviewBitmap = bitmap;
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    blurRegionCanvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    blurRegionCanvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    renderBlurRegions();
+  } catch {
+    if (request === blurPreviewRequest) { blurRegionEditor.hidden = true; formError.textContent = t("previewFailed"); formError.hidden = false; }
+  }
+}
+
+function blurCanvasPoint(event) {
+  const rect = blurRegionCanvas.getBoundingClientRect();
+  return {
+    x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+    y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+  };
+}
+
+blurRegionCanvas.addEventListener("pointerdown", (event) => {
+  if (!blurPreviewBitmap || blurRegions.length >= 20) return;
+  blurRegionCanvas.setPointerCapture(event.pointerId);
+  blurPointerStart = blurCanvasPoint(event);
+});
+blurRegionCanvas.addEventListener("pointerup", (event) => {
+  if (!blurPointerStart || !blurPreviewBitmap) return;
+  const end = blurCanvasPoint(event);
+  const x = Math.min(blurPointerStart.x, end.x), y = Math.min(blurPointerStart.y, end.y);
+  const width = Math.abs(end.x - blurPointerStart.x), height = Math.abs(end.y - blurPointerStart.y);
+  blurPointerStart = null;
+  if (width * blurPreviewBitmap.width < 4 || height * blurPreviewBitmap.height < 4) {
+    formError.textContent = t("blurRegionTooSmall"); formError.hidden = false; return;
+  }
+  if (blurRegions.length >= 20) { formError.textContent = t("blurRegionLimit"); formError.hidden = false; return; }
+  blurRegions.push({ x, y, width, height }); clearError(); renderBlurRegions();
+});
+document.querySelector("#blur-region-clear").addEventListener("click", () => { blurRegions = []; renderBlurRegions(); });
 
 function renderResult(payload) {
   const file = payload.files?.[0];
@@ -533,6 +632,9 @@ form.addEventListener("submit", async (event) => {
     fileInput.focus();
     return;
   }
+  if (currentOperation === "image.blur_regions" && !blurRegions.length) {
+    formError.textContent = t("blurRegionRequired"); formError.hidden = false; return;
+  }
   if (currentOperation === "image.editor" &&
       !document.querySelector("#editor-text").value.trim() &&
       document.querySelector("#editor-filter").value === "original" &&
@@ -554,6 +656,7 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   const body = new FormData();
   const options = { format: outputFormat.value };
+  if (currentOperation === "image.blur_regions") options.regions = blurRegions;
   if (currentOperation === "image.meme") {
     options.top_text = document.querySelector("#meme-top-text").value;
     options.bottom_text = document.querySelector("#meme-bottom-text").value;

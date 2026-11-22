@@ -13,6 +13,9 @@ OUTPUT_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 MAX_UPSCALE_PIXELS = 40_000_000
 MAX_BACKGROUND_REMOVAL_PIXELS = 40_000_000
 MAX_FACE_BLUR_PIXELS = 40_000_000
+MAX_PRIVACY_BLUR_PIXELS = 40_000_000
+MAX_MANUAL_BLUR_REGIONS = 20
+MIN_MANUAL_BLUR_REGION_SIDE = 4
 Image.MAX_IMAGE_PIXELS = 100_000_000
 MAX_GIF_ANIMATION_PIXELS = 25_000_000
 warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -20,6 +23,8 @@ _BACKGROUND_SESSION = None
 _BACKGROUND_SESSION_LOCK = Lock()
 _FACE_CASCADES = None
 _FACE_CASCADES_LOCK = Lock()
+_PLATE_CASCADES = None
+_PLATE_CASCADES_LOCK = Lock()
 EDITOR_POSITIONS = {
     "top_left",
     "top_center",
@@ -61,6 +66,10 @@ class InvalidImageOptionsError(Exception):
 
 
 class NoFacesDetectedError(Exception):
+    pass
+
+
+class NoPlatesDetectedError(Exception):
     pass
 
 
@@ -448,6 +457,15 @@ def process_image(
             if image.width * image.height > MAX_FACE_BLUR_PIXELS:
                 raise InvalidImageError
             image = _blur_detected_faces(image)
+        elif operation == "image.blur_plates":
+            if image.width * image.height > MAX_PRIVACY_BLUR_PIXELS:
+                raise InvalidImageError
+            image = _blur_detected_plates(image)
+        elif operation == "image.blur_regions":
+            if image.width * image.height > MAX_PRIVACY_BLUR_PIXELS:
+                raise InvalidImageError
+            regions = validate_image_blur_regions(options.get("regions"), image.width, image.height)
+            image = _blur_regions(image, regions, padding=0)
         elif operation == "image.meme":
             image = image.convert("RGBA")
             _draw_meme_captions(image, options)
@@ -601,10 +619,139 @@ def _blur_detected_faces(image: Image.Image) -> Image.Image:
             alpha = region.getchannel("A")
             blurred = region.convert("RGB").filter(ImageFilter.GaussianBlur(radius))
             blurred.putalpha(alpha)
+            alpha.close()
         else:
             blurred = region.filter(ImageFilter.GaussianBlur(radius))
         result.paste(blurred, box[:2])
     return result
+
+
+def _plate_cascades():
+    global _PLATE_CASCADES
+    with _PLATE_CASCADES_LOCK:
+        if _PLATE_CASCADES is None:
+            import cv2
+
+            data_dir = Path(cv2.data.haarcascades)
+            cascades = tuple(
+                cv2.CascadeClassifier(str(data_dir / filename))
+                for filename in (
+                    "haarcascade_license_plate_rus_16stages.xml",
+                    "haarcascade_russian_plate_number.xml",
+                )
+            )
+            if all(cascade.empty() for cascade in cascades):
+                raise InvalidImageError
+            _PLATE_CASCADES = (cv2, cascades)
+    return _PLATE_CASCADES
+
+
+def _detect_plate_regions(image: Image.Image) -> list[tuple[int, int, int, int]]:
+    import numpy as np
+
+    cv2, cascades = _plate_cascades()
+    preview = ImageOps.contain(image.convert("RGB"), (1600, 1600), method=Image.Resampling.LANCZOS)
+    gray = cv2.cvtColor(np.asarray(preview), cv2.COLOR_RGB2GRAY)
+    gray = cv2.equalizeHist(gray)
+    regions: list[tuple[int, int, int, int]] = []
+    for cascade in cascades:
+        if cascade.empty():
+            continue
+        for x, y, width, height in cascade.detectMultiScale(
+            gray, scaleFactor=1.08, minNeighbors=4, minSize=(28, 10)
+        ):
+            regions.append((int(x), int(y), int(width), int(height)))
+    scale_x = image.width / preview.width
+    scale_y = image.height / preview.height
+    mapped = [
+        (
+            max(0, round(x * scale_x)),
+            max(0, round(y * scale_y)),
+            min(image.width, round((x + width) * scale_x)),
+            min(image.height, round((y + height) * scale_y)),
+        )
+        for x, y, width, height in regions
+    ]
+    return _deduplicate_face_regions(mapped)
+
+
+def validate_image_blur_regions(
+    regions: Any, image_width: int, image_height: int
+) -> list[tuple[int, int, int, int]]:
+    if not isinstance(regions, list) or not 1 <= len(regions) <= MAX_MANUAL_BLUR_REGIONS:
+        raise InvalidImageOptionsError
+    validated = []
+    for region in regions:
+        if not isinstance(region, dict) or set(region) != {"x", "y", "width", "height"}:
+            raise InvalidImageOptionsError
+        values = [region[name] for name in ("x", "y", "width", "height")]
+        if any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            for value in values
+        ):
+            raise InvalidImageOptionsError
+        x, y, width, height = values
+        if (
+            x < 0
+            or y < 0
+            or width <= 0
+            or height <= 0
+            or x + width > 1
+            or y + height > 1
+            or width * image_width < MIN_MANUAL_BLUR_REGION_SIDE
+            or height * image_height < MIN_MANUAL_BLUR_REGION_SIDE
+        ):
+            raise InvalidImageOptionsError
+        left = round(x * image_width)
+        top = round(y * image_height)
+        right = round((x + width) * image_width)
+        bottom = round((y + height) * image_height)
+        if (
+            right - left < MIN_MANUAL_BLUR_REGION_SIDE
+            or bottom - top < MIN_MANUAL_BLUR_REGION_SIDE
+        ):
+            raise InvalidImageOptionsError
+        validated.append((left, top, right, bottom))
+    return validated
+
+
+def _blur_regions(
+    image: Image.Image,
+    regions: list[tuple[int, int, int, int]],
+    *,
+    padding: float = 0.2,
+) -> Image.Image:
+    result = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+    for left, top, right, bottom in regions:
+        width, height = right - left, bottom - top
+        pad_x, pad_y = round(width * padding), round(height * padding)
+        box = (
+            max(0, left - pad_x),
+            max(0, top - pad_y),
+            min(result.width, right + pad_x),
+            min(result.height, bottom + pad_y),
+        )
+        region = result.crop(box)
+        radius = max(15, round(min(width, height) * 0.25))
+        if region.mode == "RGBA":
+            alpha = region.getchannel("A")
+            blurred = region.convert("RGB").filter(ImageFilter.GaussianBlur(radius))
+            blurred.putalpha(alpha)
+        else:
+            blurred = region.filter(ImageFilter.GaussianBlur(radius))
+        result.paste(blurred, box[:2])
+        region.close()
+        blurred.close()
+    return result
+
+
+def _blur_detected_plates(image: Image.Image) -> Image.Image:
+    regions = _detect_plate_regions(image)
+    if not regions:
+        raise NoPlatesDetectedError
+    return _blur_regions(image, regions)
 
 
 def _apply_unsharp_mask(image: Image.Image) -> Image.Image:

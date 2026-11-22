@@ -422,3 +422,85 @@ def test_face_blur_fails_when_no_faces_are_detected(tmp_path, monkeypatch):
         process_image(source, destination, "image.blur_faces", {"format": "PNG"})
 
     assert not destination.exists()
+
+
+def test_manual_region_blur_only_changes_selected_area_and_preserves_size(tmp_path):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "blurred.png"
+    image = Image.new("RGB", (40, 30), "white")
+    ImageDraw.Draw(image).rectangle((10, 8, 25, 22), fill="black")
+    image.save(source)
+
+    process_image(
+        source,
+        destination,
+        "image.blur_regions",
+        {"format": "PNG", "regions": [{"x": 0.2, "y": 0.2, "width": 0.4, "height": 0.5}]},
+    )
+
+    with Image.open(destination) as result:
+        assert result.size == (40, 30)
+        assert result.getpixel((2, 2)) == (255, 255, 255)
+        assert result.getpixel((17, 15)) != (0, 0, 0)
+
+
+@pytest.mark.parametrize(
+    "regions",
+    [
+        [],
+        [{"x": 0, "y": 0, "width": 1, "height": 1, "extra": True}],
+        [{"x": -0.1, "y": 0, "width": 0.2, "height": 0.2}],
+        [{"x": 0.9, "y": 0.9, "width": 0.2, "height": 0.2}],
+        [{"x": 0, "y": 0, "width": 0.01, "height": 0.2}],
+        [{"x": True, "y": 0, "width": 0.2, "height": 0.2}],
+    ],
+)
+def test_manual_blur_regions_reject_invalid_rectangles(regions):
+    with pytest.raises(image_ops.InvalidImageOptionsError):
+        image_ops.validate_image_blur_regions(regions, 100, 80)
+
+
+def test_manual_blur_regions_reject_more_than_twenty_rectangles():
+    regions = [{"x": 0, "y": 0, "width": 0.1, "height": 0.1}] * 21
+    with pytest.raises(image_ops.InvalidImageOptionsError):
+        image_ops.validate_image_blur_regions(regions, 100, 80)
+
+
+def test_plate_blur_fails_when_detection_is_empty(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "blurred.png"
+    Image.new("RGB", (8, 6), "white").save(source)
+    monkeypatch.setattr(image_ops, "_detect_plate_regions", lambda _image: [])
+
+    with pytest.raises(image_ops.NoPlatesDetectedError):
+        process_image(source, destination, "image.blur_plates", {"format": "PNG"})
+
+    assert not destination.exists()
+
+
+def test_plate_blur_blurs_detected_region_and_preserves_size(tmp_path, monkeypatch):
+    source = tmp_path / "source.png"
+    destination = tmp_path / "blurred.png"
+    image = Image.new("RGB", (100, 80), "white")
+    ImageDraw.Draw(image).rectangle((30, 20, 49, 39), fill="black")
+    image.save(source)
+    monkeypatch.setattr(image_ops, "_detect_plate_regions", lambda _image: [(30, 20, 50, 40)])
+
+    process_image(source, destination, "image.blur_plates", {"format": "PNG"})
+
+    with Image.open(destination) as result:
+        assert result.size == (100, 80)
+        assert result.getpixel((5, 5)) == (255, 255, 255)
+        assert result.getpixel((40, 30)) != (0, 0, 0)
+
+
+def test_bundled_plate_cascades_load_and_detect_on_local_image():
+    image = Image.new("RGB", (800, 600), "white")
+
+    cv2, cascades = image_ops._plate_cascades()
+    regions = image_ops._detect_plate_regions(image)
+
+    assert cv2.__file__
+    assert cascades
+    assert any(not cascade.empty() for cascade in cascades)
+    assert regions == []

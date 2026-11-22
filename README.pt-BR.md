@@ -51,8 +51,13 @@ futuras do projeto.
   da imagem e não garante bordas perfeitas. O modelo CPU acompanha a imagem Docker,
   sem download durante o processamento pelo worker isolado da rede.
 - Desfocar localmente rostos detectados de frente ou de perfil com OpenCV. A
-  detecção pode deixar rostos passar; placas e outros objetos não são detectados,
-  então revise o resultado antes de compartilhar. Sem rostos detectados, não há saída.
+  detecção pode deixar rostos passar; revise o resultado antes de compartilhar.
+  Sem rostos detectados, não há saída.
+- Desfocar placas detectadas pelos classificadores locais do OpenCV ou desenhar
+  até 20 regiões na prévia para desfocar objetos selecionados. A detecção de
+  placas pode deixar alguma passar; o modo manual protege apenas as regiões
+  selecionadas. Revise o resultado antes de compartilhar. Cada ferramenta aceita
+  uma imagem de até 40 megapixels.
 - Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
   e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
   à imagem; em imagens pequenas, o texto que não couber termina com reticências.

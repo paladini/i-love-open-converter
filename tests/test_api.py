@@ -1068,7 +1068,14 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP."' in script
     assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
     assert 'data-option="blur-faces-note"' in response.text
-    assert 'imageCount: "12 available"' in script
+    assert 'imageCount: "14 available"' in script
+    assert 'data-tool="image.blur_plates"' in response.text
+    assert 'data-tool="image.blur_regions"' in response.text
+    assert 'data-i18n-aria="blurRegionsLabel"' in response.text
+    assert 'blurRegionsLabel: "Seleção de regiões"' in script
+    assert 'blurRegionsLabel: "Region selection"' in script
+    assert 'blurRegionsPreviewLabel: "Prévia da imagem para seleção de regiões"' in script
+    assert 'blurRegionsPreviewLabel: "Image preview for region selection"' in script
     assert 'removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP."' in script
     assert 'removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP."' in script
     assert '"image.remove_background": "removeBackgroundTitle"' in script
@@ -1376,6 +1383,115 @@ def test_face_blur_no_faces_fails_without_downloadable_output(settings, jpeg_byt
     assert status.json()["error"]["code"] == "no_faces_detected"
     assert download.status_code == 409
     assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
+
+
+def test_blur_tools_are_listed_and_manual_regions_process(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/")
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.blur_regions",
+                "options": json.dumps(
+                    {
+                        "format": "PNG",
+                        "regions": [{"x": 0.1, "y": 0.1, "width": 0.8, "height": 0.8}],
+                    }
+                ),
+            },
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"])
+        download = client.get(f"{submitted.json()['status_url']}/download")
+
+    assert 'data-tool="image.blur_plates"' in page.text
+    assert 'data-tool="image.blur_regions"' in page.text
+    assert 'id="blur-region-canvas"' in page.text
+    assert status.json()["state"] == "succeeded"
+    assert download.status_code == 200
+
+
+def test_manual_blur_invalid_region_is_rejected_before_job_creation(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.blur_regions",
+                "options": json.dumps(
+                    {
+                        "format": "PNG",
+                        "regions": [{"x": 0.9, "y": 0.9, "width": 0.2, "height": 0.2}],
+                    }
+                ),
+            },
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+
+    assert response.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_plate_blur_no_detection_fails_without_downloadable_output(
+    settings, jpeg_bytes, monkeypatch
+):
+    from i_love_open_converter import image_ops
+
+    monkeypatch.setattr(image_ops, "_detect_plate_regions", lambda _image: [])
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.blur_plates", "options": json.dumps({"format": "PNG"})},
+            files=_multipart("photo.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"])
+        download = client.get(f"{submitted.json()['status_url']}/download")
+
+    assert status.json()["state"] == "failed"
+    assert status.json()["error"]["code"] == "no_plates_detected"
+    assert download.status_code == 409
+    assert not list((settings.jobs_dir / submitted.json()["job_id"] / "output").glob("*"))
+
+
+@pytest.mark.parametrize("operation", ["image.blur_plates", "image.blur_regions"])
+@pytest.mark.parametrize(
+    "rejection", ["no_file", "multiple_files", "invalid_format", "unsupported_input", "over_40_mp"]
+)
+def test_sensitive_blur_api_rejects_invalid_requests(
+    operation, rejection, settings, jpeg_bytes, monkeypatch
+):
+    from i_love_open_converter import main
+
+    options = {"format": "PNG"}
+    if operation == "image.blur_regions":
+        options["regions"] = [{"x": 0.1, "y": 0.1, "width": 0.8, "height": 0.8}]
+    data = {"operation": operation, "options": json.dumps(options)}
+    files = _multipart("photo.jpg", jpeg_bytes)
+    if rejection == "no_file":
+        files = []
+    elif rejection == "multiple_files":
+        files = [
+            ("files", ("one.jpg", jpeg_bytes, "image/jpeg")),
+            ("files", ("two.jpg", jpeg_bytes, "image/jpeg")),
+        ]
+    elif rejection == "invalid_format":
+        options["format"] = "BMP"
+        data["options"] = json.dumps(options)
+    elif rejection == "unsupported_input":
+        files = _multipart("photo.svg", b"<svg/>", "image/svg+xml")
+    elif rejection == "over_40_mp":
+        monkeypatch.setattr(main, "inspect_image_dimensions", lambda _path: (5000, 9000))
+
+    with TestClient(create_app(settings)) as client:
+        response = client.post("/api/jobs", data=data, files=files)
+
+    assert response.status_code in {400, 415, 422}
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
 
 
 def test_face_blur_rejects_multiple_files_and_over_40_megapixels(settings, jpeg_bytes, monkeypatch):

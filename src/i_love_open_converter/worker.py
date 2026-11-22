@@ -23,6 +23,7 @@ from .image_ops import (
     InvalidImageError,
     InvalidImageOptionsError,
     NoFacesDetectedError,
+    NoPlatesDetectedError,
     UnsupportedImageError,
     create_animated_gif,
     inspect_image,
@@ -84,6 +85,8 @@ def process_one_job(settings: Settings) -> bool:
             "image.upscale",
             "image.remove_background",
             "image.blur_faces",
+            "image.blur_plates",
+            "image.blur_regions",
             "image.editor",
             "image.crop",
             "image.watermark",
@@ -275,6 +278,15 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "no_faces_detected",
             "Nenhum rosto foi detectado. Revise a imagem e tente novamente.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except NoPlatesDetectedError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "no_plates_detected",
+            "Nenhuma placa foi detectada. Confira a imagem ou selecione as regiões manualmente.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
