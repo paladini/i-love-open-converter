@@ -2,8 +2,8 @@
 
 **Approved:** 2026-11-22 - user: "Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI."
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at e187b35.
+**Fix pass:** done - enforce the RAW 100 MiB cap during multipart streaming, verify no excess bytes are spooled, and cover the 40 MP area guard before demosaicing.
 
 ## Problem
 

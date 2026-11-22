@@ -91,12 +91,14 @@ class LimitedMultiPartParser(MultiPartParser):
         *,
         max_files: int,
         max_file_bytes: int,
+        max_raw_file_bytes: int,
         max_total_bytes: int,
     ) -> None:
         super().__init__(
             headers, stream, max_files=max_files, max_fields=3, max_part_size=1024 * 1024
         )
         self.max_file_bytes = max_file_bytes
+        self.max_raw_file_bytes = max_raw_file_bytes
         self.max_total_bytes = max_total_bytes
         self._current_file_bytes = 0
         self._total_file_bytes = 0
@@ -110,7 +112,11 @@ class LimitedMultiPartParser(MultiPartParser):
             chunk_size = end - start
             self._current_file_bytes += chunk_size
             self._total_file_bytes += chunk_size
-            if self._current_file_bytes > self.max_file_bytes:
+            file_limit = self.max_file_bytes
+            filename = self._current_part.file.filename
+            if Path(filename).suffix.lower() in RAW_EXTENSIONS:
+                file_limit = min(file_limit, self.max_raw_file_bytes)
+            if self._current_file_bytes > file_limit:
                 raise UploadLimitExceeded(
                     "file_too_large", "O arquivo excede o limite configurado."
                 )
@@ -158,6 +164,7 @@ async def parse_limited_upload_form(request: Request, settings: Settings):
         bounded_stream(),
         max_files=settings.max_files_per_job,
         max_file_bytes=settings.max_file_size_bytes,
+        max_raw_file_bytes=MAX_RAW_INPUT_BYTES,
         max_total_bytes=settings.max_total_upload_bytes,
     )
     try:

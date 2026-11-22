@@ -118,9 +118,14 @@ def test_convert_raw_rejects_invalid_input_or_unavailable_isolation(
     assert not destination.exists()
 
 
-def _submit(client: TestClient, filenames: list[str], options: dict | None = None):
+def _submit(
+    client: TestClient,
+    filenames: list[str],
+    options: dict | None = None,
+    content: bytes = b"not decoded in the API",
+):
     files = [
-        ("files", (filename, b"not decoded in the API", "application/octet-stream"))
+        ("files", (filename, content, "application/octet-stream"))
         for filename in filenames
     ]
     return client.post(
@@ -188,16 +193,28 @@ def test_raw_api_rejects_unsupported_uploads_before_creating_job(
     assert job_count == 0
 
 
-def test_raw_api_rejects_files_over_native_decoder_limit(settings, monkeypatch):
+def test_raw_api_rejects_files_over_native_decoder_limit_while_streaming(settings, monkeypatch):
     monkeypatch.setattr(app_main, "MAX_RAW_INPUT_BYTES", 2)
+    assert settings.max_file_size_bytes > app_main.MAX_RAW_INPUT_BYTES
+
+    written_bytes = 0
+    original_write = app_main.UploadFile.write
+
+    async def track_upload_write(upload, data):
+        nonlocal written_bytes
+        written_bytes += len(data)
+        return await original_write(upload, data)
+
+    monkeypatch.setattr(app_main.UploadFile, "write", track_upload_write)
     with TestClient(create_app(settings)) as client:
-        response = _submit(client, ["large.cr2"])
+        response = _submit(client, ["large.cr2"], content=b"x" * 3)
         with sqlite3.connect(settings.database_path) as connection:
             job_count = connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
 
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "file_too_large"
     assert job_count == 0
+    assert written_bytes == 0
 
 
 def test_raw_api_and_worker_return_jpeg_or_zip_for_batches(settings, monkeypatch):
@@ -360,7 +377,13 @@ def test_raw_child_applies_limits_and_writes_metadata_free_jpeg(monkeypatch, tmp
         assert "xmp" not in converted.info
 
 
-def test_raw_child_rejects_oversized_dimensions_before_demosaic(monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [(raw_ops.MAX_RAW_DIMENSION + 1, 2), (6325, 6325)],
+)
+def test_raw_child_rejects_oversized_dimensions_before_demosaic(
+    monkeypatch, tmp_path, width, height
+):
     pytest.importorskip("resource")
     from i_love_open_converter import raw_worker
 
@@ -373,12 +396,12 @@ def test_raw_child_rejects_oversized_dimensions_before_demosaic(monkeypatch, tmp
 
     class FakeRaw:
         sizes = SimpleNamespace(
-            raw_width=raw_ops.MAX_RAW_DIMENSION + 1,
-            raw_height=2,
-            width=raw_ops.MAX_RAW_DIMENSION + 1,
-            height=2,
-            iwidth=raw_ops.MAX_RAW_DIMENSION + 1,
-            iheight=2,
+            raw_width=width,
+            raw_height=height,
+            width=width,
+            height=height,
+            iwidth=width,
+            iheight=height,
         )
 
         def __enter__(self):
