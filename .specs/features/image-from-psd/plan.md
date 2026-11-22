@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at d064cd1.
+**Fix pass:** done - Bounded compositor allocations, aligned the child memory ceiling with the worker, added regression coverage, and verified a 360 px conversion and download.
 
 ## Problem
 
@@ -34,8 +34,8 @@ Data: none - reuse conversion jobs and artifacts; temporary files are not retain
 | Front | What changes |
 | --- | --- |
 | image operation | Add single-file `image.from_psd`, handled by API validation and worker dispatch. |
-| PSD renderer | Use pinned `psd-tools` to read a document composite and Pillow to write PNG/JPEG/WebP; do not follow external linked smart objects. |
-| worker isolation | Use the existing network-isolated worker and Landlock pattern for a per-document child, with bounded parsing and rendering. |
+| PSD renderer | Use pinned `psd-tools` to decode layerless merged data directly and composite layered documents in bounded 4096-pixel viewports; Pillow writes PNG/JPEG/WebP. Do not follow external linked smart objects. |
+| worker isolation | Use the existing network-isolated worker and Landlock pattern for a per-document child, with bounded parsing, per-allocation limits, and a 3 GiB address-space ceiling matching the container memory limit. |
 | image catalog and form | Enable the existing PSD catalog entry, one-file input, output selection, bounds, and PT-BR/English copy. |
 | stored data | No schema or persisted-data changes. |
 | readers | Existing job status and download routes expose the result. |

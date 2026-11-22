@@ -9,6 +9,3 @@
 Approved roadmap stage: “Advanced images” retains broader JPEG conversion including SVG, PSD, HEIC and RAW. The PSD catalog card is still marked “Em breve”.
 
 **Answer:** the user authorized continuing the approved roadmap through completion and delegated implementation choices; this feature uses a bounded local PSD-to-raster conversion that emits a flattened composite.
-
-**Review:** pending.
-**Fix pass:** pending.

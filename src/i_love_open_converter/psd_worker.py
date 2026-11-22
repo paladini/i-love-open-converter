@@ -11,11 +11,61 @@ from .psd_ops import contains_smart_objects
 
 MAX_OUTPUT_BYTES = 256 * 1024 * 1024
 MAX_ALLOCATION_BYTES = 512 * 1024 * 1024
+MAX_ADDRESS_SPACE_BYTES = 3 * 1024 * 1024 * 1024
+COMPOSITE_TILE_SIZE = 4096
+
+
+def composite_in_bounded_tiles(psd, image_module, *, tile_size=COMPOSITE_TILE_SIZE):
+    """Composite fixed-size viewports so psd-tools never packs a full canvas alpha plane."""
+    if not 1 <= tile_size <= COMPOSITE_TILE_SIZE:
+        raise ValueError("Invalid PSD composite tile size")
+    left, top, right, bottom = psd.viewbox
+    output = None
+    try:
+        for y in range(top, bottom, tile_size):
+            for x in range(left, right, tile_size):
+                tile_right = min(x + tile_size, right)
+                tile_bottom = min(y + tile_size, bottom)
+                tile = psd.composite(
+                    viewport=(x, y, tile_right, tile_bottom),
+                    color=1.0,
+                    alpha=0.0,
+                    ignore_preview=True,
+                )
+                if tile is None or tile.size != (tile_right - x, tile_bottom - y):
+                    raise ValueError("PSD renderer returned an invalid viewport")
+                try:
+                    if output is None:
+                        output = image_module.new(tile.mode, psd.size)
+                    elif tile.mode != output.mode:
+                        raise ValueError("PSD renderer changed color mode between viewports")
+                    output.paste(tile, (x - left, y - top))
+                finally:
+                    tile.close()
+        if output is None:
+            raise ValueError("PSD renderer returned no pixels")
+        return output
+    except Exception:
+        if output is not None:
+            output.close()
+        raise
+
+
+def composite_document(psd, image_module):
+    """Use bounded merged-data decoding for layerless files and tiles otherwise."""
+    if len(psd) == 0:
+        image = psd.topil()
+        if image is not None:
+            return image
+    return composite_in_bounded_tiles(psd, image_module)
 
 
 def main(root: Path, source: Path, destination: Path, image_format: str) -> int:
     try:
-        resource.setrlimit(resource.RLIMIT_AS, (2 * 1024**3, 2 * 1024**3))
+        resource.setrlimit(
+            resource.RLIMIT_AS,
+            (MAX_ADDRESS_SPACE_BYTES, MAX_ADDRESS_SPACE_BYTES),
+        )
         resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
         resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_OUTPUT_BYTES, MAX_OUTPUT_BYTES))
         restrict(root, allow_app=True)
@@ -38,7 +88,7 @@ def main(root: Path, source: Path, destination: Path, image_format: str) -> int:
         )
         if contains_smart_objects(psd):
             return 2
-        image = psd.composite(color=1.0, alpha=0.0, ignore_preview=True)
+        image = composite_document(psd, Image)
         if image is None or image.size != psd.size or image.width * image.height > 40_000_000:
             return 2
         if image.mode not in {"RGB", "RGBA", "L", "LA"}:

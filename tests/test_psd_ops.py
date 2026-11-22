@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -49,6 +50,22 @@ def _psd(path, *, color="red", size=(8, 6)):
     overlay = Image.new("RGBA", size, (0, 0, 0, 0))
     overlay.paste((255, 0, 0, 255), (0, 0, size[0] // 2, size[1]))
     document.create_pixel_layer(overlay, name="Visible pixels")
+    document.save(path)
+    overlay.close()
+    hidden = Image.new("RGBA", size, (0, 0, 255, 255))
+    hidden_layer = document.create_pixel_layer(hidden, name="Hidden blue layer")
+    hidden_layer.visible = False
+    document.save(path)
+    hidden.close()
+    return path
+
+
+def _grayscale_psd(path, *, size=(8, 6)):
+    canvas = Image.new("L", size, 0)
+    document = PSDImage.frompil(canvas)
+    canvas.close()
+    overlay = Image.new("L", size, 128)
+    document.create_pixel_layer(overlay, name="Visible grayscale pixels")
     document.save(path)
     overlay.close()
     return path
@@ -102,15 +119,21 @@ def test_psd_conversion_creates_one_bounded_raster_artifact(
         response = _create_job(client, "source.psd", source.read_bytes(), output_format)
         assert response.status_code == 202
         assert process_one_job(settings)
+        status = client.get(response.json()["status_url"])
         download = client.get(response.json()["status_url"] + "/download")
         with sqlite3.connect(settings.database_path) as connection:
             stored = connection.execute(
                 "SELECT operation, options_json FROM conversion_jobs WHERE id = ?",
                 (response.json()["job_id"],),
             ).fetchone()
+            job_count = connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
+        outputs = list((settings.jobs_dir / response.json()["job_id"] / "output").iterdir())
 
     assert stored[0] == "image.from_psd"
     assert json.loads(stored[1])["width"] == 8
+    assert status.json()["state"] == "succeeded"
+    assert job_count == 1
+    assert len(outputs) == 1
     assert download.status_code == 200
     assert download.headers["content-type"] == {
         "PNG": "image/png",
@@ -128,6 +151,63 @@ def test_psd_conversion_creates_one_bounded_raster_artifact(
             assert rgba.getpixel((7, 0))[3] == 0
         if output_format == "JPEG":
             assert all(channel > 245 for channel in rgba.getpixel((7, 0))[:3])
+
+
+def test_grayscale_psd_preserves_gray_values_and_opaque_alpha(settings, tmp_path, monkeypatch):
+    source = _grayscale_psd(tmp_path / "grayscale.psd")
+    monkeypatch.setattr(psd_ops, "office_isolated", lambda: True)
+
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(client, "grayscale.psd", source.read_bytes(), "PNG")
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(response.json()["status_url"] + "/download")
+
+    assert download.status_code == 200
+    with Image.open(BytesIO(download.content)) as output:
+        assert output.mode == "LA"
+        assert output.getpixel((0, 0)) == (128, 255)
+
+
+def test_psd_composite_is_stitched_from_bounded_viewports(tmp_path):
+    pytest.importorskip("resource")
+    from i_love_open_converter.psd_worker import (
+        COMPOSITE_TILE_SIZE,
+        MAX_ALLOCATION_BYTES,
+        composite_in_bounded_tiles,
+    )
+
+    source = _psd(tmp_path / "tiled.psd", size=(2_049, 1_030))
+    psd = PSDImage.open(source, max_alloc_bytes=MAX_ALLOCATION_BYTES)
+
+    image = composite_in_bounded_tiles(psd, Image, tile_size=1_024)
+
+    assert image.size == (2_049, 1_030)
+    assert image.mode == "RGBA"
+    assert 4 * 4 * COMPOSITE_TILE_SIZE**2 <= MAX_ALLOCATION_BYTES
+    assert image.getpixel((1_023, 0)) == (255, 0, 0, 255)
+    assert image.getpixel((1_024, 0)) == (255, 255, 255, 0)
+    image.close()
+
+
+def test_layerless_psd_uses_bounded_merged_composite_data(tmp_path):
+    pytest.importorskip("resource")
+    from i_love_open_converter.psd_worker import MAX_ALLOCATION_BYTES, composite_document
+
+    source = tmp_path / "merged.psd"
+    canvas = Image.new("RGB", (20, 12), (40, 50, 60))
+    document = PSDImage.frompil(canvas)
+    canvas.close()
+    document.save(source)
+    psd = PSDImage.open(source, max_alloc_bytes=MAX_ALLOCATION_BYTES)
+
+    image = composite_document(psd, Image)
+
+    assert len(psd) == 0
+    assert image.mode == "RGB"
+    assert image.size == (20, 12)
+    assert image.getpixel((0, 0)) == (40, 50, 60)
+    image.close()
 
 
 @pytest.mark.parametrize(
@@ -207,6 +287,95 @@ def test_smart_object_layers_are_detected_without_reading_linked_contents():
     assert not contains_smart_objects([Layer("pixel")])
 
 
+def test_psd_worker_rejects_smart_objects_before_compositing(tmp_path, monkeypatch):
+    pytest.importorskip("resource")
+    from psd_tools import PSDImage
+
+    from i_love_open_converter import psd_worker
+
+    events = []
+
+    class SmartObject:
+        kind = "smartobject"
+
+        def is_group(self):
+            return False
+
+        @property
+        def linked_path(self):
+            raise AssertionError("linked smart-object paths must not be read")
+
+    class Document:
+        size = (8, 6)
+
+        def __iter__(self):
+            return iter([SmartObject()])
+
+        def composite(self, **kwargs):
+            raise AssertionError("smart-object documents must fail before compositing")
+
+    monkeypatch.setattr(psd_worker.resource, "setrlimit", lambda *args: None)
+    monkeypatch.setattr(psd_worker, "restrict", lambda *args, **kwargs: events.append("landlock"))
+    monkeypatch.setattr(
+        PSDImage,
+        "open",
+        staticmethod(lambda *args, **kwargs: events.append("parse") or Document()),
+    )
+
+    result = psd_worker.main(tmp_path, tmp_path / "source.psd", tmp_path / "out.png", "PNG")
+
+    assert result == 2
+    assert events == ["landlock", "parse"]
+    assert not (tmp_path / "out.png").exists()
+
+
+def test_psd_worker_requires_landlock_before_parsing(tmp_path, monkeypatch):
+    pytest.importorskip("resource")
+    from psd_tools import PSDImage
+
+    from i_love_open_converter import psd_worker
+
+    events = []
+    limits = []
+    monkeypatch.setattr(
+        psd_worker.resource,
+        "setrlimit",
+        lambda limit, values: limits.append((limit, values)),
+    )
+
+    def reject_landlock(*args, **kwargs):
+        events.append("landlock")
+        raise OSError("Landlock unavailable")
+
+    monkeypatch.setattr(psd_worker, "restrict", reject_landlock)
+    monkeypatch.setattr(
+        PSDImage,
+        "open",
+        staticmethod(lambda *args, **kwargs: events.append("parse")),
+    )
+
+    result = psd_worker.main(tmp_path, tmp_path / "source.psd", tmp_path / "out.png", "PNG")
+
+    assert result == 77
+    assert events == ["landlock"]
+    assert limits == [
+        (psd_worker.resource.RLIMIT_AS, (psd_worker.MAX_ADDRESS_SPACE_BYTES,) * 2),
+        (psd_worker.resource.RLIMIT_CPU, (120, 120)),
+        (psd_worker.resource.RLIMIT_FSIZE, (psd_worker.MAX_OUTPUT_BYTES,) * 2),
+    ]
+
+
+def test_psd_worker_deployment_is_network_isolated():
+    import yaml
+
+    compose_path = Path(__file__).resolve().parents[1] / "compose.yaml"
+    compose = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
+    worker = compose["services"]["worker"]
+
+    assert worker["network_mode"] == "none"
+    assert worker["environment"]["OFFICE_NETWORK_ISOLATED"] == "1"
+
+
 def test_psd_renderer_requires_isolated_linux_worker(tmp_path, monkeypatch):
     source = _psd(tmp_path / "source.psd")
     destination = tmp_path / "result.png"
@@ -239,6 +408,15 @@ def test_psd_tool_is_available_in_catalog_and_single_file_form(settings):
 
     assert 'data-tool="image.from_psd"' in page.text
     assert 'data-i18n="fromPsdTitle">Converter de PSD' in page.text
+    assert 'data-option="psd-note"' in page.text
     script = (BASE_DIR / "static" / "js" / "app.js").read_text(encoding="utf-8")
     assert 'fromPsdTitle: "Convert from PSD"' in script
+    assert 'fromPsdNote: "PSD files are flattened into one image locally.' in script
     assert 'psdFileTypes: "PSD · RGB or grayscale, 8-bit · up to {maxFileMb} MB · 40 MP"' in script
+    portuguese_file_types = (
+        'psdFileTypes: "PSD · RGB ou escala de cinza, 8 bits · até {maxFileMb} MB · 40 MP"'
+    )
+    assert portuguese_file_types in script
+    assert '".psd,image/vnd.adobe.photoshop"' in script
+    assert 'operation !== "image.from_psd"' in script
+    assert ': ["PNG", "JPEG", "WEBP"]' in script
