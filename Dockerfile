@@ -52,6 +52,31 @@ RUN curl -fsSL -o libheif.tar.gz https://github.com/strukturag/libheif/releases/
     && cp examples/COPYING /usr/local/share/licenses/libheif/COPYING.examples \
     && cp /usr/share/doc/libde265-0/copyright /usr/local/share/licenses/libheif/libde265-copyright
 
+FROM python:3.14-slim AS rawpy-builder
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates curl libjpeg62-turbo-dev pkg-config zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /tmp
+RUN curl -fsSL -o libraw.tar.gz https://www.libraw.org/data/LibRaw-0.22.3.tar.gz \
+    && echo "789f3c33466210a1a0907f747a97c715d21bbf4af712f257fcbbd90111b227e4  libraw.tar.gz" | sha256sum -c - \
+    && mkdir libraw-source \
+    && tar -xzf libraw.tar.gz --strip-components=1 -C libraw-source \
+    && cd libraw-source \
+    && ./configure --prefix=/usr/local --enable-shared --disable-static --disable-openmp --disable-lcms --disable-examples \
+    && make -j2 \
+    && make install \
+    && ldconfig \
+    && pkg-config --modversion libraw_r
+RUN curl -fsSL -o rawpy.tar.gz https://files.pythonhosted.org/packages/84/17/d9b34cdf64b1377e4f9d070375674276a5f68954741849592eda81c67557/rawpy-0.28.0.tar.gz \
+    && echo "3176c865b786dfec4e54251759f98e5a00733035f1f256e8c09909c59b5353d2  rawpy.tar.gz" | sha256sum -c - \
+    && mkdir rawpy-source \
+    && tar -xzf rawpy.tar.gz --strip-components=1 -C rawpy-source
+RUN python -m pip install --no-cache-dir --disable-pip-version-check \
+        "numpy==2.5.5" "Cython==3.3.1" "setuptools==80.9.0" "wheel==0.45.1" "cmake==4.2.0" \
+    && mkdir /tmp/rawpy-wheel \
+    && cd /tmp/rawpy-source \
+    && RAWPY_USE_SYSTEM_LIBRAW=1 python -m pip wheel --no-deps --no-build-isolation --wheel-dir /tmp/rawpy-wheel . \
+    && ldd /usr/local/lib/libraw_r.so
+
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -69,6 +94,12 @@ COPY --from=verapdf-installer /opt/u2net /opt/u2net
 COPY --from=heif-builder /usr/local/bin/heif-info /usr/local/bin/heif-dec /usr/local/bin/
 COPY --from=heif-builder /usr/local/lib/libheif.so* /usr/local/lib/
 COPY --from=heif-builder /usr/local/share/licenses/libheif /app/licenses/heif
+COPY --from=rawpy-builder /usr/local/lib/libraw_r.so* /usr/local/lib/
+COPY --from=rawpy-builder /tmp/rawpy-wheel /tmp/rawpy-wheel
+COPY --from=rawpy-builder /tmp/libraw-source/LICENSE.LGPL /app/licenses/libraw/LICENSE.LGPL
+COPY --from=rawpy-builder /tmp/libraw-source/LICENSE.CDDL /app/licenses/libraw/LICENSE.CDDL
+COPY --from=rawpy-builder /tmp/libraw-source/COPYRIGHT /app/licenses/libraw/COPYRIGHT
+COPY --from=rawpy-builder /tmp/rawpy-source/LICENSE /app/licenses/rawpy/LICENSE
 RUN ldconfig
 ENV VERAPDF_BIN=/opt/verapdf/verapdf \
     U2NET_HOME=/opt/u2net
@@ -84,6 +115,9 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src ./src
 RUN uv sync --frozen --no-dev
+RUN uv pip install --python /app/.venv/bin/python --reinstall-package rawpy --no-deps /tmp/rawpy-wheel/*.whl \
+    && rm -rf /tmp/rawpy-wheel \
+    && /app/.venv/bin/python -c "import rawpy; assert rawpy.libraw_version == (0, 22, 3); assert rawpy.libraw_version_compiled == (0, 22, 3); assert not rawpy.flags or not rawpy.flags['OPENMP']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL2']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL3']"
 COPY docker/ocr-smoke.py /tmp/ocr-smoke.py
 COPY docker/translation-smoke.py /tmp/translation-smoke.py
 RUN /app/.venv/bin/python /tmp/ocr-smoke.py && /app/.venv/bin/python /tmp/translation-smoke.py && rm /tmp/ocr-smoke.py /tmp/translation-smoke.py

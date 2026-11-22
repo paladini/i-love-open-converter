@@ -132,6 +132,7 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
 | PSD (`.psd`) | Converter a imagem achatada; RGB ou escala de cinza em 8 bits, até 40 megapixels | JPEG, PNG, WebP |
+| RAW de câmera (`.3fr`, `.arw`, `.cr2`, `.cr3`, `.dng`, `.nef`, `.orf`, `.raf`, `.rw2`, `.srw` e outros formatos listados) | Revelar localmente com LibRaw; até 40 megapixels, 32.768 pixels por lado e 100 MiB por arquivo | JPEG |
 | JPEG, PNG, GIF, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, recortar, marcar e editar fotos | JPEG, PNG, WebP |
 | PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |

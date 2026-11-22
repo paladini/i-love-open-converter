@@ -128,6 +128,7 @@ downloads as a ZIP archive.
 | --- | --- | --- |
 | JPEG, PNG, GIF, WebP, BMP, TIFF | Convert, resize, compress, rotate, crop, watermark, photo edit | JPEG, PNG, WebP |
 | PSD (`.psd`) | Convert the flattened composite; 8-bit RGB or grayscale up to 40 megapixels | JPEG, PNG, WebP |
+| Camera RAW (`.3fr`, `.arw`, `.cr2`, `.cr3`, `.dng`, `.nef`, `.orf`, `.raf`, `.rw2`, `.srw`, and other listed formats) | Develop locally with LibRaw; up to 40 megapixels, 32,768 pixels per side, and 100 MiB per file | JPEG |
 | Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown, Word, PowerPoint or Excel, extract images, watermark, page numbers | PDF, DOCX, PPTX, XLSX, HTML, JPG, or ZIP |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
 | HTML (`.html`, `.htm`) | Local HTML to PDF; embedded `data:` resources only | PDF |

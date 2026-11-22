@@ -18,6 +18,10 @@ PSD parsing and compositing uses [psd-tools](https://github.com/psd-tools/psd-to
 
 HEIC/HEIF decoding uses [libheif 1.23.7](https://github.com/strukturag/libheif/tree/v1.23.7), licensed under LGPL-3.0-or-later. Its example command-line programs `heif-info` and `heif-dec` are licensed under MIT. The build enables the `libde265` HEVC decoder (LGPL-3.0-or-later) and JPEG encoding through libjpeg-turbo. The Docker image includes libheif and example-program license texts at `/app/licenses/heif`; Debian package copyright notices for the runtime codec libraries remain under `/usr/share/doc/`.
 
+## Camera RAW conversion
+
+RAW decoding uses [rawpy 0.28.0](https://github.com/letmaik/rawpy/tree/v0.28.0), licensed under MIT, compiled against the shared [LibRaw 0.22.3](https://github.com/LibRaw/LibRaw/tree/0.22.3) library, which is dual-licensed under LGPL-2.1 or CDDL. The Docker image includes the rawpy MIT license and both LibRaw license texts and copyright notice at `/app/licenses/rawpy` and `/app/licenses/libraw`. OpenMP and LittleCMS support are disabled; the optional GPL demosaic packs are not included.
+
 ## Searchable PDF OCR
 
 OCR uses OCRmyPDF (MPL-2.0), Tesseract OCR (Apache-2.0), and the `eng` and `por` traineddata files (Apache-2.0). OCRmyPDF's Python dependencies and the Debian packages distribute their respective license texts with the installed packages.

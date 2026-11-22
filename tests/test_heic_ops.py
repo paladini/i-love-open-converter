@@ -262,8 +262,8 @@ def test_heic_catalog_and_form_are_available_in_both_languages(settings):
     assert 'data-option="heic-note"' in page
     assert 'fromHeicTitle: "Converter de HEIC"' in script
     assert 'fromHeicTitle: "Convert from HEIC"' in script
-    assert 'imageCount: "17 disponíveis"' in script
-    assert 'imageCount: "17 available"' in script
+    assert 'imageCount: "18 disponíveis"' in script
+    assert 'imageCount: "18 available"' in script
 
 
 def _run_heic_child(monkeypatch, tmp_path, image_info):

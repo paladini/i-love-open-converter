@@ -62,6 +62,7 @@ from .pdf_ops import (
     validate_redactions,
 )
 from .psd_ops import InvalidPsdError, inspect_psd
+from .raw_ops import MAX_RAW_INPUT_BYTES, RAW_EXTENSIONS
 from .svg_ops import MAX_SVG_BYTES, InvalidSvgError, inspect_svg
 
 logger = logging.getLogger(__name__)
@@ -70,9 +71,7 @@ TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
 ]
-IMAGE_COMING_SOON = [
-    ("Converter de RAW", "Convert from RAW", "img-convert", 19),
-]
+IMAGE_COMING_SOON: list[tuple[str, str, str, int]] = []
 
 
 class UploadLimitExceeded(Exception):
@@ -92,12 +91,14 @@ class LimitedMultiPartParser(MultiPartParser):
         *,
         max_files: int,
         max_file_bytes: int,
+        max_raw_file_bytes: int,
         max_total_bytes: int,
     ) -> None:
         super().__init__(
             headers, stream, max_files=max_files, max_fields=3, max_part_size=1024 * 1024
         )
         self.max_file_bytes = max_file_bytes
+        self.max_raw_file_bytes = max_raw_file_bytes
         self.max_total_bytes = max_total_bytes
         self._current_file_bytes = 0
         self._total_file_bytes = 0
@@ -111,7 +112,11 @@ class LimitedMultiPartParser(MultiPartParser):
             chunk_size = end - start
             self._current_file_bytes += chunk_size
             self._total_file_bytes += chunk_size
-            if self._current_file_bytes > self.max_file_bytes:
+            file_limit = self.max_file_bytes
+            filename = self._current_part.file.filename
+            if Path(filename).suffix.lower() in RAW_EXTENSIONS:
+                file_limit = min(file_limit, self.max_raw_file_bytes)
+            if self._current_file_bytes > file_limit:
                 raise UploadLimitExceeded(
                     "file_too_large", "O arquivo excede o limite configurado."
                 )
@@ -159,6 +164,7 @@ async def parse_limited_upload_form(request: Request, settings: Settings):
         bounded_stream(),
         max_files=settings.max_files_per_job,
         max_file_bytes=settings.max_file_size_bytes,
+        max_raw_file_bytes=MAX_RAW_INPUT_BYTES,
         max_total_bytes=settings.max_total_upload_bytes,
     )
     try:
@@ -524,6 +530,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.convert",
             "image.from_jpg",
             "image.from_heic",
+            "image.from_raw",
             "image.from_psd",
             "image.from_svg",
             "image.resize",
@@ -752,6 +759,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.editor",
             "image.from_jpg",
             "image.from_heic",
+            "image.from_raw",
             "image.from_psd",
             "image.from_svg",
             "image.crop",
@@ -1188,11 +1196,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         output_format = "PNG"
         if operation in image_operations:
-            default_format = "JPEG" if operation in {"image.meme", "image.from_heic"} else "PNG"
+            default_format = (
+                "JPEG"
+                if operation in {"image.meme", "image.from_heic", "image.from_raw"}
+                else "PNG"
+            )
             output_format = str(parsed_options.get("format", default_format)).upper()
             if operation == "image.from_jpg":
                 allowed_formats = {"PNG", "GIF"}
             elif operation == "image.from_heic":
+                allowed_formats = {"JPEG", "JPG"}
+            elif operation == "image.from_raw":
                 allowed_formats = {"JPEG", "JPG"}
             else:
                 allowed_formats = {"JPEG", "JPG", "PNG", "WEBP"}
@@ -1269,7 +1283,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
             validated_options["regions"] = parsed_options["regions"]
         if (
-            operation in {"image.from_heic", "image.from_psd", "image.from_svg"}
+            operation in {"image.from_heic", "image.from_raw", "image.from_psd", "image.from_svg"}
             and set(parsed_options) - {"format"}
         ):
             raise HTTPException(
@@ -1404,7 +1418,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
         if operation == "image.compress" or (
             operation in image_operations
-            and operation != "image.from_heic"
+            and operation not in {"image.from_heic", "image.from_raw"}
             and output_format in {"JPEG", "JPG", "WEBP"}
         ):
             quality = parsed_options.get("quality", 85)
@@ -1447,6 +1461,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     accepted_extensions = {".jpg", ".jpeg"}
                 elif operation == "image.from_heic":
                     accepted_extensions = {".heic", ".heif", ".hif"}
+                elif operation == "image.from_raw":
+                    accepted_extensions = RAW_EXTENSIONS
                 elif operation == "image.from_svg":
                     accepted_extensions = {".svg"}
                 elif operation == "image.from_psd":
@@ -1538,6 +1554,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     "error": {
                                         "code": "file_too_large",
                                         "message": "O HEIC/HEIF excede o limite de 100 MiB.",
+                                    }
+                                },
+                            )
+                        if operation == "image.from_raw" and file_size > MAX_RAW_INPUT_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail={
+                                    "error": {
+                                        "code": "file_too_large",
+                                        "message": "O arquivo RAW excede o limite de 100 MiB.",
                                     }
                                 },
                             )
@@ -1720,6 +1746,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             },
                         ) from exc
                     content_type = "image/heic"
+                elif operation == "image.from_raw":
+                    content_type = "image/x-camera-raw"
                 else:
                     try:
                         image_format, content_type = inspect_image(destination)
