@@ -492,3 +492,15 @@ def test_plate_blur_blurs_detected_region_and_preserves_size(tmp_path, monkeypat
         assert result.size == (100, 80)
         assert result.getpixel((5, 5)) == (255, 255, 255)
         assert result.getpixel((40, 30)) != (0, 0, 0)
+
+
+def test_bundled_plate_cascades_load_and_detect_on_local_image():
+    image = Image.new("RGB", (800, 600), "white")
+
+    cv2, cascades = image_ops._plate_cascades()
+    regions = image_ops._detect_plate_regions(image)
+
+    assert cv2.__file__
+    assert cascades
+    assert any(not cascade.empty() for cascade in cascades)
+    assert regions == []

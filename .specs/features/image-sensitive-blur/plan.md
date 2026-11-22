@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: “Sim, placas automáticas + objetos por seleção manual (Recomendado)”
 **Settled mid-build:** none
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at 6e80f94.
+**Fix pass:** done - localized preview accessible names and added operation-specific API rejection plus bundled-cascade integration coverage.
 
 ## Problem
 
