@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre AS verapdf-installer
+FROM eclipse-temurin:24-jre AS verapdf-installer
 RUN apt-get update && apt-get install -y --no-install-recommends curl unzip ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY docker/verapdf-install.xml /tmp/verapdf-install.xml
 RUN curl -fsSL -o /tmp/verapdf.zip https://software.verapdf.org/releases/1.30/verapdf-greenfield-1.30.3-installer.zip \
