@@ -126,23 +126,32 @@ downloads as a ZIP archive.
 
 | Input | Available operations | Output |
 | --- | --- | --- |
-| JPEG, PNG, GIF, WebP, BMP, TIFF | Convert, resize, compress, rotate, crop, watermark, photo edit | JPEG, PNG, WebP |
-| PSD (`.psd`) | Convert the flattened composite; 8-bit RGB or grayscale up to 40 megapixels | JPEG, PNG, WebP |
-| Camera RAW (`.3fr`, `.arw`, `.cr2`, `.cr3`, `.dng`, `.nef`, `.orf`, `.raf`, `.rw2`, `.srw`, and other listed formats) | Develop locally with LibRaw; up to 40 megapixels, 32,768 pixels per side, and 100 MiB per file | JPEG |
-| Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown, Word, PowerPoint or Excel, extract images, watermark, page numbers | PDF, DOCX, PPTX, XLSX, HTML, JPG, or ZIP |
+| JPEG, PNG, static GIF, WebP, BMP, TIFF | Generic image conversion | JPEG, PNG, WebP, or one-frame static GIF per input |
+| JPEG, PNG, static GIF, WebP, BMP, TIFF | Resize, compress, rotate, crop, watermark, photo edit | JPEG, PNG, or WebP |
+| JPEG (.jpg, .jpeg) | Convert files to PNG or create an animated GIF from ordered JPEG inputs | PNG or animated GIF |
+| SVG (.svg) | Local static SVG conversion; scripts, animation, foreign content, and external resources are rejected | JPEG, PNG, or WebP; 10 MiB input and 40 MP output limit |
+| PSD (.psd) | Convert the flattened composite; 8-bit RGB or grayscale; linked smart objects are rejected | JPEG, PNG, or WebP; 40 MP output limit |
+| HEIC, HEIF, HIF | Local conversion of one static image | JPEG; 40 MP and 32,768 pixels per side |
+| Camera RAW (.3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw) | Develop locally with LibRaw; support depends on the camera | JPEG; 40 MP, 32,768 pixels per side, and 100 MiB per file |
+| Unencrypted PDF | Merge, split, organize, rotate, optimize, edit, crop, fill existing forms, redact, visual sign, protect/unlock, repair, compare, PDF/A-2b, watermark, page numbers, OCR, and translate selectable text | PDF |
+| PDF pages | Render each page as JPG | One JPG or a ZIP for multiple pages |
+| PDF | Convert to editable Word, PowerPoint, or Excel | DOCX, PPTX, or XLSX |
+| PDF | Convert to Markdown or extract embedded images | ZIP archive |
+| PDF with selectable text | Create an extractive summary of up to 12 sentences | TXT |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
-| HTML (`.html`, `.htm`) | Local HTML to PDF; embedded `data:` resources only | PDF |
-| HTML (`.html`, `.htm`) | Local HTML to image; JPG at 144 DPI or SVG; embedded `data:` resources only | ZIP of numbered page images |
+| HTML (.html, .htm) | Local HTML to PDF; embedded data: resources only, no JavaScript; isolated Linux worker required | PDF; 10 MiB input and 100-page limit |
+| HTML (.html, .htm) | Local HTML to images; JPG at 144 DPI or SVG; embedded data: resources only, no JavaScript | ZIP of numbered page images; 100-page and 40 MP per JPG page limits |
 | Password-protected PDF | Unlock with the current password | PDF |
-| Static image | Images to PDF | PDF |
+| JPEG, PNG, static GIF, WebP, BMP, TIFF | Images to PDF; one page per image | PDF |
 
 Default limits are 100 MB per file, 500 MB total per request, and 10 files per
 job. Completed and failed jobs and their files are removed after 24 hours by
 default. You can change these values in `.env`.
 
-The home page shows the broader PDF and image catalog. Tools marked **Coming
-soon** are not available for processing yet; the [project roadmap](.specs/features/project-foundation/plan.md)
-tracks the remaining stages.
+The home page lists the available PDF and image tools. All listed operations
+are implemented; optional PDF/A conversion depends on its local dependencies.
+The [project roadmap](.specs/features/project-foundation/plan.md) records the
+product scope and shipped stages.
 
 ## Quick start with Docker
 

@@ -230,4 +230,11 @@ def test_from_jpg_catalog_has_correct_filter_and_format_choices(settings):
     js = Path("src/i_love_open_converter/static/js/app.js").read_text(encoding="utf-8")
     assert '".jpg,.jpeg,image/jpeg"' in js
     assert 'value="PNG" data-format-for="image.convert,image.from_jpg' in page.text
-    assert 'value="GIF" data-format-for="image.from_jpg"' in page.text
+    assert 'value="GIF" data-format-for="image.convert,image.from_jpg"' in page.text
+
+    sync_formats = js.split("function syncOutputFormats(operation) {", 1)[1].split("\n}", 1)[0]
+    assert 'operation === "image.from_jpg"' in sync_formats
+    assert '["PNG", "GIF"]' in sync_formats
+    assert 'operation === "image.convert"' in sync_formats
+    assert '["PNG", "JPEG", "GIF", "WEBP"]' in sync_formats
+    assert ': ["PNG", "JPEG", "WEBP"]' in sync_formats

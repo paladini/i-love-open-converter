@@ -131,25 +131,34 @@ ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
 
 | Entrada | Operações disponíveis | Saída |
 | --- | --- | --- |
-| PSD (`.psd`) | Converter a imagem achatada; RGB ou escala de cinza em 8 bits, até 40 megapixels | JPEG, PNG, WebP |
-| RAW de câmera (`.3fr`, `.arw`, `.cr2`, `.cr3`, `.dng`, `.nef`, `.orf`, `.raf`, `.rw2`, `.srw` e outros formatos listados) | Revelar localmente com LibRaw; até 40 megapixels, 32.768 pixels por lado e 100 MiB por arquivo | JPEG |
-| JPEG, PNG, GIF, WebP, BMP, TIFF | Converter, redimensionar, comprimir, girar, recortar, marcar e editar fotos | JPEG, PNG, WebP |
-| PDF sem criptografia | Mesclar, organizar, recortar, editar, preencher formulários, ocultar, assinar, proteger, reparar, comparar, PDF/A-2b, dividir, girar, otimizar, PDF para JPG, Markdown, Word, PowerPoint ou Excel, extrair imagens, marca d'água, números de página | PDF, DOCX, PPTX, XLSX, HTML, JPG ou ZIP |
+| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Conversão genérica de imagens | JPEG, PNG, WebP ou GIF estático de um quadro por entrada |
+| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Redimensionar, comprimir, girar, recortar, marcar e editar fotos | JPEG, PNG ou WebP |
+| JPEG (`.jpg`, `.jpeg`) | Converter arquivos para PNG ou criar GIF animado a partir de vários JPG na ordem escolhida | PNG ou GIF animado |
+| SVG (`.svg`) | Conversão local de SVG estático; scripts, animação, conteúdo externo e recursos remotos são recusados | JPEG, PNG ou WebP; entrada até 10 MiB e saída até 40 MP |
+| PSD (`.psd`) | Converter a imagem achatada; RGB ou escala de cinza em 8 bits; smart objects vinculados são recusados | JPEG, PNG ou WebP; saída até 40 MP |
+| HEIC, HEIF, HIF | Conversão local de uma imagem estática | JPEG; até 40 MP e 32.768 pixels por lado |
+| RAW de câmera (`.3fr`, `.ari`, `.arw`, `.bay`, `.cap`, `.cr2`, `.cr3`, `.crw`, `.dcr`, `.dcs`, `.dng`, `.drf`, `.eip`, `.erf`, `.fff`, `.gpr`, `.iiq`, `.k25`, `.kdc`, `.mdc`, `.mef`, `.mos`, `.mrw`, `.nef`, `.nrw`, `.orf`, `.pef`, `.ptx`, `.raf`, `.raw`, `.rw2`, `.rwl`, `.sr2`, `.srf`, `.srw`) | Revelar localmente com LibRaw; o suporte depende da câmera | JPEG; até 40 MP, 32.768 pixels por lado e 100 MiB por arquivo |
+| PDF sem criptografia | Mesclar, dividir, organizar, girar, otimizar, editar, recortar, preencher formulários existentes, ocultar, assinar visualmente, proteger/desbloquear, reparar, comparar, PDF/A-2b, marca d'água, números de página, OCR e traduzir texto selecionável | PDF |
+| Páginas de PDF | Renderizar cada página em JPG | Um JPG ou ZIP para várias páginas |
+| PDF | Converter para Word, PowerPoint ou Excel editável | DOCX, PPTX ou XLSX |
+| PDF | Converter para Markdown ou extrair imagens incorporadas | Arquivo ZIP |
+| PDF com texto selecionável | Criar resumo extrativo de até 12 frases | TXT |
 | Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
-| HTML (`.html`, `.htm`) | HTML local para PDF; somente recursos `data:` incorporados | PDF |
-| HTML (`.html`, `.htm`) | HTML local para imagem; JPG a 144 DPI ou SVG; somente recursos `data:` incorporados | ZIP de imagens numeradas por página |
+| HTML (`.html`, `.htm`) | HTML local para PDF; somente recursos `data:` incorporados, sem JavaScript; exige worker Linux isolado | PDF; entrada até 10 MiB e 100 páginas |
+| HTML (`.html`, `.htm`) | HTML local para imagem; JPG a 144 DPI ou SVG; somente recursos `data:` incorporados, sem JavaScript | ZIP de imagens numeradas; até 100 páginas e 40 MP por página JPG |
 | PDF protegido por senha | Desbloquear com a senha atual | PDF |
-| Imagem estática | Imagens para PDF | PDF |
+| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Imagens para PDF; uma página por imagem | PDF |
 
 Por padrão, cada arquivo pode ter até 100 MB, cada requisição pode enviar até
 500 MB no total e cada job pode incluir até 10 arquivos. Jobs concluídos ou
 com falha e seus arquivos são removidos após 24 horas. Você pode alterar esses
 valores em `.env`.
 
-A página inicial mostra o catálogo completo de PDFs e imagens. Ferramentas
-marcadas como **Em breve** ainda não processam arquivos; o
-[roadmap do projeto](.specs/features/project-foundation/plan.md) registra as
-próximas etapas.
+A página inicial lista as ferramentas disponíveis para PDF e imagens. Todas as
+operações listadas estão implementadas; a conversão opcional para PDF/A depende
+da instalação de suas dependências locais. O
+[roadmap do projeto](.specs/features/project-foundation/plan.md) registra o
+escopo e as etapas entregues.
 
 ## Início rápido com Docker
 

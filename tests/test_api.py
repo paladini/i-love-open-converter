@@ -1047,12 +1047,21 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'data-tool="image.meme"' in response.text
     assert 'data-tool="image.upscale"' in response.text
     assert 'data-tool="image.remove_background"' in response.text
+    assert 'data-i18n="firstUseTitle"' in response.text
+    assert 'data-i18n="firstUseChoose"' in response.text
+    assert 'data-i18n="firstUseAdd"' in response.text
+    assert 'data-i18n="firstUseDownload"' in response.text
+    assert 'value="GIF" data-format-for="image.convert,image.from_jpg"' in response.text
     assert 'data-tool="image.blur_faces"' in response.text
     assert 'data-option="remove-background-note"' in response.text
     assert 'id="upscale-dimensions"' in response.text
     assert 'id="meme-top-text"' in response.text
     assert 'memeTitle: "Criar meme"' in script
     assert 'memeTitle: "Create meme"' in script
+    assert 'convertHint: "JPEG, PNG, GIF estático ou WebP"' in script
+    assert 'convertHint: "JPEG, PNG, static GIF, or WebP"' in script
+    assert 'firstUseTitle: "Comece em três passos"' in script
+    assert 'firstUseTitle: "Get started in three steps"' in script
     assert 'memeTopLabel: "Texto superior"' in script
     assert 'memeTopLabel: "Top text"' in script
     assert 'memeBottomLabel: "Texto inferior"' in script
@@ -1692,6 +1701,68 @@ def test_convert_job_moves_from_queued_to_downloadable(settings, jpeg_bytes):
             assert converted.size == (16, 12)
 
 
+def test_convert_gif_job_returns_one_static_frame(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"GIF"}'},
+            files=_multipart("paisagem.jpg", jpeg_bytes),
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        download = client.get(status["download_url"])
+
+    assert status["state"] == "succeeded"
+    assert status["files"][0]["name"] == "paisagem.gif"
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "image/gif"
+    with Image.open(BytesIO(download.content)) as converted:
+        assert converted.format == "GIF"
+        assert converted.n_frames == 1
+        assert converted.size == (16, 12)
+
+
+def test_convert_gif_batch_returns_one_static_gif_per_input(settings, jpeg_bytes):
+    files = [
+        ("files", ("first.jpg", jpeg_bytes, "image/jpeg")),
+        ("files", ("second.jpg", jpeg_bytes, "image/jpeg")),
+    ]
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"GIF"}'},
+            files=files,
+        )
+        assert submitted.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        download = client.get(status["download_url"])
+
+    assert status["state"] == "succeeded"
+    assert status["files"][0]["name"] == "converted-images.zip"
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/zip"
+    with ZipFile(BytesIO(download.content)) as archive:
+        assert archive.namelist() == ["first.gif", "second.gif"]
+        for name in archive.namelist():
+            with Image.open(BytesIO(archive.read(name))) as converted:
+                assert converted.format == "GIF"
+                assert converted.n_frames == 1
+
+
+def test_non_convert_image_operations_do_not_offer_gif(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.resize", "options": '{"width":8,"format":"GIF"}'},
+            files=_multipart("paisagem.jpg", jpeg_bytes),
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_options"
+
+
 def test_invalid_image_content_returns_422(settings):
     with TestClient(create_app(settings)) as client:
         response = client.post(
@@ -1776,7 +1847,7 @@ def test_invalid_conversion_options_return_422(settings, jpeg_bytes):
     with TestClient(create_app(settings)) as client:
         response = client.post(
             "/api/jobs",
-            data={"operation": "image.convert", "options": '{"format":"GIF"}'},
+            data={"operation": "image.convert", "options": '{"format":"TIFF"}'},
             files=_multipart("photo.jpg", jpeg_bytes),
         )
 

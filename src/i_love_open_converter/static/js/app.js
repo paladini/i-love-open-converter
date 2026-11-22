@@ -13,7 +13,8 @@ const messages = {
     fromPsdTitle: "Converter de PSD", fromPsdHint: "PNG, JPG ou WebP até 40 MP", fromPsdNote: "O PSD é achatado localmente em uma imagem. Documentos com objetos inteligentes não são aceitos.", psdFileTypes: "PSD · RGB ou escala de cinza, 8 bits · até {maxFileMb} MB · 40 MP", psdUnavailable: "A conversão de PSD exige um worker Linux isolado.",
     fromHeicTitle: "Converter de HEIC", fromHeicHint: "JPG local · até 40 MP e 32.768 px por lado", fromHeicNote: "Conversão HEIC/HEIF local para JPG. Cada arquivo deve conter uma imagem estática de até 40 MP e 32.768 px por lado.", heicFileTypes: "HEIC, HEIF ou HIF · até {maxFileMb} MB · 40 MP · 32.768 px por lado", heicUnavailable: "A conversão de HEIC exige um worker Linux isolado com o decodificador local.", heicTooLarge: "A imagem HEIC/HEIF excede o limite de 40 MP ou a dimensão máxima.",
     fromRawTitle: "Converter de RAW", fromRawHint: "JPG local · até 40 MP e 32.768 px por lado", fromRawNote: "Conversão local de RAW para JPG. O suporte depende do modelo da câmera; imagens acima de 40 MP ou 32.768 px por lado são recusadas.", rawFileTypes: "RAW de câmera · limite de 100 MiB por arquivo · formatos: .3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw", rawUnavailable: "A conversão RAW exige um worker Linux isolado com o decodificador local.", rawTooLarge: "A imagem RAW excede o limite de 40 MP ou a dimensão máxima.",
-    convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
+    convertTitle: "Converter imagem", convertHint: "JPEG, PNG, GIF estático ou WebP", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
+    firstUseTitle: "Comece em três passos", firstUseChoose: "Escolha uma ferramenta para o seu arquivo.", firstUseAdd: "Adicione o arquivo que quer transformar.", firstUseDownload: "Acompanhe o processamento e baixe o resultado.",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
     editorTextLabel: "Texto", editorTextPlaceholder: "Digite uma legenda (opcional)", editorTextSize: "Tamanho do texto", editorPosition: "Posição",
@@ -68,7 +69,8 @@ const messages = {
     fromPsdTitle: "Convert from PSD", fromPsdHint: "PNG, JPG, or WebP up to 40 MP", fromPsdNote: "PSD files are flattened into one image locally. Documents with smart objects are not supported.", psdFileTypes: "PSD · RGB or grayscale, 8-bit · up to {maxFileMb} MB · 40 MP", psdUnavailable: "PSD conversion requires an isolated Linux worker.",
     fromHeicTitle: "Convert from HEIC", fromHeicHint: "Local JPG · up to 40 MP and 32,768 px on either side", fromHeicNote: "Local HEIC/HEIF to JPG conversion. Each file must contain one static image up to 40 MP and 32,768 px on either side.", heicFileTypes: "HEIC, HEIF, or HIF · up to {maxFileMb} MB · 40 MP · 32,768 px on either side", heicUnavailable: "HEIC conversion requires an isolated Linux worker with the local decoder.", heicTooLarge: "The HEIC/HEIF image is over the 40 MP or maximum dimension limit.",
     fromRawTitle: "Convert from RAW", fromRawHint: "Local JPG · up to 40 MP and 32,768 px on either side", fromRawNote: "Local RAW to JPG conversion. Support depends on the camera model; images over 40 MP or 32,768 px on either side are rejected.", rawFileTypes: "Camera RAW · 100 MiB per file · formats: .3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw", rawUnavailable: "RAW conversion requires an isolated Linux worker with the local decoder.", rawTooLarge: "The RAW image is over the 40 MP or maximum dimension limit.",
-    convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
+    convertTitle: "Convert image", convertHint: "JPEG, PNG, static GIF, or WebP", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
+    firstUseTitle: "Get started in three steps", firstUseChoose: "Choose a tool for your file.", firstUseAdd: "Add the file you want to transform.", firstUseDownload: "Follow the job and download the result.",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
     editorTextLabel: "Text", editorTextPlaceholder: "Enter a caption (optional)", editorTextSize: "Text size", editorPosition: "Position",
@@ -223,6 +225,8 @@ function updateFormatTarget() {
 function syncOutputFormats(operation) {
   const allowed = operation === "image.from_jpg"
     ? ["PNG", "GIF"]
+    : operation === "image.convert"
+      ? ["PNG", "JPEG", "GIF", "WEBP"]
     : ["image.from_heic", "image.from_raw"].includes(operation)
       ? ["JPEG"]
       : ["PNG", "JPEG", "WEBP"];
