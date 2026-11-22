@@ -269,6 +269,7 @@ Requisitos: Python 3.14 e [uv](https://docs.astral.sh/uv/).
 
 ```sh
 uv sync --all-groups
+uv run playwright install chromium
 uv run uvicorn i_love_open_converter.main:app --app-dir src --reload
 ```
 

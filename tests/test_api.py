@@ -1761,6 +1761,8 @@ def test_non_convert_image_operations_do_not_offer_gif(settings, jpeg_bytes):
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_options"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
 
 
 def test_invalid_image_content_returns_422(settings):

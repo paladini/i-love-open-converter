@@ -2,8 +2,8 @@
 
 **Approved:** 2026-11-22 - user: "SÓ VAI. E não pergunta mais nada até acabar todas as camadas de implementação que temos!!!!"
 **Settled mid-build:** none.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at 5c27e8d; verdict: request changes (F1, F2).
+**Fix pass:** done - the 422 regression now asserts zero queued jobs, and a bilingual Playwright test covers the 360 px guide, controls, completed result, and download. The browser test dependency and Chromium setup are documented in both development guides.
 
 ## Problem
 
