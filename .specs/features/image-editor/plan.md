@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: "Pode seguir nas implementações de acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\\.codex\\skills\\tlc-spec-lean\\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação"
 **Settled mid-build:** user: "Editor simples local (Recomendado)"
-**Review:** fresh independent review of narrowed scope completed at c66c735; one P2 gap found in the frame/text composition-order test and fixed in one pass.
-**Fix pass:** done - removed stickers from the UI, API, worker, tests, and documentation; recorded AD-016 and verified the narrowed editor in both languages and at 360px.
+**Review:** sent at `c66c735`; narrowed-scope review found one P2 gap in the frame/text composition-order test; see `review.md`.
+**Fix pass:** done - removed stickers from the UI, API, worker, tests, and documentation; recorded AD-016; added a pixel assertion that proves text overlays the frame; verified the narrowed editor in both languages and at 360px.
 
 ## Problem
 
