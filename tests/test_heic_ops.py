@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import subprocess
+import sys
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from i_love_open_converter import heic_ops
+from i_love_open_converter import main as app_main
 from i_love_open_converter.database import get_job
 from i_love_open_converter.heic_ops import (
     HeicConversionError,
@@ -183,6 +187,18 @@ def test_heic_api_defaults_to_jpeg(settings):
     assert "quality" not in job["options"]
 
 
+def test_heic_api_rejects_files_over_native_decoder_limit(settings, monkeypatch):
+    monkeypatch.setattr(app_main, "MAX_HEIC_INPUT_BYTES", len(_ftyp()) - 1)
+    with TestClient(create_app(settings)) as client:
+        response = _submit(client, ["too-large.heic"])
+        with sqlite3.connect(settings.database_path) as connection:
+            job_count = connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
+
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "file_too_large"
+    assert job_count == 0
+
+
 @pytest.mark.parametrize(
     "filename,content,options,status,error_code",
     [
@@ -273,15 +289,24 @@ def _run_heic_child(monkeypatch, tmp_path, image_info):
 
     monkeypatch.setattr(heic_worker.resource, "getrlimit", lambda kind: (256 * 1024**2,) * 2)
     monkeypatch.setattr(heic_worker.resource, "setrlimit", lambda kind, value: limits.append(value))
-    monkeypatch.setattr(heic_worker, "restrict", lambda path, **kwargs: None)
+    restriction = {}
+
+    def fake_restrict(path, **kwargs):
+        restriction.update(path=path, **kwargs)
+
+    monkeypatch.setattr(heic_worker, "restrict", fake_restrict)
     monkeypatch.setattr(heic_worker.subprocess, "run", fake_run)
 
-    status = heic_worker.main(root, source, destination)
-    return status, destination, run_calls, limits, resource, heic_worker
+    original_cwd = Path.cwd()
+    try:
+        status = heic_worker.main(root, source, destination)
+    finally:
+        os.chdir(original_cwd)
+    return status, destination, run_calls, limits, resource, heic_worker, restriction
 
 
 def test_heic_child_caps_info_output_and_decodes_a_single_primary_image(monkeypatch, tmp_path):
-    status, destination, calls, limits, _, heic_worker = _run_heic_child(
+    status, destination, calls, limits, _, heic_worker, restriction = _run_heic_child(
         monkeypatch, tmp_path, "image: 640x480 (id=42), primary\n"
     )
 
@@ -296,6 +321,8 @@ def test_heic_child_caps_info_output_and_decodes_a_single_primary_image(monkeypa
     assert limits[-1] == (256 * 1024**2, 256 * 1024**2)
     assert limits[0] == (heic_worker.MAX_ADDRESS_SPACE_BYTES, heic_worker.MAX_ADDRESS_SPACE_BYTES)
     assert limits[1] == (120, 120)
+    assert restriction["allow_app"] is True
+    assert restriction["allow_tmp"] is False
 
 
 @pytest.mark.parametrize(
@@ -314,3 +341,59 @@ def test_heic_child_rejects_extra_images_sequences_and_oversized_dimensions(
     assert status == expected
     assert not destination.exists()
     assert len(calls) == 1
+
+
+def test_heic_landlock_denies_mutation_outside_the_per_file_root(tmp_path):
+    pytest.importorskip("resource")
+    if not sys.platform.startswith("linux"):
+        pytest.skip("Landlock is available only on Linux")
+
+    root = tmp_path / "worker"
+    root.mkdir()
+    neighbor = tmp_path / "neighbor.txt"
+    neighbor.write_text("must remain", encoding="utf-8")
+    outside_socket = tmp_path / "neighbor.sock"
+    script = """
+import os
+import socket
+import sys
+from pathlib import Path
+from i_love_open_converter.office_sandbox import restrict
+
+root = Path(sys.argv[1])
+neighbor = Path(sys.argv[2])
+outside_socket = Path(sys.argv[3])
+os.chdir(root)
+try:
+    restrict(root, allow_app=True, allow_tmp=False)
+except OSError:
+    raise SystemExit(77)
+try:
+    neighbor.unlink()
+except PermissionError:
+    pass
+else:
+    raise SystemExit(10)
+connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+try:
+    try:
+        connection.bind(str(outside_socket))
+    except PermissionError:
+        pass
+    else:
+        raise SystemExit(11)
+finally:
+    connection.close()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(root), str(neighbor), str(outside_socket)],
+        cwd=Path.cwd(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 77:
+        pytest.skip("Landlock is unavailable in this kernel")
+
+    assert result.returncode == 0, result.stderr or result.stdout
+    assert neighbor.read_text(encoding="utf-8") == "must remain"

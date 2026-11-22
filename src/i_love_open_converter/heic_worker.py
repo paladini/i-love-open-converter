@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import resource
 import subprocess
@@ -25,8 +26,8 @@ MAX_INFO_OUTPUT_BYTES = 1024 * 1024
 IMAGE_LINE = re.compile(r"^image: (\d+)x(\d+) \(id=\d+\)(, primary)?$")
 
 
-def inspect_dimensions(root: Path, source: Path) -> tuple[int, int] | None:
-    info_path = root / "heif-info.txt"
+def inspect_dimensions(source: Path) -> tuple[int, int] | None:
+    info_path = Path("heif-info.txt")
     try:
         with info_path.open("xb") as output:
             previous_file_limit = resource.getrlimit(resource.RLIMIT_FSIZE)
@@ -39,7 +40,6 @@ def inspect_dimensions(root: Path, source: Path) -> tuple[int, int] | None:
                     stdin=subprocess.DEVNULL,
                     stdout=output,
                     stderr=subprocess.DEVNULL,
-                    cwd=root,
                     timeout=INFO_TIMEOUT_SECONDS,
                     check=False,
                 )
@@ -74,27 +74,31 @@ def inspect_dimensions(root: Path, source: Path) -> tuple[int, int] | None:
 
 
 def main(root: Path, source: Path, destination: Path) -> int:
-    try:
-        resource.setrlimit(resource.RLIMIT_AS, (MAX_ADDRESS_SPACE_BYTES, MAX_ADDRESS_SPACE_BYTES))
-        resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_HEIC_OUTPUT_BYTES, MAX_HEIC_OUTPUT_BYTES))
-        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        restrict(root, allow_app=True)
-    except (OSError, ValueError):
-        return 77
-
     root = root.resolve()
     source = source.resolve()
     destination = destination.resolve()
     if (
-        not source.is_relative_to(root)
-        or not destination.is_relative_to(root)
+        not root.is_dir()
+        or source.parent != root
+        or destination.parent != root
         or not source.is_file()
         or source.stat().st_size > MAX_HEIC_INPUT_BYTES
     ):
         return 4
 
-    dimensions = inspect_dimensions(root, source)
+    try:
+        resource.setrlimit(resource.RLIMIT_AS, (MAX_ADDRESS_SPACE_BYTES, MAX_ADDRESS_SPACE_BYTES))
+        resource.setrlimit(resource.RLIMIT_CPU, (120, 120))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_HEIC_OUTPUT_BYTES, MAX_HEIC_OUTPUT_BYTES))
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+        os.chdir(root)
+        restrict(root, allow_app=True, allow_tmp=False)
+    except (OSError, ValueError):
+        return 77
+
+    source_path = Path(source.name)
+    destination_path = Path(destination.name)
+    dimensions = inspect_dimensions(source_path)
     if dimensions is None:
         return 4
     width, height = dimensions
@@ -106,7 +110,6 @@ def main(root: Path, source: Path, destination: Path) -> int:
         return 3
 
     try:
-        destination.parent.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
             [
                 HEIF_DEC,
@@ -120,24 +123,23 @@ def main(root: Path, source: Path, destination: Path) -> int:
                 "--tile-threads",
                 "1",
                 "--output",
-                str(destination),
-                str(source),
+                str(destination_path),
+                str(source_path),
             ],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            cwd=root,
             timeout=DECODE_TIMEOUT_SECONDS,
             check=False,
         )
-        if result.returncode != 0 or not destination.is_file():
-            destination.unlink(missing_ok=True)
+        if result.returncode != 0 or not destination_path.is_file():
+            destination_path.unlink(missing_ok=True)
             return 2
-        if not 0 < destination.stat().st_size <= MAX_HEIC_OUTPUT_BYTES:
-            destination.unlink(missing_ok=True)
+        if not 0 < destination_path.stat().st_size <= MAX_HEIC_OUTPUT_BYTES:
+            destination_path.unlink(missing_ok=True)
             return 2
     except (OSError, subprocess.TimeoutExpired):
-        destination.unlink(missing_ok=True)
+        destination_path.unlink(missing_ok=True)
         return 2
     return 0
 

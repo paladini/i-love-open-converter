@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-22 - user: “Você tem total liberdade pra seguir os planos e features já definidos. SÓ VAI.”
 **Settled mid-build:** none
-**Review:**
-**Fix pass:**
+**Review:** sent at e3a4643
+**Fix pass:** done - exclude shared `/tmp` rights from the HEIC child, preserve the sandbox default for other operations, and add Linux isolation and upload-limit regression coverage.
 
 ## Problem
 

@@ -25,7 +25,7 @@ class PathBeneath(ctypes.Structure):
     _fields_ = [("allowed_access", ctypes.c_uint64), ("parent_fd", ctypes.c_int32)]
 
 
-def restrict(root: Path, *, allow_app: bool = False) -> None:
+def restrict(root: Path, *, allow_app: bool = False, allow_tmp: bool = True) -> None:
     libc = ctypes.CDLL(None, use_errno=True)
     abi = libc.syscall(_CREATE_RULESET, 0, 0, _VERSION)
     if abi < 1:
@@ -40,14 +40,14 @@ def restrict(root: Path, *, allow_app: bool = False) -> None:
     if fd < 0:
         raise OSError(ctypes.get_errno(), "Landlock ruleset unavailable")
     try:
-        for path, permitted in [
-            (root, rights),
-            (Path("/tmp"), (1 << 9) | (1 << 5)),
-            (Path("/dev/null"), (1 << 1) | (1 << 2)),
-        ] + ([(Path("/app"), _READ_EXECUTE)] if allow_app else []) + [
+        paths = [(root, rights), (Path("/dev/null"), (1 << 1) | (1 << 2))]
+        if allow_tmp:
+            paths.append((Path("/tmp"), (1 << 9) | (1 << 5)))
+        paths += ([(Path("/app"), _READ_EXECUTE)] if allow_app else []) + [
             (Path(item), _READ_EXECUTE)
             for item in ("/usr", "/lib", "/lib64", "/etc", "/dev", "/proc/self")
-        ]:
+        ]
+        for path, permitted in paths:
             if not path.exists():
                 continue
             path_fd = os.open(path, os.O_PATH | os.O_CLOEXEC)
