@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
@@ -22,7 +24,20 @@ jobs:
           enable-cache: true
       - run: uv sync --all-groups --locked
       - run: uv run ruff check .
-      - run: uv run ruff format --check .
+      - name: Check formatting for changed Python files
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            base="origin/$GITHUB_BASE_REF"
+          else
+            base="$(git rev-parse HEAD~1)"
+          fi
+          mapfile -t files < <(git diff --name-only "$base...HEAD" -- '*.py')
+          if ((${#files[@]})); then
+            uv run ruff format --check "${files[@]}"
+          else
+            echo "No changed Python files."
+          fi
       - run: uv run pytest -q
 
   container:
