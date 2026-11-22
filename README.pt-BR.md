@@ -1,185 +1,71 @@
 # I Love Open Converter
 
-**Uma caixa de ferramentas privada e self-hosted para tarefas do dia a dia com
-PDFs e imagens.**
+**Uma caixa de ferramentas privada e auto-hospedada para tarefas comuns com PDFs e imagens.**
 
-Envie um arquivo, escolha uma ferramenta e baixe o resultado por uma interface
-web simples. O processamento e o armazenamento ficam no seu próprio servidor.
+Envie um arquivo, escolha uma ferramenta e baixe o resultado em uma interface
+web simples. O processamento e os arquivos ficam no seu próprio servidor.
 
 <p align="center">
-  <img src="docs/screenshots/home.jpg" alt="Página inicial do I Love Open Converter com o catálogo de ferramentas de PDF e imagem" width="100%">
+  <img src="docs/screenshots/home.jpg" alt="Página inicial em inglês com o catálogo de ferramentas para PDF e imagens" width="100%">
 </p>
 <p align="center">
-  <img src="docs/screenshots/image-compress-result.jpg" alt="Compressão de imagem concluída no aplicativo com resultado para baixar" width="49%">
-  <img src="docs/screenshots/pdf-page-numbers-result.jpg" alt="Numeração de páginas PDF concluída no aplicativo com resultado para baixar" width="49%">
+  <img src="docs/screenshots/image-compress-result.jpg" alt="Compressão de imagem concluída na interface em inglês" width="49%">
+  <img src="docs/screenshots/pdf-page-numbers-result.jpg" alt="Numeração de páginas de PDF concluída na interface em inglês" width="49%">
 </p>
 
 <p align="center">
   <a href="README.md">English</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/releases">Versões</a> ·
-  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Imagem de container</a> ·
-  <a href="CONTRIBUTING.md">Como contribuir</a> Â·
-  <a href="SUPPORT.md">Suporte</a> Â·
-  <a href="SECURITY.md">Segurança</a> Â·
+  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Imagem de contêiner</a> ·
+  <a href="CONTRIBUTING.md">Como contribuir</a> ·
+  <a href="SUPPORT.md">Suporte</a> ·
+  <a href="SECURITY.md">Segurança</a> ·
   <a href="CHANGELOG.md">Histórico de alterações</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/paladini/i-love-open-converter/releases/latest"><img alt="Versão mais recente" src="https://img.shields.io/github/v/release/paladini/i-love-open-converter?display_name=tag"></a>
+  <a href="https://github.com/paladini/i-love-open-converter/releases/latest"><img alt="Última versão" src="https://img.shields.io/github/v/release/paladini/i-love-open-converter?display_name=tag"></a>
   <a href="LICENSE"><img alt="Licença AGPL-3.0" src="https://img.shields.io/github/license/paladini/i-love-open-converter"></a>
-  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter"><img alt="Imagem de container no GHCR" src="https://img.shields.io/badge/container-GHCR-2496ED?logo=github"></a>
+  <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter"><img alt="Imagem de contêiner no GHCR" src="https://img.shields.io/badge/container-GHCR-2496ED?logo=github"></a>
 </p>
 
-O I Love Open Converter reúne operações comuns de PDF e imagem em um único
-aplicativo web para seu computador, HomeLab ou NAS. Você não precisa usar
-comandos no terminal nem enviar arquivos a um serviço de conversão na nuvem.
+O I Love Open Converter reúne ferramentas para PDF e imagens no seu
+computador, HomeLab ou NAS. Escolha uma ferramenta, envie o arquivo e baixe o
+resultado.
 
-## Como funciona
+## Ferramentas
 
-1. **Escolha uma ferramenta** no catálogo de PDF e imagens.
-2. **Envie seu arquivo** e defina as opções da operação.
-3. **Baixe o resultado** quando o processamento local terminar.
+- **Imagens:** converter, redimensionar, comprimir, recortar, girar, adicionar
+  marca d'água, editar, criar memes, ampliar, remover fundos, desfocar rostos
+  ou placas e converter arquivos SVG, PSD, HEIC e RAW localmente.
+- **PDF:** mesclar, dividir, organizar, editar, ocultar conteúdo, assinar
+  visualmente, proteger, desbloquear, reparar, comparar, aplicar OCR, traduzir,
+  numerar páginas, converter para e de arquivos Office, imagens e HTML, além
+  de exportar para Markdown ou planilhas.
 
-## Ferramentas disponíveis
+A página inicial lista as ferramentas disponíveis. Algumas operações
+opcionais, como a conversão para PDF/A, precisam de dependências locais extras.
+Consulte o [roadmap do projeto](.specs/features/project-foundation/plan.md).
 
-Somente as ferramentas marcadas como disponíveis no aplicativo já estão
-implementadas. As demais aparecem como **Em breve** e fazem parte de etapas
-futuras do projeto.
+## Limites importantes
 
-### Imagens
+- O projeto oferece fluxos compatíveis para PDF e imagens; não converte
+  qualquer tipo de arquivo para qualquer outro. Os formatos variam conforme a
+  ferramenta.
+- Assinaturas em PDF são marcas visuais, o preenchimento aceita campos já
+  existentes e os resumos extraem frases de texto selecionável. Aplique OCR a
+  documentos digitalizados antes.
+- A tradução é local e funciona entre português brasileiro e inglês. A captura
+  de HTML aceita conteúdo estático, sem JavaScript ou sessões autenticadas. A
+  captura de URLs faz requisições limitadas a endereços HTTP(S) públicos pelo
+  serviço web; o worker não tem acesso à rede.
+- Por padrão, cada arquivo pode ter até 100 MB, cada requisição até 500 MB e
+  cada job até 10 arquivos. Jobs e arquivos são removidos após 24 horas. Altere
+  esses padrões em `.env`.
 
-- Converter localmente um PSD em PNG, JPEG ou WebP achatado. O limite padrão
-  de envio é 100 MB e o canvas pode ter até 40 megapixels; somente RGB ou escala
-  de cinza de 8 bits são aceitos, documentos com objetos inteligentes são
-  recusados e a imagem gerada pode diferir do Photoshop.
-
-- Converter imagens estáticas JPEG, PNG, GIF, WebP, BMP e TIFF para JPEG, PNG ou
-  WebP.
-- Redimensionar por largura, altura ou ambas, preservando a proporção original.
-- Comprimir imagens de saída JPEG e WebP com ajuste de qualidade.
-- Converter JPG para PNG ou combinar várias imagens em um GIF animado.
-- Converter um SVG estático de até 10 MiB localmente para PNG, JPEG ou WebP. A
-  saída é limitada a 40 megapixels; scripts, animações, conteúdo externo e
-  recursos remotos são recusados. PNG e WebP preservam a transparência; JPEG
-  usa fundo branco.
-- Girar imagens em 90°, 180° ou 270°.
-- Ampliar uma imagem em 2x ou 4x com interpolação Lanczos e nitidez leve, tudo
-  localmente. Essa interpolação não recupera detalhes que não existem no
-  original; a saída é limitada a 40 megapixels.
-- Remover o fundo de uma imagem localmente com o modelo U2NetP e gerar um PNG
-  transparente. A imagem original pode ter até 40 megapixels; o recorte depende
-  da imagem e não garante bordas perfeitas. O modelo CPU acompanha a imagem Docker,
-  sem download durante o processamento pelo worker isolado da rede.
-- Desfocar localmente rostos detectados de frente ou de perfil com OpenCV. A
-  detecção pode deixar rostos passar; revise o resultado antes de compartilhar.
-  Sem rostos detectados, não há saída.
-- Desfocar placas detectadas pelos classificadores locais do OpenCV ou desenhar
-  até 20 regiões na prévia para desfocar objetos selecionados. A detecção de
-  placas pode deixar alguma passar; o modo manual protege apenas as regiões
-  selecionadas. Revise o resultado antes de compartilhar. Cada ferramenta aceita
-  uma imagem de até 40 megapixels.
-- Criar um meme a partir de uma imagem enviada, com legendas opcionais em cima
-  e embaixo, processadas localmente em JPEG, PNG ou WebP. As legendas se ajustam
-  à imagem; em imagens pequenas, o texto que não couber termina com reticências.
-  No JPEG, áreas transparentes viram brancas.
-- Editar uma imagem com texto, filtros locais, molduras simples e stickers vetoriais.
-- Recortar imagens por coordenadas e dimensões em pixels após aplicar a orientação EXIF.
-- Adicionar marcas d'água de texto ou imagem em lotes, com controles de posição e opacidade.
-
-Você pode processar várias imagens em um job. Resultados com vários arquivos
-são baixados em um arquivo ZIP. GIFs estáticos são aceitos; imagens animadas não são suportadas.
-
-A remoção de fundo usa rembg (MIT), ONNX Runtime (MIT) e pesos U2NetP
-(Apache-2.0). Consulte [os avisos de terceiros](THIRD_PARTY_NOTICES.md). Ao
-executar diretamente no ambiente de desenvolvimento, o rembg baixa o pequeno
-modelo U2NetP para o cache local na primeira utilização.
-
-### PDF
-
-- Mesclar PDFs na ordem escolhida.
-- Reordenar ou remover páginas e inserir páginas de um segundo PDF.
-- Recortar páginas selecionadas ou adicionar texto, imagem, forma ou anotação a uma página.
-- Adicionar uma assinatura visual desenhada ou enviada e proteger ou desbloquear PDFs com senha.
-- Preencher campos de texto e caixas de seleção existentes e ocultar permanentemente áreas selecionadas.
-- Tentar reparar PDFs, comparar a aparência de páginas lado a lado e converter e validar PDF/A-2b.
-- Dividir um PDF por intervalos de páginas.
-- Girar todas as páginas em 90°, 180° ou 270°.
-- Otimizar PDFs com compressão estrutural local sem perdas.
-- Renderizar cada página de um PDF como imagem JPG.
-- Capturar ou selecionar páginas no navegador, organizá-las, girá-las e criar um PDF localmente.
-- Converter documentos Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`) e Excel (`.xls`, `.xlsx`) em PDF usando LibreOffice local.
-- Extrair imagens incorporadas do PDF em PNG dentro de um ZIP, preservando a transparência. Objetos de imagem repetidos são incluídos uma vez; imagens inline são incluídas em cada ocorrência.
-- Converter PDFs para Markdown com texto, tabelas e figuras extraídos localmente em um ZIP portátil. Páginas digitalizadas exigem OCR, que não faz parte desta conversão; layouts complexos podem não ser reconstruídos fielmente.
-- Criar um resumo extrativo local de até 12 frases a partir do texto selecionável do PDF. PDFs digitalizados precisam de OCR; o resumo seleciona frases do documento sem gerar texto novo.
-- Traduzir texto selecionável de PDF localmente entre português do Brasil e inglês. O PDF textual preserva a ordem, as dimensões e as quebras de página; documentos digitalizados precisam de OCR. A imagem Docker inclui os dois modelos Argos offline (cerca de 158 MiB extraídos) e o runtime leve CTranslate2/SentencePiece. Consulte os [créditos e licenças dos modelos](THIRD_PARTY_NOTICES.md).
-- Converter PDF em um DOCX editável localmente. PDFs digitalizados exigem OCR, e layouts complexos podem diferir do original.
-- Converter PDF em uma apresentação PowerPoint editável localmente. Textos e imagens incorporadas viram objetos separados nos slides; desenhos vetoriais, gráficos, fundos de página e OCR de páginas digitalizadas não são reconstruídos.
-- Extrair tabelas detectadas e texto selecionável de um PDF para uma planilha Excel local. Tabelas e referências de página ficam na aba `Tables`; outros textos vão para `Text`. Os valores permanecem textos literais. Layouts incomuns podem não ser reconhecidos, e páginas digitalizadas exigem OCR.
-- Converter arquivos HTML locais `.html`/`.htm` ou URLs públicas HTTP(S) para PDF. A captura da URL carrega CSS, imagens e fontes estáticas dentro de limites; endereços privados ou locais são bloqueados, e JavaScript e páginas com login não são suportados. A renderização usa WeasyPrint no worker Linux isolado.
-- Exportar cada página de um arquivo `.html` ou `.htm` local como JPG ou SVG em um ZIP. CSS incorporado e recursos `data:` são aceitos; arquivos relativos, URLs remotas e execução de JavaScript não são suportados.
-
-- Transformar imagens em um PDF com uma página para cada imagem.
-- Adicionar uma marca d'água de texto ou imagem em todas as páginas. Escolha
-  posição e opacidade; marcas de texto também permitem configurar fonte,
-  tamanho e cor.
-- Numerar todas as páginas. Escolha posição no cabeçalho ou rodapé, formato,
-  número inicial, fonte, tamanho e cor.
-
-A conversão de PDF para Markdown usa o mecanismo completo de layout do PyMuPDF e o ONNX Runtime local, sem GPU. A telemetria do ONNX é desativada antes da inicialização.
-Para limitar a memória de renderização, páginas que excedem 16 milhões de pixels a 150 DPI são recusadas; a conversão também está sujeita a limites de tempo e tamanho de saída.
-A conversão de PDF para Word usa a biblioteca local `pdf2docx`, que não recebe mais manutenção ativa do projeto original. Ela aplica os mesmos limites de tamanho de página, tempo e arquivo de saída e exige o worker Linux isolado da rede configurado abaixo; outros ambientes recusam a conversão.
-A conversão de PDF para PowerPoint usa PyMuPDF e `python-pptx` para criar caixas de texto e imagens editáveis. Cada página gera um slide; OCR de páginas digitalizadas e reconstrução de desenhos vetoriais complexos, gráficos e fundos não são suportados. O limite é de 200 páginas, 20 mil objetos por apresentação, 16 milhões de pixels por página a 150 DPI, 180 segundos e 256 MiB de saída. O worker Linux isolado da rede é obrigatório; outros ambientes recusam a conversão.
-A conversão de PDF para Excel usa a detecção de tabelas do PyMuPDF e XlsxWriter. Tabelas detectadas e outros textos selecionáveis ficam em abas separadas com referências às páginas; todos os valores permanecem textos literais. Tabelas sem bordas ou com layouts incomuns podem não ser reconhecidas, números não são inferidos e páginas digitalizadas exigem OCR. Os limites são 200 páginas, 16 milhões de pixels por página a 150 DPI, 200 mil células de tabela, 100 mil linhas de texto, 180 segundos e 256 MiB de saída. O worker Linux isolado da rede é obrigatório; outros ambientes recusam a conversão.
-HTML para PDF usa WeasyPrint 70.0. O upload local aceita um HTML de até 10 MiB e somente recursos `data:` incorporados. A captura de URL pública aceita HTTP(S) nas portas 80/443, recusa credenciais e destinos IPv4/IPv6 não públicos, valida cada redirecionamento e recurso, e limita a captura a 5 redirecionamentos, 50 recursos, 10 MiB por recurso, 50 MiB no total e 30 segundos. CSS, imagens e fontes estáticas são incorporados à captura; scripts são removidos. A renderização é limitada a 100 páginas, 120 segundos, 2 GiB de memória virtual e 256 MiB de saída. O renderizador usa worker Linux sem rede externa e com Landlock. JavaScript, páginas autenticadas e estado de sessão do navegador não são suportados; o CSS pode diferir de um navegador.
-HTML para imagem usa o mesmo renderizador e política de captura de URL. Exporta cada página como JPG a 144 DPI ou SVG em um ZIP. Os limites são 100 páginas, 40 megapixels por página JPG e 256 MiB de saída.
-
-A captura de URL pública faz conexões HTTP(S) diretas a partir do serviço web no seu servidor; as variáveis `HTTP_PROXY` e `HTTPS_PROXY` não são usadas. O worker isolado não acessa a rede.
-
-O OCR usa OCRmyPDF e Tesseract instalados na imagem Docker com os dados de português e inglês incluídos. O worker não baixa modelos ou idiomas e permanece sem acesso à rede. Cada job aceita até 20 páginas, um processo por vez e até 600 segundos; PDFs com texto selecionável são preservados. O reconhecimento pode falhar em imagens desfocadas, inclinadas, pequenas ou com baixo contraste.
-
-As ferramentas de PDF aceitam arquivos sem criptografia. Resultados de divisão
-ou de conversão de PDF com várias páginas para JPG são baixados em ZIP.
-
-### Formatos e limites
-
-| Entrada | Operações disponíveis | Saída |
-| --- | --- | --- |
-| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Conversão genérica de imagens | JPEG, PNG, WebP ou GIF estático de um quadro por entrada |
-| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Redimensionar, comprimir, girar, recortar, marcar e editar fotos | JPEG, PNG ou WebP |
-| JPEG (`.jpg`, `.jpeg`) | Converter arquivos para PNG ou criar GIF animado a partir de vários JPG na ordem escolhida | PNG ou GIF animado |
-| SVG (`.svg`) | Conversão local de SVG estático; scripts, animação, conteúdo externo e recursos remotos são recusados | JPEG, PNG ou WebP; entrada até 10 MiB e saída até 40 MP |
-| PSD (`.psd`) | Converter a imagem achatada; RGB ou escala de cinza em 8 bits; smart objects vinculados são recusados | JPEG, PNG ou WebP; saída até 40 MP |
-| HEIC, HEIF, HIF | Conversão local de uma imagem estática | JPEG; até 40 MP e 32.768 pixels por lado |
-| RAW de câmera (`.3fr`, `.ari`, `.arw`, `.bay`, `.cap`, `.cr2`, `.cr3`, `.crw`, `.dcr`, `.dcs`, `.dng`, `.drf`, `.eip`, `.erf`, `.fff`, `.gpr`, `.iiq`, `.k25`, `.kdc`, `.mdc`, `.mef`, `.mos`, `.mrw`, `.nef`, `.nrw`, `.orf`, `.pef`, `.ptx`, `.raf`, `.raw`, `.rw2`, `.rwl`, `.sr2`, `.srf`, `.srw`) | Revelar localmente com LibRaw; o suporte depende da câmera | JPEG; até 40 MP, 32.768 pixels por lado e 100 MiB por arquivo |
-| PDF sem criptografia | Mesclar, dividir, organizar, girar, otimizar, editar, recortar, preencher formulários existentes, ocultar, assinar visualmente, proteger/desbloquear, reparar, comparar, PDF/A-2b, marca d'água, números de página, OCR e traduzir texto selecionável | PDF |
-| Páginas de PDF | Renderizar cada página em JPG | Um JPG ou ZIP para várias páginas |
-| PDF | Converter para Word, PowerPoint ou Excel editável | DOCX, PPTX ou XLSX |
-| PDF | Converter para Markdown ou extrair imagens incorporadas | Arquivo ZIP |
-| PDF com texto selecionável | Criar resumo extrativo de até 12 frases | TXT |
-| Word, PowerPoint e Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Converter para PDF | PDF |
-| HTML (`.html`, `.htm`) ou URL pública HTTP(S) | HTML para PDF; URL só em portas 80/443 e IPs públicos; até 5 redirecionamentos, 50 recursos, 10 MiB por recurso, 50 MiB no total e 30 segundos; somente recursos estáticos, sem JavaScript; renderizador Linux isolado | PDF; HTML local até 10 MiB, até 100 páginas |
-| HTML (`.html`, `.htm`) ou URL pública HTTP(S) | HTML para imagem; mesma captura pública limitada; JPG a 144 DPI ou SVG; sem JavaScript | ZIP de imagens numeradas; até 100 páginas e 40 MP por página JPG |
-| PDF protegido por senha | Desbloquear com a senha atual | PDF |
-| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Imagens para PDF; uma página por imagem | PDF |
-
-Por padrão, cada arquivo pode ter até 100 MB, cada requisição pode enviar até
-500 MB no total e cada job pode incluir até 10 arquivos. Jobs concluídos ou
-com falha e seus arquivos são removidos após 24 horas. Você pode alterar esses
-valores em `.env`.
-
-A página inicial lista as ferramentas disponíveis para PDF e imagens. Todas as
-operações listadas estão implementadas; a conversão opcional para PDF/A depende
-da instalação de suas dependências locais. O
-[roadmap do projeto](.specs/features/project-foundation/plan.md) registra o
-escopo e as etapas entregues.
-
-## Início rápido com Docker
+## Início rápido
 
 Requisitos: Docker Engine e Docker Compose v2.
-
-A conversão Office usa LibreOffice e Linux Landlock no worker. O Compose fornecido desativa a rede do worker e habilita o conversor nesse ambiente isolado. Um worker executado separadamente precisa estar em um namespace de rede equivalente, sem interfaces externas, e receber `OFFICE_NETWORK_ISOLATED=1`; caso contrário, as tarefas Office falham sem conversão. Essa variável é uma declaração do administrador e não isola o processo por si só. A conversão Office também requer um kernel Linux e uma política de contêiner que permitam o Landlock. Arquivos protegidos por senha não são suportados, e fontes, layout e paginação de planilhas podem diferir do aplicativo original.
-
-Pacotes Office ZIP têm limite de 64 MiB por parte descompactada e 256 MiB no total descompactado. O conversor limita memória, CPU e tamanho de arquivo por processo; o worker fornecido também limita memória, quantidade de processos e armazenamento temporário.
 
 ```sh
 git clone https://github.com/paladini/i-love-open-converter.git
@@ -189,92 +75,28 @@ mkdir -p data
 docker compose up -d
 ```
 
-O Compose baixa a imagem publicada no GitHub Container Registry e inicia o
-serviço web junto de um worker em segundo plano. Abra
-<http://localhost:8080> para usar o aplicativo.
+No Windows PowerShell, use `Copy-Item .env.example .env` e
+`New-Item -ItemType Directory -Force data` no lugar de `cp` e `mkdir`. Abra
+<http://localhost:8080>. O Compose inicia o aplicativo web e um worker
+separado. Os dados ficam em `./data`; faça backup para preservar jobs e
+resultados.
 
-No Windows PowerShell, copie o arquivo de ambiente e crie a pasta de dados
-com:
-
-```powershell
-Copy-Item .env.example .env
-New-Item -ItemType Directory -Force data
-docker compose up -d
-```
-
-Confira os serviços e os logs com:
-
-```sh
-docker compose ps
-docker compose logs -f web worker
-```
-
-Para atualizar para a imagem publicada mais recente:
-
-```sh
-docker compose pull
-docker compose up -d
-```
-
-Para parar sem apagar os arquivos, execute `docker compose down`. O banco
-SQLite, a fila de jobs e os resultados ficam em `./data`. Faça backup desse
-diretório se precisar preservá-los ao trocar de máquina.
-
-## Configuração
-
-Copie `.env.example` para `.env` antes de alterar as configurações. O Compose
-lê esses valores ao iniciar os containers.
-
-| Configuração | Padrão | Finalidade |
-| --- | --- | --- |
-| `APP_PORT` | `8080` | Porta exposta no host |
-| `IMAGE_TAG` | `latest` | Tag da imagem publicada no GHCR |
-| `MAX_FILE_SIZE_MB` | `100` | Tamanho máximo de cada arquivo |
-| `MAX_TOTAL_UPLOAD_MB` | `500` | Tamanho total máximo por requisição |
-| `MAX_FILES_PER_JOB` | `10` | Quantidade máxima de arquivos por job |
-| `JOB_RETENTION_HOURS` | `24` | Tempo de retenção dos jobs e arquivos |
-| `WORKER_POLL_SECONDS` | `1` | Intervalo entre consultas do worker à fila |
-| `PUID` | `1000` | ID do usuário dono dos arquivos em `./data` |
-| `PGID` | `1000` | ID do grupo dono dos arquivos em `./data` |
-
-Os dois containers precisam ler e gravar em `./data`. No Linux, configure
-`PUID` e `PGID` com o usuário e grupo donos da pasta. Altere `APP_PORT` se a
-porta 8080 já estiver ocupada. Defina `IMAGE_TAG` como uma versão publicada
-para fixar o deployment em vez de acompanhar `latest`.
+Altere `APP_PORT` em `.env` para mudar a porta. Consulte os demais ajustes em
+[`.env.example`](.env.example). Use `docker compose logs -f web worker` para
+ver logs, `docker compose pull && docker compose up -d` para atualizar e
+`docker compose down` para parar os serviços.
 
 ## Privacidade e segurança
 
-- A comparação verifica a aparência renderizada das páginas, sem comparar metadados ou conteúdo invisível. A conversão PDF/A verifica conformidade, número de páginas e texto extraído; confira o layout e os demais elementos do resultado.
-- A ocultação remove conteúdo das áreas selecionadas. PDFs com conteúdo marcado ou estruturas de acessibilidade são rejeitados, pois podem manter informações sensíveis. Confira separadamente outras páginas, metadados, anexos e cópias; o original enviado permanece no servidor até o job expirar.
-- Senhas de jobs de PDF ficam temporariamente em um arquivo local do job para que o worker possa processá-las e retomar o trabalho; o arquivo é removido após o processamento. Uma interrupção pode mantê-lo até uma nova tentativa ou a expiração do job. Em sistemas compatíveis, o arquivo é criado com permissão apenas para o proprietário.
-- Os arquivos são enviados e processados pelo servidor onde o aplicativo foi
-  instalado.
-- A interface usa recursos estáticos locais e não carrega fontes, scripts,
-  analytics ou telemetria de terceiros.
-- Não há contas nem autenticação integrada. Qualquer pessoa que alcance o
-  serviço web pode enviar jobs e acessar um job se tiver sua URL.
-- Os IDs dos jobs são imprevisíveis, mas não substituem controle de acesso.
+Os arquivos são processados no servidor que você controla. O aplicativo não
+tem contas nem autenticação integrada; qualquer pessoa que alcance o serviço
+pode enviar jobs. Mantenha-o em uma rede confiável ou use VPN ou proxy reverso
+com autenticação. Não o exponha diretamente à internet pública.
 
-Mantenha o serviço em uma rede que você controla. Para acesso remoto, use uma
-VPN ou um proxy reverso com autenticação. Não exponha o serviço sem autenticação
-diretamente à internet pública.
-
-## Arquitetura
-
-O aplicativo web valida os arquivos enviados e cria jobs em uma fila SQLite
-local. Um worker separado processa cada job com bibliotecas Python open-source
-e grava o resultado no diretório local de dados. O navegador consulta o status
-e baixa o arquivo pelo mesmo servidor.
-
-```mermaid
-flowchart LR
-    Browser[Navegador] -->|Envia e consulta| Web[Serviço web FastAPI]
-    Web -->|Cria job| Queue[(Fila SQLite)]
-    Queue --> Worker[Worker em segundo plano]
-    Worker -->|Processa localmente| Engine[PyMuPDF e Pillow]
-    Worker -->|Lê e grava| Files[(Arquivos locais)]
-    Browser -->|Baixa o resultado| Web
-```
+A interface usa recursos locais e não carrega scripts, analytics ou
+telemetria de terceiros. Confira PDFs com conteúdo ocultado e outros arquivos
+sensíveis antes de compartilhá-los; a ocultação não remove metadados, anexos ou
+o arquivo original armazenado.
 
 ## Desenvolvimento
 
@@ -286,18 +108,9 @@ uv run playwright install chromium
 uv run uvicorn i_love_open_converter.main:app --app-dir src --reload
 ```
 
-Execute as verificações do projeto com:
-
-```sh
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-```
-
 Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para orientações de desenvolvimento
 e pull requests.
 
 ## Licença
 
-O I Love Open Converter é licenciado sob a
-[GNU Affero General Public License v3.0](LICENSE).
+Licenciado sob a [GNU Affero General Public License v3.0](LICENSE).
