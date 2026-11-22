@@ -6,6 +6,14 @@ Upload a file, choose a tool, and download the result from a simple web
 interface. Processing and file storage stay on your own server.
 
 <p align="center">
+  <img src="docs/screenshots/home.jpg" alt="The I Love Open Converter home page showing the PDF and image tool catalog" width="100%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/image-compress-result.jpg" alt="Image compression completed in the web app with a downloadable result" width="49%">
+  <img src="docs/screenshots/pdf-page-numbers-result.jpg" alt="PDF page numbering completed in the web app with a downloadable result" width="49%">
+</p>
+
+<p align="center">
   <a href="README.pt-BR.md">Português (Brasil)</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/releases">Releases</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Container image</a> ·
