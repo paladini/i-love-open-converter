@@ -1,15 +1,15 @@
 # Objective capability inventory
 
-This inventory preserves the capabilities named in the goal objective while the delivery plan is being shaped. It is a scope map, not an implementation commitment or an exhaustive list of every possible format.
+This inventory reconciles the capabilities named in the goal objective with the shipped application. It is a scope map, not an exhaustive list of every possible format.
 
 ## Current repository baseline
 
 | Area | Present in the current source |
 | --- | --- |
-| Image | Static JPEG, PNG, WebP, BMP, TIFF: convert, resize, compress, rotate; batch processing; image to PDF |
-| PDF | Merge, split by page ranges, compress, rotate, PDF pages to JPG |
+| Image | Static JPEG, PNG, GIF, WebP, BMP and TIFF conversion; SVG, PSD, HEIC/HEIF and camera RAW to raster; resize, compress, rotate, crop, watermark, photo editing and privacy tools; batch processing; image to PDF |
+| PDF | Editing, merge, split, organize, security, OCR, summary, offline PT-BR/English translation, office conversion, HTML rendering and image workflows |
 | App | Self-hosted Docker Compose web and worker, local SQLite queue and files, Portuguese (Brazil) and English UI, no external analytics |
-| Document conversion | No Office document conversion, OCR, PDF/A, PDF editing, or HTML rendering |
+| Document conversion | Local Office, PDF/A, PDF, HTML and image conversion pipelines; some require the isolated Linux worker or optional local tools |
 
 ## PDF capabilities named in the objective
 
@@ -37,7 +37,7 @@ This inventory preserves the capabilities named in the goal objective while the 
 | Compare PDFs | Implemented as a visual page comparison |
 | Redact PDF | Implemented with safeguards for tagged content |
 | Fillable PDF forms | Implemented for existing fields |
-| AI summary / translation | Local extractive PDF summary is implemented; machine translation remains planned as an offline self-hosted model |
+| AI summary / translation | Local extractive PDF summary and offline PT-BR/English PDF text translation are implemented; scanned documents require OCR first |
 | PDF to Markdown | Implemented |
 
 ## Image capabilities named in the objective
@@ -48,7 +48,9 @@ This inventory preserves the capabilities named in the goal objective while the 
 | Resize image | Implemented |
 | Crop image | Implemented |
 | Convert to JPG | Implemented for supported static raster inputs, including PNG, WebP, BMP and TIFF |
-| Convert from JPG to PNG or GIF; create animated GIF | Implemented for PNG and animated GIF output |
+| Generic static raster conversion | JPEG, PNG, static GIF, WebP, BMP and TIFF inputs convert to JPEG, PNG, WebP or one-frame GIF outputs |
+| Convert from JPG to PNG or GIF; create animated GIF | Implemented for PNG and animated GIF output from ordered JPEG files |
+| Convert from SVG, PSD, HEIC/HEIF, and camera RAW | Implemented with local bounded converters; output formats and size limits are listed in the bilingual READMEs |
 | Photo editor (text, effects, frames, stickers) | Implemented in stages: text, filters, and frames; stickers are also available as a separate editor stage |
 | Image upscaling | Implemented locally without AI |
 | Background removal | Implemented locally |

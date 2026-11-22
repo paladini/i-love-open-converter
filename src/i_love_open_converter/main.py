@@ -1204,6 +1204,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             output_format = str(parsed_options.get("format", default_format)).upper()
             if operation == "image.from_jpg":
                 allowed_formats = {"PNG", "GIF"}
+            elif operation == "image.convert":
+                allowed_formats = {"JPEG", "JPG", "PNG", "GIF", "WEBP"}
             elif operation == "image.from_heic":
                 allowed_formats = {"JPEG", "JPG"}
             elif operation == "image.from_raw":
