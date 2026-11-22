@@ -25,6 +25,7 @@ dependencies = [
   "ctranslate2==4.9.0",
   "sentencepiece==0.2.3",
   "psd-tools[composite]==1.27.0",
+  "rawpy==0.28.0",
 ]
 
 [dependency-groups]

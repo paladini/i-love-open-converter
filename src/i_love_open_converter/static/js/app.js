@@ -8,10 +8,11 @@ const messages = {
     toolsEyebrow: "A CAIXA DE FERRAMENTAS", toolsTitle: "O que vamos transformar?", toolsNote: "Escolha uma ferramenta para começar",
     categoryLabel: "Categorias de ferramentas", categoryAll: "Todas", categoryOrganize: "Organizar PDF", categoryOptimize: "Otimizar PDF", categoryConvert: "Converter PDF", categoryEdit: "Editar PDF", categorySecurity: "Segurança PDF", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "Esta categoria será incluída em uma próxima etapa.",
     categoryWorkflows: "Fluxos de trabalho", imageOptimize: "Otimizar", imageCreate: "Criar", imageEdit: "Editar", imageConvert: "Converter", imageSecurity: "Segurança", comingSoon: "Em breve",
-    imageGroup: "Imagens", imageCount: "17 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
+    imageGroup: "Imagens", imageCount: "18 disponíveis", pdfGroup: "PDF", pdfCount: "31 ferramentas", convertCardTitle: "Converter para JPG",
     fromSvgTitle: "Converter de SVG", fromSvgHint: "PNG, JPG ou WebP até 40 MP", fromSvgNote: "Conversão local de SVG estático. Scripts, animações e recursos externos são recusados.", svgFileTypes: "SVG estático · até 10 MiB", svgUnavailable: "A conversão de SVG exige um worker Linux isolado.",
     fromPsdTitle: "Converter de PSD", fromPsdHint: "PNG, JPG ou WebP até 40 MP", fromPsdNote: "O PSD é achatado localmente em uma imagem. Documentos com objetos inteligentes não são aceitos.", psdFileTypes: "PSD · RGB ou escala de cinza, 8 bits · até {maxFileMb} MB · 40 MP", psdUnavailable: "A conversão de PSD exige um worker Linux isolado.",
     fromHeicTitle: "Converter de HEIC", fromHeicHint: "JPG local · até 40 MP e 32.768 px por lado", fromHeicNote: "Conversão HEIC/HEIF local para JPG. Cada arquivo deve conter uma imagem estática de até 40 MP e 32.768 px por lado.", heicFileTypes: "HEIC, HEIF ou HIF · até {maxFileMb} MB · 40 MP · 32.768 px por lado", heicUnavailable: "A conversão de HEIC exige um worker Linux isolado com o decodificador local.", heicTooLarge: "A imagem HEIC/HEIF excede o limite de 40 MP ou a dimensão máxima.",
+    fromRawTitle: "Converter de RAW", fromRawHint: "JPG local · até 40 MP e 32.768 px por lado", fromRawNote: "Conversão local de RAW para JPG. O suporte depende do modelo da câmera; imagens acima de 40 MP ou 32.768 px por lado são recusadas.", rawFileTypes: "RAW de câmera · limite de 100 MiB por arquivo · formatos: .3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw", rawUnavailable: "A conversão RAW exige um worker Linux isolado com o decodificador local.", rawTooLarge: "A imagem RAW excede o limite de 40 MP ou a dimensão máxima.",
     convertTitle: "Converter imagem", convertHint: "PNG, JPG, WebP e mais", fromJpgTitle: "Converter de JPG", fromJpgHint: "Crie PNGs ou um GIF animado", resizeTitle: "Redimensionar imagem",
     resizeHint: "Defina largura e altura", compressImageTitle: "Comprimir imagem", compressHint: "Controle a qualidade final",
     rotateImageTitle: "Girar imagem", rotateHint: "90°, 180° ou 270°", editorTitle: "Editor de fotos", editorHint: "Texto, efeitos, molduras e stickers",
@@ -62,10 +63,11 @@ const messages = {
     toolsEyebrow: "THE TOOLBOX", toolsTitle: "What shall we transform?", toolsNote: "Choose a tool to get started",
     categoryLabel: "Tool categories", categoryAll: "All", categoryOrganize: "Organize PDF", categoryOptimize: "Optimize PDF", categoryConvert: "Convert PDF", categoryEdit: "Edit PDF", categorySecurity: "PDF security", categoryIntelligence: "PDF Intelligence", categoryComingSoon: "This category will be included in a future stage.",
     categoryWorkflows: "Workflows", imageOptimize: "Optimize", imageCreate: "Create", imageEdit: "Edit", imageConvert: "Convert", imageSecurity: "Security", comingSoon: "Coming soon",
-    imageGroup: "Images", imageCount: "17 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
+    imageGroup: "Images", imageCount: "18 available", pdfGroup: "PDF", pdfCount: "31 tools", convertCardTitle: "Convert to JPG",
     fromSvgTitle: "Convert from SVG", fromSvgHint: "PNG, JPG, or WebP up to 40 MP", fromSvgNote: "Local static SVG conversion. Scripts, animations, and external resources are rejected.", svgFileTypes: "Static SVG · up to 10 MiB", svgUnavailable: "SVG conversion requires an isolated Linux worker.",
     fromPsdTitle: "Convert from PSD", fromPsdHint: "PNG, JPG, or WebP up to 40 MP", fromPsdNote: "PSD files are flattened into one image locally. Documents with smart objects are not supported.", psdFileTypes: "PSD · RGB or grayscale, 8-bit · up to {maxFileMb} MB · 40 MP", psdUnavailable: "PSD conversion requires an isolated Linux worker.",
     fromHeicTitle: "Convert from HEIC", fromHeicHint: "Local JPG · up to 40 MP and 32,768 px on either side", fromHeicNote: "Local HEIC/HEIF to JPG conversion. Each file must contain one static image up to 40 MP and 32,768 px on either side.", heicFileTypes: "HEIC, HEIF, or HIF · up to {maxFileMb} MB · 40 MP · 32,768 px on either side", heicUnavailable: "HEIC conversion requires an isolated Linux worker with the local decoder.", heicTooLarge: "The HEIC/HEIF image is over the 40 MP or maximum dimension limit.",
+    fromRawTitle: "Convert from RAW", fromRawHint: "Local JPG · up to 40 MP and 32,768 px on either side", fromRawNote: "Local RAW to JPG conversion. Support depends on the camera model; images over 40 MP or 32,768 px on either side are rejected.", rawFileTypes: "Camera RAW · 100 MiB per file · formats: .3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw", rawUnavailable: "RAW conversion requires an isolated Linux worker with the local decoder.", rawTooLarge: "The RAW image is over the 40 MP or maximum dimension limit.",
     convertTitle: "Convert image", convertHint: "PNG, JPG, WebP and more", fromJpgTitle: "Convert from JPG", fromJpgHint: "Create PNG files or an animated GIF", resizeTitle: "Resize image",
     resizeHint: "Set width and height", compressImageTitle: "Compress image", compressHint: "Control output quality",
     rotateImageTitle: "Rotate image", rotateHint: "90°, 180°, or 270°", editorTitle: "Photo editor", editorHint: "Text, effects, frames, and stickers",
@@ -190,6 +192,8 @@ function applyLanguage(language) {
           ? "psdFileTypes"
         : currentOperation === "image.from_heic"
           ? "heicFileTypes"
+          : currentOperation === "image.from_raw"
+            ? "rawFileTypes"
           : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   if (currentErrorKey) jobStatusText.textContent = t(currentErrorKey);
@@ -219,7 +223,7 @@ function updateFormatTarget() {
 function syncOutputFormats(operation) {
   const allowed = operation === "image.from_jpg"
     ? ["PNG", "GIF"]
-    : operation === "image.from_heic"
+    : ["image.from_heic", "image.from_raw"].includes(operation)
       ? ["JPEG"]
       : ["PNG", "JPEG", "WEBP"];
   for (const option of outputFormat.options) {
@@ -234,6 +238,7 @@ const operationTitles = {
   "image.from_svg": "fromSvgTitle",
   "image.from_psd": "fromPsdTitle",
   "image.from_heic": "fromHeicTitle",
+  "image.from_raw": "fromRawTitle",
   "image.watermark": "watermarkImageTitle",
   "image.resize": "resizeTitle",
   "image.compress": "compressImageTitle",
@@ -273,6 +278,7 @@ function selectTool(operation) {
   if (operation === "image.from_svg") outputFormat.value = "PNG";
   if (operation === "image.from_psd") outputFormat.value = "PNG";
   if (operation === "image.from_heic") outputFormat.value = "JPEG";
+  if (operation === "image.from_raw") outputFormat.value = "JPEG";
   if (["image.blur_plates", "image.blur_regions"].includes(operation)) outputFormat.value = "PNG";
   document.querySelector('#extract-images-link').hidden = operation !== 'pdf.to_image';
   document.querySelectorAll("[data-tool]").forEach((tool) => {
@@ -307,12 +313,15 @@ function selectTool(operation) {
   document.querySelector('[data-option="svg-note"]').hidden = operation !== "image.from_svg";
   document.querySelector('[data-option="psd-note"]').hidden = operation !== "image.from_psd";
   document.querySelector('[data-option="heic-note"]').hidden = operation !== "image.from_heic";
+  document.querySelector('[data-option="raw-note"]').hidden = operation !== "image.from_raw";
   document.querySelectorAll('[data-option^="editor-"]').forEach((field) => {
     field.hidden = operation !== "image.editor";
   });
   formatRow.hidden = operation.startsWith("pdf.") || operation === "image.to_pdf";
   const isPdf = operation.startsWith("pdf.");
-  fileInput.accept = operation === "image.from_heic"
+  fileInput.accept = operation === "image.from_raw"
+    ? ".3fr,.ari,.arw,.bay,.cap,.cr2,.cr3,.crw,.dcr,.dcs,.dng,.drf,.eip,.erf,.fff,.gpr,.iiq,.k25,.kdc,.mdc,.mef,.mos,.mrw,.nef,.nrw,.orf,.pef,.ptx,.raf,.raw,.rw2,.rwl,.sr2,.srf,.srw"
+    : operation === "image.from_heic"
     ? ".heic,.heif,.hif,image/heic,image/heif"
     : operation === "image.from_psd"
       ? ".psd,image/vnd.adobe.photoshop"
@@ -326,7 +335,7 @@ function selectTool(operation) {
   fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions" && operation !== "image.from_svg" && operation !== "image.from_psd");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
-  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : operation === "image.from_svg" ? "svgFileTypes" : operation === "image.from_psd" ? "psdFileTypes" : operation === "image.from_heic" ? "heicFileTypes" : "fileTypes";
+  fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : operation === "image.from_svg" ? "svgFileTypes" : operation === "image.from_psd" ? "psdFileTypes" : operation === "image.from_heic" ? "heicFileTypes" : operation === "image.from_raw" ? "rawFileTypes" : "fileTypes";
   fileTypes.textContent = t(fileTypes.dataset.i18n).replace("{maxFileMb}", fileTypes.dataset.maxFileMb);
   document.querySelector("#converter-title").textContent = title;
   fileInput.value = "";
@@ -355,14 +364,14 @@ const categoryOperations = {
   workflows: [],
   organize: ["pdf.merge", "pdf.split", "pdf.rotate"],
   optimize: ["pdf.compress", "image.compress"],
-  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.from_jpg", "image.resize", "image.rotate"],
+  convert: ["pdf.to_image", "image.to_pdf", "image.convert", "image.from_jpg", "image.from_raw", "image.resize", "image.rotate"],
   edit: ["pdf.watermark", "pdf.page_numbers", "image.watermark"],
   security: [],
   intelligence: [],
-  images: ["image.convert", "image.from_jpg", "image.from_svg", "image.from_psd", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background", "image.blur_faces", "image.editor", "image.crop", "image.watermark"],
+  images: ["image.convert", "image.from_jpg", "image.from_svg", "image.from_psd", "image.from_heic", "image.from_raw", "image.resize", "image.compress", "image.rotate", "image.to_pdf", "image.meme", "image.upscale", "image.remove_background", "image.blur_faces", "image.editor", "image.crop", "image.watermark"],
   "img-optimize": ["image.resize", "image.compress", "image.rotate"],
   "img-edit": ["image.crop", "image.watermark", "image.editor", "image.remove_background"],
-  "img-convert": ["image.convert", "image.from_jpg", "image.from_svg", "image.from_psd"],
+  "img-convert": ["image.convert", "image.from_jpg", "image.from_svg", "image.from_psd", "image.from_heic", "image.from_raw"],
   "img-create": ["image.meme", "image.upscale"],
   "img-security": ["image.blur_faces", "image.blur_plates", "image.blur_regions"],
 };
@@ -485,7 +494,7 @@ function apiErrorKey(code) {
     too_many_files: "tooManyFiles",
     crop_out_of_bounds: "cropOutOfBounds", no_plates_detected: "noPlatesDetected",
     svg_unavailable: "svgUnavailable", psd_unavailable: "psdUnavailable",
-    heic_unavailable: "heicUnavailable", image_too_large: "heicTooLarge",
+    heic_unavailable: "heicUnavailable", raw_unavailable: "rawUnavailable", image_too_large: "heicTooLarge", raw_image_too_large: "rawTooLarge",
   };
   return codes[code] || "genericError";
 }

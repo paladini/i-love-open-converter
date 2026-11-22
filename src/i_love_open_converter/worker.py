@@ -65,6 +65,13 @@ from .psd_ops import (
     PsdUnavailableError,
     convert_psd_to_image,
 )
+from .raw_ops import (
+    InvalidRawError,
+    RawConversionError,
+    RawImageTooLargeError,
+    RawUnavailableError,
+    convert_raw_to_jpeg,
+)
 from .svg_ops import (
     InvalidSvgError,
     SvgConversionError,
@@ -98,6 +105,7 @@ def process_one_job(settings: Settings) -> bool:
             "image.convert",
             "image.from_jpg",
             "image.from_heic",
+            "image.from_raw",
             "image.from_psd",
             "image.from_svg",
             "image.resize",
@@ -167,6 +175,12 @@ def process_one_job(settings: Settings) -> bool:
                         )
                     elif job["operation"] == "image.from_heic":
                         content_type, size_bytes = convert_heic_to_image(
+                            source,
+                            destination,
+                            output_format,
+                        )
+                    elif job["operation"] == "image.from_raw":
+                        content_type, size_bytes = convert_raw_to_jpeg(
                             source,
                             destination,
                             output_format,
@@ -398,6 +412,42 @@ def process_one_job(settings: Settings) -> bool:
             job_id,
             "conversion_failed",
             "Não foi possível converter este HEIC/HEIF dentro dos limites locais.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except RawImageTooLargeError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "raw_image_too_large",
+            "A imagem RAW excede o limite de 40 MP ou a dimensão máxima.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except InvalidRawError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "invalid_file",
+            "O RAW está inválido, truncado ou não é compatível.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except RawUnavailableError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "raw_unavailable",
+            "A conversão RAW exige um worker Linux isolado com o decodificador local.",
+            settings.job_retention_hours,
+        )
+        shutil.rmtree(job_dir / "output", ignore_errors=True)
+    except RawConversionError:
+        mark_failed(
+            settings.database_path,
+            job_id,
+            "conversion_failed",
+            "Não foi possível converter este RAW dentro dos limites locais.",
             settings.job_retention_hours,
         )
         shutil.rmtree(job_dir / "output", ignore_errors=True)
