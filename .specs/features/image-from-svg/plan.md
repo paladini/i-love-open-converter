@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-21 - user: “Pode seguir nas implementações dde acordo com o [$tlc-spec-lean](<C:\Users\Fernando Paladini\.codex\skills\tlc-spec-lean\SKILL.md>) até o final. Vá abrindo PRs conforme precisar e vá seguindo tudo da implementação”
 **Settled mid-build:** none
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at afdaddf.
+**Fix pass:** done - Added API regression tests for a missing SVG, multiple SVG uploads, and uploads over 10 MiB; each asserts rejection before any job is queued.
 
 ## Problem
 

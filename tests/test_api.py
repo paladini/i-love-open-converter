@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from zipfile import ZipFile
@@ -2522,3 +2523,48 @@ def test_svg_conversion_rejects_invalid_request_before_queue(
         )
     assert response.status_code == status
     assert response.json()["error"]["code"] == error_code
+
+
+def test_svg_missing_upload_is_rejected_before_queue(settings):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            files=[
+                ("operation", (None, "image.from_svg")),
+                ("options", (None, '{"format":"PNG"}')),
+            ],
+        )
+    assert response.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_svg_multiple_uploads_are_rejected_before_queue(settings):
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.from_svg", "options": '{"format":"PNG"}'},
+            files=[
+                ("files", ("first.svg", svg, "image/svg+xml")),
+                ("files", ("second.svg", svg, "image/svg+xml")),
+            ],
+        )
+    assert response.status_code == 422
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
+
+
+def test_svg_over_ten_mib_is_rejected_before_queue(settings):
+    large_settings = replace(settings, max_file_size_mb=20, max_total_upload_mb=22)
+    oversized = b" " * (10 * 1024 * 1024 + 1)
+    with TestClient(create_app(large_settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": "image.from_svg", "options": '{"format":"PNG"}'},
+            files={"files": ("drawing.svg", oversized, "image/svg+xml")},
+        )
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "file_too_large"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0
