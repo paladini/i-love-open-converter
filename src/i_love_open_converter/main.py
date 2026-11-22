@@ -36,12 +36,14 @@ from .image_ops import (
     INPUT_FORMATS,
     MAX_BACKGROUND_REMOVAL_PIXELS,
     MAX_FACE_BLUR_PIXELS,
+    MAX_PRIVACY_BLUR_PIXELS,
     MAX_UPSCALE_PIXELS,
     InvalidImageError,
     InvalidImageOptionsError,
     UnsupportedImageError,
     inspect_image,
     inspect_image_dimensions,
+    validate_image_blur_regions,
     validate_image_crop_options,
 )
 from .ocr_ops import MAX_OCR_PAGES
@@ -66,8 +68,6 @@ PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
 ]
 IMAGE_COMING_SOON = [
-    ("Desfocar placas", "Blur license plates", "img-security", 14),
-    ("Desfocar objetos", "Blur objects", "img-security", 15),
     ("Converter de SVG", "Convert from SVG", "img-convert", 16),
     ("Converter de PSD", "Convert from PSD", "img-convert", 17),
     ("Converter de HEIC/RAW", "Convert from HEIC/RAW", "img-convert", 18),
@@ -529,6 +529,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.upscale",
             "image.remove_background",
             "image.blur_faces",
+            "image.blur_plates",
+            "image.blur_regions",
             "image.editor",
             "image.crop",
             "image.watermark",
@@ -741,12 +743,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.upscale",
             "image.remove_background",
             "image.blur_faces",
+            "image.blur_plates",
+            "image.blur_regions",
             "image.editor",
             "image.from_jpg",
             "image.crop",
             "image.watermark",
         }
         if operation == "image.editor" and len(files) != 1:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Selecione uma imagem."}},
+            )
+        if operation in {"image.blur_plates", "image.blur_regions"} and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione uma imagem."}},
@@ -1229,6 +1238,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     status_code=422,
                     detail={"error": {"code": "invalid_options", "message": "Recorte inválido."}},
                 ) from exc
+        if operation == "image.blur_plates" and set(parsed_options) - {"format"}:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
+            )
+        if operation == "image.blur_regions":
+            if (
+                set(parsed_options) - {"format", "regions"}
+                or "regions" not in parsed_options
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Selecione ao menos uma região para desfocar.",
+                        }
+                    },
+                )
+            validated_options["regions"] = parsed_options["regions"]
         if operation == "image.rotate":
             degrees = parsed_options.get("degrees")
             if isinstance(degrees, bool) or str(degrees) not in {"90", "180", "270"}:
@@ -1694,6 +1723,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                     }
                                 },
                             )
+                    if operation in {"image.blur_plates", "image.blur_regions"}:
+                        try:
+                            width, height = inspect_image_dimensions(destination)
+                        except InvalidImageError as exc:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={"error": {"code": "invalid_file"}},
+                            ) from exc
+                        if width * height > MAX_PRIVACY_BLUR_PIXELS:
+                            raise HTTPException(
+                                status_code=422,
+                                detail={
+                                    "error": {
+                                        "code": "invalid_options",
+                                        "message": "A imagem excede o limite de 40 MP.",
+                                    }
+                                },
+                            )
+                        if operation == "image.blur_regions":
+                            try:
+                                validate_image_blur_regions(
+                                    validated_options.get("regions"), width, height
+                                )
+                            except InvalidImageOptionsError as exc:
+                                raise HTTPException(
+                                    status_code=422,
+                                    detail={
+                                        "error": {
+                                            "code": "invalid_options",
+                                            "message": "As regiões de desfoque são inválidas.",
+                                        }
+                                    },
+                                ) from exc
                 stored.append(
                     {
                         "name": original_name,

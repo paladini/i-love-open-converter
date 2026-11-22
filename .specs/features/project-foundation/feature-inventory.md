@@ -56,7 +56,7 @@ This inventory preserves the capabilities named in the goal objective while the 
 | Meme generator | Implemented |
 | Rotate image | Implemented |
 | HTML page to image | Implemented for local HTML |
-| Face/plate/object blur | Face blur is implemented; plate and arbitrary-object blur are deferred |
+| Face/plate/object blur | Face and local OpenCV plate blur are implemented; arbitrary objects can be blurred with manually selected preview regions (up to 20) |
 
 ## Cross-cutting requirement
 
