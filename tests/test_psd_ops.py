@@ -1,0 +1,244 @@
+from __future__ import annotations
+
+import json
+import sqlite3
+from io import BytesIO
+
+import pytest
+from fastapi.testclient import TestClient
+from PIL import Image
+from psd_tools import PSDImage
+
+from i_love_open_converter import psd_ops
+from i_love_open_converter.main import BASE_DIR, create_app
+from i_love_open_converter.psd_ops import (
+    InvalidPsdError,
+    PsdUnavailableError,
+    contains_smart_objects,
+    convert_psd_to_image,
+    inspect_psd,
+)
+from i_love_open_converter.worker import process_one_job
+
+
+def _header(
+    width: int = 8,
+    height: int = 6,
+    *,
+    channels: int = 3,
+    depth: int = 8,
+    color_mode: int = 3,
+    version: int = 1,
+) -> bytes:
+    return (
+        b"8BPS"
+        + version.to_bytes(2, "big")
+        + bytes(6)
+        + channels.to_bytes(2, "big")
+        + height.to_bytes(4, "big")
+        + width.to_bytes(4, "big")
+        + depth.to_bytes(2, "big")
+        + color_mode.to_bytes(2, "big")
+    )
+
+
+def _psd(path, *, color="red", size=(8, 6)):
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+    document = PSDImage.frompil(canvas)
+    canvas.close()
+    overlay = Image.new("RGBA", size, (0, 0, 0, 0))
+    overlay.paste((255, 0, 0, 255), (0, 0, size[0] // 2, size[1]))
+    document.create_pixel_layer(overlay, name="Visible pixels")
+    document.save(path)
+    overlay.close()
+    return path
+
+
+def _create_job(client, filename, content, output_format):
+    return client.post(
+        "/api/jobs",
+        data={
+            "operation": "image.from_psd",
+            "options": json.dumps({"format": output_format}),
+        },
+        files={"files": (filename, content, "image/vnd.adobe.photoshop")},
+    )
+
+
+def test_inspect_psd_reads_bounded_header_without_parsing_payload(tmp_path):
+    source = tmp_path / "header.psd"
+    source.write_bytes(_header() + b"not a complete document")
+
+    assert inspect_psd(source) == (8, 6)
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        b"not a PSD".ljust(26, b"\0"),
+        _header(version=2),
+        _header(depth=16),
+        _header(color_mode=4, channels=4),
+        _header(width=8_000, height=8_000),
+        _header(width=30_001, height=1),
+    ],
+)
+def test_inspect_psd_rejects_unsupported_header(tmp_path, header):
+    source = tmp_path / "invalid.psd"
+    source.write_bytes(header)
+
+    with pytest.raises(InvalidPsdError):
+        inspect_psd(source)
+
+
+@pytest.mark.parametrize("output_format", ["PNG", "JPEG", "WEBP"])
+def test_psd_conversion_creates_one_bounded_raster_artifact(
+    settings, tmp_path, monkeypatch, output_format
+):
+    source = _psd(tmp_path / "source.psd")
+    monkeypatch.setattr(psd_ops, "office_isolated", lambda: True)
+
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(client, "source.psd", source.read_bytes(), output_format)
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(response.json()["status_url"] + "/download")
+        with sqlite3.connect(settings.database_path) as connection:
+            stored = connection.execute(
+                "SELECT operation, options_json FROM conversion_jobs WHERE id = ?",
+                (response.json()["job_id"],),
+            ).fetchone()
+
+    assert stored[0] == "image.from_psd"
+    assert json.loads(stored[1])["width"] == 8
+    assert download.status_code == 200
+    assert download.headers["content-type"] == {
+        "PNG": "image/png",
+        "JPEG": "image/jpeg",
+        "WEBP": "image/webp",
+    }[output_format]
+    with Image.open(BytesIO(download.content)) as output:
+        assert output.format == output_format
+        assert output.size == (8, 6)
+        rgba = output.convert("RGBA")
+        red_pixel = rgba.getpixel((0, 0))
+        assert red_pixel[0] > 240 and red_pixel[1] < 15 and red_pixel[2] < 15
+        assert red_pixel[3] == 255
+        if output_format in {"PNG", "WEBP"}:
+            assert rgba.getpixel((7, 0))[3] == 0
+        if output_format == "JPEG":
+            assert all(channel > 245 for channel in rgba.getpixel((7, 0))[:3])
+
+
+@pytest.mark.parametrize(
+    ("filename", "content", "output_format"),
+    [
+        ("wrong.png", _header(), "PNG"),
+        ("broken.psd", b"not a PSD file".ljust(26, b"\0"), "PNG"),
+        ("wrong.psd", _header(depth=16), "PNG"),
+        ("too-large-canvas.psd", _header(width=8_000, height=8_000), "PNG"),
+        ("drawing.psd", _header(), "GIF"),
+    ],
+)
+def test_invalid_psd_request_is_rejected_before_job_queue(
+    settings, filename, content, output_format
+):
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(client, filename, content, output_format)
+        with sqlite3.connect(settings.database_path) as connection:
+            count = connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
+
+    assert response.status_code in {415, 422}
+    assert count == 0
+
+
+def test_psd_requires_exactly_one_file(settings):
+    psd = _psd(settings.data_dir.parent / "single.psd")
+    with TestClient(create_app(settings)) as client:
+        missing = client.post(
+            "/api/jobs",
+            files=[
+                ("operation", (None, "image.from_psd")),
+                ("options", (None, '{"format":"PNG"}')),
+            ],
+        )
+        multiple = client.post(
+            "/api/jobs",
+            data={"operation": "image.from_psd", "options": '{"format":"PNG"}'},
+            files=[
+                ("files", ("one.psd", psd.read_bytes(), "image/vnd.adobe.photoshop")),
+                ("files", ("two.psd", psd.read_bytes(), "image/vnd.adobe.photoshop")),
+            ],
+        )
+        with sqlite3.connect(settings.database_path) as connection:
+            count = connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
+
+    assert missing.status_code in {400, 422}
+    assert multiple.status_code == 422
+    assert count == 0
+
+
+def test_psd_upload_over_configured_file_limit_is_rejected_before_queue(settings):
+    oversized = _header() + bytes(settings.max_file_size_bytes)
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(client, "oversized.psd", oversized, "PNG")
+        with sqlite3.connect(settings.database_path) as connection:
+            count = connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
+
+    assert response.status_code == 413
+    assert count == 0
+
+
+def test_smart_object_layers_are_detected_without_reading_linked_contents():
+    class Layer:
+        def __init__(self, kind, children=()):
+            self.kind = kind
+            self.children = children
+
+        def is_group(self):
+            return self.kind == "group"
+
+        def __iter__(self):
+            return iter(self.children)
+
+    document = [Layer("pixel"), Layer("group", [Layer("smartobject")])]
+
+    assert contains_smart_objects(document)
+    assert not contains_smart_objects([Layer("pixel")])
+
+
+def test_psd_renderer_requires_isolated_linux_worker(tmp_path, monkeypatch):
+    source = _psd(tmp_path / "source.psd")
+    destination = tmp_path / "result.png"
+    monkeypatch.setattr(psd_ops, "office_isolated", lambda: False)
+
+    with pytest.raises(PsdUnavailableError):
+        convert_psd_to_image(source, destination, "PNG", 8, 6)
+
+    assert not destination.exists()
+
+
+def test_truncated_psd_fails_without_download_or_partial_output(settings, monkeypatch):
+    monkeypatch.setattr(psd_ops, "office_isolated", lambda: True)
+    with TestClient(create_app(settings)) as client:
+        response = _create_job(client, "truncated.psd", _header(), "PNG")
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"])
+        download = client.get(response.json()["status_url"] + "/download")
+
+    assert status.json()["state"] == "failed"
+    assert download.status_code == 409
+    output_dir = settings.jobs_dir / response.json()["job_id"] / "output"
+    assert not output_dir.exists()
+
+
+def test_psd_tool_is_available_in_catalog_and_single_file_form(settings):
+    with TestClient(create_app(settings)) as client:
+        page = client.get("/")
+
+    assert 'data-tool="image.from_psd"' in page.text
+    assert 'data-i18n="fromPsdTitle">Converter de PSD' in page.text
+    script = (BASE_DIR / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    assert 'fromPsdTitle: "Convert from PSD"' in script
+    assert 'psdFileTypes: "PSD · RGB or grayscale, 8-bit · up to {maxFileMb} MB · 40 MP"' in script

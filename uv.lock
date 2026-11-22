@@ -1,6 +1,30 @@
 version = 1
 revision = 3
 requires-python = "==3.14.*"
+resolution-markers = [
+    "sys_platform != 'win32'",
+    "sys_platform == 'win32'",
+]
+
+[[package]]
+name = "aggdraw"
+version = "1.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/bf/4876fb82a906e9303392235e9fe382130b649c0ee4faa7fdb25596c26dff/aggdraw-1.4.1.tar.gz", hash = "sha256:e21d6b77afeeffa259b898d652295757fd35f15a9e11a24823c0d7ca63385c83", size = 263051, upload-time = "2025-12-03T16:33:17.818Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/e4/17b3832e683e3bc957834df68e1d80ec1adfcf223ebd277e13034e7f123d/aggdraw-1.4.1-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:fed7bbd047efa63a246c513c59f068d351f62a07461d37cc2305e9502f359ec5", size = 485325, upload-time = "2025-12-03T16:33:04.103Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/33/c2ac205aa8123227e86afec0956940f8b4f8739fd64052d48661c030299f/aggdraw-1.4.1-cp314-cp314-macosx_14_0_x86_64.whl", hash = "sha256:e47e6a5340127cfe70f441f6821c24e248b6911460d149a891e9569fe139833e", size = 520576, upload-time = "2025-12-03T16:33:05.425Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/e4/0d50e126a7e0fea3ef8eafe82f3addd255bb9e2955c43d8e2c6183e8a443/aggdraw-1.4.1-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:898027887607842532ff6635c3c253212665270e95b8616326246f0505db6422", size = 1014621, upload-time = "2025-12-03T16:33:06.73Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/8d/2ebea795b868f25f5d3f27895866d596a25fb8e9f742b10058c23d238f84/aggdraw-1.4.1-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e1cb31c40145adbb34d0830bfcd15ab668426538dac4e11b18b803289fa1033f", size = 1029268, upload-time = "2025-12-03T16:33:08.422Z" },
+    { url = "https://files.pythonhosted.org/packages/72/72/69f86def3a3d5e754937c226997fc131d6c2ac5a967682447f3e920fce33/aggdraw-1.4.1-cp314-cp314-win_amd64.whl", hash = "sha256:7c5f4314144abb1ebbb7af1e70fad4742e07303ee4cefde90a06d3313baba81e", size = 48959, upload-time = "2025-12-03T16:33:09.417Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/b0/16d44c1778b09e22efca7cdaa77296221690799e4b0a45185a66c8d01537/aggdraw-1.4.1-cp314-cp314-win_arm64.whl", hash = "sha256:2d3b3a83c11521f0c118c35e82b3eafc6eba274cba23580b8e889d913de0d3b4", size = 39937, upload-time = "2025-12-03T16:33:10.21Z" },
+    { url = "https://files.pythonhosted.org/packages/be/4e/57ab208c13f7d605ff4c9f57f83b17358544ad05d564e64af2efb6afb1b7/aggdraw-1.4.1-cp314-cp314t-macosx_14_0_arm64.whl", hash = "sha256:61f6fc11200c7a3fed0907fef4f6f8bcae900605a4fa320aa5bcd3b40eb3a619", size = 485755, upload-time = "2025-12-03T16:33:11.177Z" },
+    { url = "https://files.pythonhosted.org/packages/7a/15/9f99ed2ee67c15dc43a9f3c0c3ae15e51641b642a3edfca17c14016626e8/aggdraw-1.4.1-cp314-cp314t-macosx_14_0_x86_64.whl", hash = "sha256:96a411be593ad7cada3bcd0ec6f7c8e3c522a7df4d40121a17cfadf2c379a1f3", size = 521136, upload-time = "2025-12-03T16:33:12.325Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/91/dda5f1e7535ff988fb0e8e21d83f26befa30524b23b4bffbff2af38e4b42/aggdraw-1.4.1-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:bc19beac0b84260aa2ca807b861881a2382af9319127da59d6ac6ad6c07a102c", size = 1022773, upload-time = "2025-12-03T16:33:13.636Z" },
+    { url = "https://files.pythonhosted.org/packages/84/fc/e960aedba069949a022675311e086acf6316a7c820fb9ba03524fcb1bfc1/aggdraw-1.4.1-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:27ad13f7c88a01ba50954e0a036de7211f2f79822bffd9d078d8d5603a956083", size = 1036828, upload-time = "2025-12-03T16:33:14.882Z" },
+    { url = "https://files.pythonhosted.org/packages/94/07/a5737fbceae13c127d6dd352592c1d1b3d88e3bda818efba23f2d9a1a0d2/aggdraw-1.4.1-cp314-cp314t-win_amd64.whl", hash = "sha256:3fa04a12b355e1697719369289d6e87f7b8eddeadf0bc27e3a0561162daf45eb", size = 49772, upload-time = "2025-12-03T16:33:15.936Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/c3/92f79733ec52f2d64a7ba88c14c5c21ad30347b335e06b4b7004414ed06d/aggdraw-1.4.1-cp314-cp314t-win_arm64.whl", hash = "sha256:8016cf9d04b18060ec40da6040a467fd5001e2c6b7496b18503db96d0c8e9d4a", size = 40327, upload-time = "2025-12-03T16:33:16.847Z" },
+]
 
 [[package]]
 name = "annotated-doc"
@@ -451,6 +475,7 @@ dependencies = [
     { name = "opencv-python-headless" },
     { name = "pdf2docx" },
     { name = "pillow" },
+    { name = "psd-tools", extra = ["composite"] },
     { name = "pymupdf" },
     { name = "pypdf" },
     { name = "python-multipart" },
@@ -480,6 +505,7 @@ requires-dist = [
     { name = "opencv-python-headless", specifier = "==4.14.0.94" },
     { name = "pdf2docx", specifier = "==0.5.13" },
     { name = "pillow", specifier = "==13.0.0" },
+    { name = "psd-tools", extras = ["composite"], specifier = "==1.27.0" },
     { name = "pymupdf", specifier = "==2.1" },
     { name = "pypdf", specifier = "==7.1.1" },
     { name = "python-multipart", specifier = "==0.0.34" },
@@ -1006,6 +1032,40 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/fc/1b/dcc64f358fcb51811b58ae40b3d28f820725f116d86487cc20bd4b130701/protobuf-7.36.2-cp310-abi3-win32.whl", hash = "sha256:912c1221170e16c08d1f086762f563dd61ff83c18b5fa6652952dfaded66f728", size = 442998, upload-time = "2026-09-17T20:07:55.826Z" },
     { url = "https://files.pythonhosted.org/packages/8a/55/b77bda4e5e5f5971fb51b07663694690e9afdb9402136c16a522bd621cad/protobuf-7.36.2-cp310-abi3-win_amd64.whl", hash = "sha256:a300819d441e078a5608c0d3c709796bb548136058fda017ae51d425b44fd353", size = 456514, upload-time = "2026-09-17T20:07:57.188Z" },
     { url = "https://files.pythonhosted.org/packages/e4/04/d52c7016b04b6c5108f26691f9d33ec82a9b65d041f1a9c771137693d618/protobuf-7.36.2-py3-none-any.whl", hash = "sha256:bdb3a345d48db958e6ce1f18e508beb0cc981d64f24088427549c866cd039f1e", size = 179806, upload-time = "2026-09-17T20:07:58.211Z" },
+]
+
+[[package]]
+name = "psd-tools"
+version = "1.27.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "numpy" },
+    { name = "pillow" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/35/44c07dfb9192a9b3df4c719c4fa19fd02dc83b208ed0762ae86017dfa6eb/psd_tools-1.27.0-cp313-abi3-macosx_10_13_x86_64.whl", hash = "sha256:2881e5bf624a40f8a15619c34a12c4cc8e36198e064495fa4229e0bd461e8b1a", size = 521794, upload-time = "2026-11-18T06:31:04.608Z" },
+    { url = "https://files.pythonhosted.org/packages/35/dc/4a9fef771faad8f8acb59cc6f7b2fe52cc5d751ea947355dcf166d7a079b/psd_tools-1.27.0-cp313-abi3-macosx_11_0_arm64.whl", hash = "sha256:5760008f89a79915f02019bbb2fc95ffdb636e1e6e6461d92ae5137c46952901", size = 520693, upload-time = "2026-11-18T06:31:05.69Z" },
+    { url = "https://files.pythonhosted.org/packages/92/59/6a239df6cba74db4d7cb6b1e55b78a631a0edf4ac96650809c01f899f699/psd_tools-1.27.0-cp313-abi3-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:92a7a5e3c0bcaacc49418fc6feb599790939e1c94c596200b09eba7e57f701b9", size = 856315, upload-time = "2026-11-18T06:31:06.728Z" },
+    { url = "https://files.pythonhosted.org/packages/42/ef/87c8b30ca5a3c5dd3194982139dc2ed5153d796a01ddc81569379aa414f8/psd_tools-1.27.0-cp313-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b27ee6aa6f0cb7b7915a4eb2a25a7d008f84ea08c5d9d4cc7f924ffd5a5d662e", size = 860033, upload-time = "2026-11-18T06:31:07.838Z" },
+    { url = "https://files.pythonhosted.org/packages/37/fa/0d9863f3cdebef5d353f22b2b418aea87c8c3c6d31367d2e42b1187208d9/psd_tools-1.27.0-cp313-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:6b24ba782ec8e88f3fed7f632a93f22556696c285e23f74ce449dcb966d91c2d", size = 1832393, upload-time = "2026-11-18T06:31:09.15Z" },
+    { url = "https://files.pythonhosted.org/packages/75/25/24866d5ea8a628b42062d1917d3d35b65ce80dcbc51013f0618712ee2006/psd_tools-1.27.0-cp313-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:3ca4af3a7b7b2bd5eeb15665885bc8977c4a94bc365ec11ae8366f5e7d31cdc1", size = 1890831, upload-time = "2026-11-18T06:31:10.196Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/c5/35413dcdef01d99c827db842739cdc43f8d1921e97e70335d362ee63a563/psd_tools-1.27.0-cp314-cp314-win_amd64.whl", hash = "sha256:3743762a10fec56ad9a9e3931a673bcb03f6ecc5df7718ffaff952a9504e7237", size = 713946, upload-time = "2026-11-18T06:31:14.041Z" },
+    { url = "https://files.pythonhosted.org/packages/30/bc/d4c58e87461c67d3582519181ee5b5b15e4324c56cf065e6a81489dbfc7a/psd_tools-1.27.0-cp314-cp314-win_arm64.whl", hash = "sha256:5ddee99f1c9c2b52f97e4df93a762d744bc0f0d3d52fe38f4d61d6127a46fdb3", size = 878059, upload-time = "2026-11-18T06:31:15.094Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/2d/b980882329760e6cf0789da51e370b8919a07e7274f4e4fdb8726134a939/psd_tools-1.27.0-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:9e89157183a098f8f5e44fff586e0ae1f033e283f72ebdd4f02c79b88f5a0b3b", size = 534556, upload-time = "2026-11-18T06:31:16.103Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/1c/ffe6cf0fa286ba1691a163d6f48b0e113c1c2c095fea271e36b16ed7c60a/psd_tools-1.27.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:1888d169b1e1cfae6bd63cd8c485a2a47fee7fd2623c092c0bb0a25388860d19", size = 534865, upload-time = "2026-11-18T06:31:17.282Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/29/72b6213f4dc4fac68c431400562251b98577689a5cbacac644461b1eb682/psd_tools-1.27.0-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:4463052d80d27e7655b8a9a019b93b996564f9b382d957c3524f3c40b1f6a37f", size = 949845, upload-time = "2026-11-18T06:31:18.625Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/65/b69639beaa9f6928681fe73f77138441b1799a19d4bf72b5ec6985317bcd/psd_tools-1.27.0-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7e13c5ac4618df703232dd51a5a51530f6c232c0ccd296ab83115d36e360ba11", size = 946832, upload-time = "2026-11-18T06:31:20.148Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/9f/ca3d31ecdbcabf447d3cf856425f450fd2859dfefcbfa49394adddf99e9d/psd_tools-1.27.0-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:c07bbb77695271fad0fc65978808a9481d9cb2d17dc2c2804cc3ecd82b63cbb6", size = 1919223, upload-time = "2026-11-18T06:31:21.392Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/f7/c20ca99767fbdac35be774f6930efe6be3146c5bd27b8e1d9dacfabad576/psd_tools-1.27.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:dd7bd471f2fac30f9b44e05ae785b59df1eeec5cce363600c6e238a59365fecf", size = 1973311, upload-time = "2026-11-18T06:31:22.639Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/bf/984d46b666b7251ad2fe99cc873f7104d73f4a4ccc4dc8b3a4c1ce1d1aa2/psd_tools-1.27.0-cp314-cp314t-win_amd64.whl", hash = "sha256:99e698f75ee4076022d119f3d9300c59625a31bc37d94181c9f997b39716e746", size = 722610, upload-time = "2026-11-18T06:31:23.781Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/c5/48a7f0983ae5de1c6c5ca609b2301e72f12241268a60098c686abd4ff20b/psd_tools-1.27.0-cp314-cp314t-win_arm64.whl", hash = "sha256:f5264ac68d2082bd260b0c4e65bc4151c94da6cea52738a2ef5cd1b67b6b3b3f", size = 881044, upload-time = "2026-11-18T06:31:24.967Z" },
+]
+
+[package.optional-dependencies]
+composite = [
+    { name = "aggdraw" },
+    { name = "scipy" },
 ]
 
 [[package]]

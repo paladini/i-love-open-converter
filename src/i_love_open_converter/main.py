@@ -60,6 +60,7 @@ from .pdf_ops import (
     validate_page_ranges,
     validate_redactions,
 )
+from .psd_ops import InvalidPsdError, inspect_psd
 from .svg_ops import MAX_SVG_BYTES, InvalidSvgError, inspect_svg
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,6 @@ PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
 ]
 IMAGE_COMING_SOON = [
-    ("Converter de PSD", "Convert from PSD", "img-convert", 17),
     ("Converter de HEIC/RAW", "Convert from HEIC/RAW", "img-convert", 18),
 ]
 
@@ -522,6 +522,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             *FAMILIES,
             "image.convert",
             "image.from_jpg",
+            "image.from_psd",
             "image.from_svg",
             "image.resize",
             "image.compress",
@@ -748,11 +749,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "image.blur_regions",
             "image.editor",
             "image.from_jpg",
+            "image.from_psd",
             "image.from_svg",
             "image.crop",
             "image.watermark",
         }
-        if operation in {"image.editor", "image.from_svg"} and len(files) != 1:
+        if operation in {"image.editor", "image.from_psd", "image.from_svg"} and len(files) != 1:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione uma imagem."}},
@@ -1260,7 +1262,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["regions"] = parsed_options["regions"]
-        if operation == "image.from_svg" and set(parsed_options) - {"format"}:
+        if operation in {"image.from_psd", "image.from_svg"} and set(parsed_options) - {"format"}:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "OpÃ§Ãµes invÃ¡lidas."}},
@@ -1434,6 +1436,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     accepted_extensions = {".jpg", ".jpeg"}
                 elif operation == "image.from_svg":
                     accepted_extensions = {".svg"}
+                elif operation == "image.from_psd":
+                    accepted_extensions = {".psd"}
                 elif operation == "image.meme":
                     accepted_extensions.discard(".gif")
                 is_pdf_operation = operation.startswith("pdf.")
@@ -1660,6 +1664,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             },
                         ) from exc
                     content_type = "image/svg+xml"
+                    validated_options.update(width=width, height=height)
+                elif operation == "image.from_psd":
+                    try:
+                        width, height = inspect_psd(destination)
+                    except InvalidPsdError as exc:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "invalid_file",
+                                    "message": (
+                                        "O PSD não é válido ou excede os limites de modo, "
+                                        "profundidade ou 40 MP."
+                                    ),
+                                }
+                            },
+                        ) from exc
+                    content_type = "image/vnd.adobe.photoshop"
                     validated_options.update(width=width, height=height)
                 else:
                     try:

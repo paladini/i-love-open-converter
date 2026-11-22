@@ -1069,7 +1069,7 @@ def test_home_page_has_image_and_pdf_groups_and_local_assets(settings):
     assert 'blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP."' in script
     assert 'blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP."' in script
     assert 'data-option="blur-faces-note"' in response.text
-    assert 'imageCount: "15 available"' in script
+    assert 'imageCount: "16 available"' in script
     assert 'data-tool="image.blur_plates"' in response.text
     assert 'data-tool="image.blur_regions"' in response.text
     assert 'data-i18n-aria="blurRegionsLabel"' in response.text

@@ -44,6 +44,10 @@ entries are labeled **Coming soon** and belong to later roadmap stages.
   capped at 40 megapixels; SVG scripts, animation, foreign content, and external
   resources are rejected. PNG and WebP preserve transparency; JPEG uses a white
   background.
+- Convert one PSD locally to a flattened PNG, JPEG, or WebP. PSD files are
+  limited to 100 MB by the default upload setting and 40 megapixels; only 8-bit
+  RGB and grayscale are supported, smart objects are rejected, and the rendered
+  result may differ from Photoshop.
 - Rotate images by 90°, 180°, or 270°.
 - Upscale one image by 2x or 4x with local Lanczos resampling and light
   sharpening. This interpolation does not reconstruct details absent from the
@@ -123,6 +127,7 @@ downloads as a ZIP archive.
 | Input | Available operations | Output |
 | --- | --- | --- |
 | JPEG, PNG, GIF, WebP, BMP, TIFF | Convert, resize, compress, rotate, crop, watermark, photo edit | JPEG, PNG, WebP |
+| PSD (`.psd`) | Convert the flattened composite; 8-bit RGB or grayscale up to 40 megapixels | JPEG, PNG, WebP |
 | Unencrypted PDF | Merge, organize, crop, edit, fill forms, redact, sign, protect, repair, compare, PDF/A-2b, split, rotate, optimize, PDF to JPG, Markdown, Word, PowerPoint or Excel, extract images, watermark, page numbers | PDF, DOCX, PPTX, XLSX, HTML, JPG, or ZIP |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
 | HTML (`.html`, `.htm`) | Local HTML to PDF; embedded `data:` resources only | PDF |
