@@ -7,6 +7,14 @@ Envie um arquivo, escolha uma ferramenta e baixe o resultado por uma interface
 web simples. O processamento e o armazenamento ficam no seu próprio servidor.
 
 <p align="center">
+  <img src="docs/screenshots/home.jpg" alt="Página inicial do I Love Open Converter com o catálogo de ferramentas de PDF e imagem" width="100%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/image-compress-result.jpg" alt="Compressão de imagem concluída no aplicativo com resultado para baixar" width="49%">
+  <img src="docs/screenshots/pdf-page-numbers-result.jpg" alt="Numeração de páginas PDF concluída no aplicativo com resultado para baixar" width="49%">
+</p>
+
+<p align="center">
   <a href="README.md">English</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/releases">Versões</a> ·
   <a href="https://github.com/paladini/i-love-open-converter/pkgs/container/i-love-open-converter">Imagem de container</a> ·
