@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from i_love_open_converter import html_ops, pdf_ops
+from i_love_open_converter import main as main_module
+from i_love_open_converter.database import get_job
 from i_love_open_converter.html_ops import HtmlExternalResourceError, HtmlImageBoundsError
 from i_love_open_converter.main import create_app
 from i_love_open_converter.worker import process_one_job
@@ -54,12 +56,44 @@ def test_html_to_image_page_and_catalog_are_bilingual(settings):
 
     assert page.status_code == 200
     assert 'accept=".html,.htm,text/html"' in page.text
-    assert 'data-en="Export each page of a local HTML file as JPG or SVG.' in page.text
+    assert 'value="url"' in page.text
+    assert "Public URL" in page.text
+    assert "JavaScript and login pages are unsupported" in page.text
     assert 'option value="jpg"' in page.text
     assert 'option value="svg"' in page.text
     assert "HTML para imagem" in home.text
     assert "HTML to image" in home.text
     assert "html.to_image" in script.text
+
+
+def test_html_to_image_captures_public_url_and_queues_requested_format(settings, monkeypatch):
+    requested = []
+    monkeypatch.setattr(
+        main_module,
+        "fetch_public_html",
+        lambda url: requested.append(url) or b"<h1>Page</h1>",
+    )
+    monkeypatch.setattr(pdf_ops, "convert_html_to_images", _fake_convert)
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "html.to_image",
+                "options": json.dumps({"format": "svg"}),
+                "url": "https://public.example/guide",
+            },
+            files={"multipart-marker": ("marker.txt", b"x", "text/plain")},
+        )
+        assert response.status_code == 202, response.text
+        job = get_job(settings.database_path, response.json()["job_id"])
+        assert job["options"] == {"format": "svg"}
+        assert job["artifacts"][0]["name"] == "website.html"
+        assert process_one_job(settings)
+        status = client.get(response.json()["status_url"])
+
+    assert requested == ["https://public.example/guide"]
+    assert status.json()["state"] == "succeeded"
+    assert status.json()["files"][0]["name"] == "converted-images.zip"
 
 
 @pytest.mark.parametrize("extension", [".pdf", ".txt", ".xhtml"])

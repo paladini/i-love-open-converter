@@ -114,3 +114,7 @@ The source mentions pasting a page URL. This stage accepts one local HTML file a
 - `.specs/features/html-to-pdf/plan.md` - approved local-only renderer boundary and worker isolation.
 - [WeasyPrint security guidance](https://doc.courtbouillon.org/weasyprint/latest/first_steps.html) - custom URL fetcher and untrusted HTML/CSS restrictions.
 - [PyMuPDF page rendering](https://pymupdf.readthedocs.io/en/latest/page.html) - local page rasterization and SVG export.
+
+## Follow-up delivery
+
+Public URL to image is now delivered by `.specs/features/remote-url-conversion/plan.md`. This original stage remains the local-file-only path and continues to reject network and local-file resources in uploaded HTML.

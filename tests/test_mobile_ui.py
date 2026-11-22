@@ -127,3 +127,68 @@ def test_home_conversion_flow_is_usable_at_360px(
         finally:
             context.close()
             browser.close()
+
+
+@pytest.mark.parametrize(
+    ("tool", "operation"),
+    [
+        ("html-to-pdf", "html.to_pdf"),
+        ("html-to-image", "html.to_image"),
+    ],
+)
+@pytest.mark.parametrize("language", ["pt-BR", "en"])
+def test_public_url_conversion_controls_are_usable_at_360px(
+    settings, tool, operation, language
+):
+    done_text = (
+        "Seu PDF est\u00e1 pronto."
+        if operation == "html.to_pdf" and language == "pt-BR"
+        else "Your PDF is ready."
+        if operation == "html.to_pdf"
+        else "Suas imagens est\u00e3o prontas."
+        if language == "pt-BR"
+        else "Your images are ready."
+    )
+    with _serve_app(settings) as base_url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(viewport={"width": 360, "height": 800})
+        page = context.new_page()
+
+        def stub_job_api(route):
+            request = route.request
+            if request.method == "POST":
+                body = request.post_data or ""
+                assert operation in body
+                assert "https://public.example/guide" in body
+                route.fulfill(
+                    status=202,
+                    json={"job_id": "url-review", "status_url": "/api/jobs/url-review"},
+                )
+            else:
+                route.fulfill(
+                    status=200,
+                    json={
+                        "state": "succeeded",
+                        "files": [{"name": "converted-result.pdf", "size_bytes": 12}],
+                        "download_url": "/api/jobs/url-review/download",
+                    },
+                )
+
+        try:
+            page.route("**/api/jobs**", stub_job_api)
+            page.goto(f"{base_url}/tools/{tool}", wait_until="networkidle")
+            page.locator("#language").select_option(language)
+            page.locator('input[name="source-mode"][value="url"]').check()
+            expect(page.locator("#url")).to_be_visible()
+            expect(page.locator("#file")).to_be_hidden()
+            page.locator("#url").fill("https://public.example/guide")
+            if operation == "html.to_image":
+                page.locator("#format").select_option("svg")
+            assert page.evaluate("document.documentElement.scrollWidth === window.innerWidth")
+            page.locator("#submit").click()
+            expect(page.locator("#message")).to_have_text(done_text, timeout=5000)
+            expect(page.locator("#download")).to_be_visible()
+            assert page.evaluate("document.documentElement.scrollWidth === window.innerWidth")
+        finally:
+            context.close()
+            browser.close()

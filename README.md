@@ -100,7 +100,7 @@ small U2NetP model into its local cache on first use.
 - Convert a PDF to an editable Word DOCX locally. Scanned PDFs need OCR, and complex layouts may differ from the original.
 - Convert a PDF to an editable PowerPoint presentation locally. Text and embedded images become separate slide objects; vector drawings, charts, page backgrounds and scanned-page OCR are not reconstructed.
 - Extract detected tables and selectable text from a PDF to an Excel workbook locally. Table rows and page references go to `Tables`; other text goes to `Text`. Values remain literal strings. Unusual table layouts can be missed, and scanned pages require OCR.
-- Convert one local `.html` or `.htm` file to PDF. Inline CSS and embedded `data:` resources are supported; relative files, remote URLs and JavaScript execution are not. The renderer is WeasyPrint and requires the isolated Linux worker.
+- Convert local `.html`/`.htm` files or public HTTP(S) page URLs to PDF. Public URL capture loads bounded static CSS, images, and fonts; private or local addresses are blocked, and JavaScript and login pages are unsupported. Rendering uses WeasyPrint in the isolated Linux worker.
 - Export each page of one local `.html` or `.htm` file as JPG or SVG in a ZIP. Inline CSS and embedded `data:` resources are supported; relative files, remote URLs and JavaScript execution are not.
 
 - Turn images into a PDF with one page per image.
@@ -114,8 +114,10 @@ To bound rendering memory, pages exceeding 16 million pixels at 150 DPI are reje
 PDF-to-Word uses the local `pdf2docx` library, which its upstream no longer actively maintains. It applies the same page-size, time and output-size limits. It requires the network-isolated Linux worker configured below; other environments fail closed.
 PDF-to-PowerPoint uses PyMuPDF and `python-pptx` to create editable text boxes and picture shapes. One slide represents each page; scanned-page OCR and complex vector artwork, chart and background reconstruction are not supported. The conversion is limited to 200 pages, 20,000 slide objects, 16 million page pixels at 150 DPI, 180 seconds and 256 MiB of output. It requires the network-isolated Linux worker; other environments fail closed.
 PDF-to-Excel uses PyMuPDF table detection and XlsxWriter. Detected tables and other selectable text are placed on separate worksheets with source page references; every value remains literal text. Unbordered or unusual tables may not be detected, numeric values are not inferred, and scanned pages need OCR. Limits are 200 pages, 16 million page pixels at 150 DPI, 200,000 table cells, 100,000 text lines, 180 seconds and 256 MiB of output. It requires the network-isolated Linux worker; other environments fail closed.
-HTML-to-PDF uses WeasyPrint 70.0. It accepts one local HTML file up to 10 MiB, renders at most 100 pages, and limits the child to 120 seconds, 2 GiB of address space and 256 MiB of output. Only embedded `data:` resources are loaded; the custom URL fetcher rejects remote and local-file references. It requires a Linux worker with no external network and Landlock; unsupported environments fail closed. JavaScript is not executed and CSS support may differ from a browser.
-HTML-to-image uses the same isolated renderer. It exports every page as JPG at 144 DPI or SVG in a ZIP. Documents are limited to 100 pages, 40 megapixels per JPG page and 256 MiB of output; only inline content and embedded `data:` resources are supported.
+HTML-to-PDF uses WeasyPrint 70.0. Local uploads accept one HTML file up to 10 MiB and only embedded `data:` resources. Public URL capture accepts HTTP(S) on ports 80/443, rejects credentials and non-public IPv4/IPv6 destinations, validates every redirect and resource, and caps capture at 5 redirects, 50 resources, 10 MiB per resource, 50 MiB total and 30 seconds. URL snapshots inline static CSS, images and fonts; scripts are removed. Rendering is limited to 100 pages, 120 seconds, 2 GiB of address space and 256 MiB of output. The renderer runs in a Linux worker with no external network and Landlock. JavaScript, login pages and browser-session state are unsupported, and CSS support may differ from a browser.
+HTML-to-image uses the same isolated renderer and URL capture policy. It exports every page as JPG at 144 DPI or SVG in a ZIP. Documents are limited to 100 pages, 40 megapixels per JPG page and 256 MiB of output.
+
+Public URL capture makes direct outbound HTTP(S) requests from the web service on your server; `HTTP_PROXY` and `HTTPS_PROXY` settings are not used. The isolated worker does not access the network.
 
 OCR uses OCRmyPDF and Tesseract installed in the Docker image with Portuguese and English language data bundled. The worker downloads no models or languages and has no network access. Each job accepts up to 20 pages, uses one process, and is limited to 600 seconds; pages with selectable text are preserved. Recognition may fail on blurry, skewed, small, or low-contrast scans.
 
@@ -139,8 +141,8 @@ downloads as a ZIP archive.
 | PDF | Convert to Markdown or extract embedded images | ZIP archive |
 | PDF with selectable text | Create an extractive summary of up to 12 sentences | TXT |
 | Word, PowerPoint, Excel (`.doc`, `.docx`, `.ppt`, `.pptx`, `.xls`, `.xlsx`) | Convert to PDF | PDF |
-| HTML (.html, .htm) | Local HTML to PDF; embedded data: resources only, no JavaScript; isolated Linux worker required | PDF; 10 MiB input and 100-page limit |
-| HTML (.html, .htm) | Local HTML to images; JPG at 144 DPI or SVG; embedded data: resources only, no JavaScript | ZIP of numbered page images; 100-page and 40 MP per JPG page limits |
+| HTML (.html, .htm) or public HTTP(S) URL | HTML to PDF; public URL capture only on ports 80/443 with public IPs; up to 5 redirects, 50 resources, 10 MiB per resource, 50 MiB total and 30 seconds; static resources only, no JavaScript; isolated Linux renderer required | PDF; local HTML input up to 10 MiB, 100-page limit |
+| HTML (.html, .htm) or public HTTP(S) URL | HTML to images; same bounded public URL capture; JPG at 144 DPI or SVG; no JavaScript | ZIP of numbered page images; 100-page and 40 MP per JPG page limits |
 | Password-protected PDF | Unlock with the current password | PDF |
 | JPEG, PNG, static GIF, WebP, BMP, TIFF | Images to PDF; one page per image | PDF |
 

@@ -125,3 +125,7 @@ The source mentions pasting a page URL. This first stage accepts local HTML file
 - `.specs/features/document-web-conversion/plan.md` - separate document/web conversion stages.
 - [WeasyPrint 70.0 PyPI release](https://pypi.org/project/weasyprint/70.0/) - version and Python compatibility.
 - [WeasyPrint installation and PDF API](https://doc.courtbouillon.org/weasyprint/latest/first_steps.html) - Pango dependencies, local rendering API, custom URL fetchers, and security requirements for untrusted HTML/CSS.
+
+## Follow-up delivery
+
+Public URL to PDF is now delivered by `.specs/features/remote-url-conversion/plan.md`. This original stage remains the local-file-only path and continues to reject network and local-file resources in uploaded HTML.
