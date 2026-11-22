@@ -38,8 +38,9 @@ HomeLab, or NAS. Choose a tool, upload a file, and download the result.
   memes, upscale, remove backgrounds, blur faces or plates, and convert SVG,
   PSD, HEIC, and camera RAW files locally.
 - **PDF:** merge, split, organize, edit, redact, visually sign, protect, unlock,
-  repair, compare, OCR, translate, add page numbers, convert to and from Office
-  files, images, and HTML, and export to Markdown or spreadsheets.
+  repair, compare, OCR, translate, add page numbers, convert PDFs to Office
+  files and images, convert Office files and images to PDF, render HTML to PDF
+  or images, and export to Markdown or spreadsheets.
 
 The home page lists available tools. Some optional operations, such as PDF/A
 conversion, need additional local dependencies. See the

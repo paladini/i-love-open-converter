@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-22 - user: "podemos seguir nas implementações de acordo com o plano que temos no momento."
 **Settled mid-build:** Keep the app's selectable PT-BR and English behavior; use English screenshots in both READMEs and leave the PNG for the user to upload.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** sent at 203f594.
+**Fix pass:** done - localized the PDF tool footer in both selectable languages, corrected conversion directions, and regenerated the English screenshots and preview.
 
 ## Problem
 
@@ -17,16 +17,19 @@ Reuse the existing README structure, app, screenshots paths, and SVG social prev
 
 1. Existing app and synthetic inputs -> `docs/screenshots/` - capture catalog, completed image compression, and completed PDF page numbering at 1440x980 with the UI set to English.
 2. Existing README layout -> `README.md` and `README.pt-BR.md` - use the same English screenshots, localized alt text, concise capability and setup guidance.
-3. Existing SVG preview and screenshots -> `docs/social-preview.png` - render a 1280x640 PNG for manual upload.
+3. Existing PDF tool locale selector -> `pdf-tool.html` - translate the footer consistently with the selected language.
+4. Existing SVG preview and screenshots -> `docs/social-preview.png` - render a 1280x640 PNG for manual upload.
 
 ```mermaid
 sequenceDiagram
     participant App as Existing app
+    participant Pdf as PDF tool page
     participant Docs as README files
     participant Preview as Social preview
     App->>Docs: 1. English screenshots
     Docs->>Preview: 2. Existing visual design
-    Preview-->>Docs: 3. 1280x640 PNG
+    Docs->>Pdf: 3. Use selected language for footer
+    Preview-->>Docs: 4. 1280x640 PNG
 ```
 
 **Changes underneath**
@@ -35,7 +38,8 @@ sequenceDiagram
 | --- | --- |
 | documentation | Replaces long capability inventories and low-level implementation notes with tool summaries and key limitations |
 | image assets | Replaces screenshots with real English UI captures and refreshes the social preview |
-| application and stored data | nothing changes |
+| PDF tool footer | adds the existing English/Portuguese language switch to the footer |
+| stored data | nothing changes |
 
 New: nothing. One-way constraints: none.
 Data: none - only static documentation assets change.
@@ -46,6 +50,7 @@ Data: none - only static documentation assets change.
 | --- | --- | --- | --- | --- |
 | `README.md` | English copy and existing image paths | concise project, tool, limit, Docker, privacy, development, and license guidance | 200 (file) | anyone |
 | `README.pt-BR.md` | Brazilian Portuguese copy and existing image paths | same guidance as English README | 200 (file) | anyone |
+| PDF tool page | selected language | page labels and footer | 200 (screen) | anyone |
 | `docs/social-preview.png` | existing SVG plus English screenshots | 1280x640 PNG, under 1 MiB | 200 (file) | anyone |
 
 ## Landing
@@ -62,10 +67,11 @@ Visitors can review the product using concise documentation and English screensh
 
 1. WHEN a visitor opens either README THEN the system SHALL retain the title, tagline, link and badge blocks, and screenshot arrangement before the body text.
 2. WHEN a visitor reads either README THEN the system SHALL show the same three real application screenshots with the interface in English and alt text in the README's language.
-3. WHEN a visitor reads either README THEN the system SHALL summarize the implemented image and PDF tools, key format and behavior limits, Docker startup, privacy boundary, development setup, and license without claiming arbitrary file-to-file conversion.
-4. WHEN the repository owner downloads `docs/social-preview.png` THEN the image SHALL be 1280x640 pixels, under 1 MiB, and show the existing English social-preview design with the English screenshots.
-5. IF a screenshot or preview uses app text THEN the captured interface SHALL be in English; this does not change the app's selectable languages or default behavior.
-6. IF this feature is completed THEN no GitHub account authentication or upload SHALL be performed; the PNG remains available at the repository path for the user.
+3. WHEN a visitor reads either README THEN the system SHALL describe only supported conversion directions, summarize key tool limits, and explain Docker startup, privacy, development setup, and the license concisely.
+4. WHEN the English language is selected on a PDF tool page THEN the system SHALL show “Your space. Your files. No fuss.” in the footer.
+5. WHEN the repository owner downloads `docs/social-preview.png` THEN the image SHALL be 1280x640 pixels, under 1 MiB, and show the existing English social-preview design with the English screenshots.
+6. IF a screenshot or preview uses app text THEN the captured interface SHALL be in English; this does not change the app's selectable languages or default behavior.
+7. IF this feature is completed THEN no GitHub account authentication or upload SHALL be performed; the PNG remains available at the repository path for the user.
 
 ## Out of scope
 

@@ -40,8 +40,9 @@ resultado.
   ou placas e converter arquivos SVG, PSD, HEIC e RAW localmente.
 - **PDF:** mesclar, dividir, organizar, editar, ocultar conteúdo, assinar
   visualmente, proteger, desbloquear, reparar, comparar, aplicar OCR, traduzir,
-  numerar páginas, converter para e de arquivos Office, imagens e HTML, além
-  de exportar para Markdown ou planilhas.
+  numerar páginas, converter PDFs para arquivos Office e imagens, converter
+  arquivos Office e imagens para PDF, gerar PDF ou imagens a partir de HTML e
+  exportar para Markdown ou planilhas.
 
 A página inicial lista as ferramentas disponíveis. Algumas operações
 opcionais, como a conversão para PDF/A, precisam de dependências locais extras.
