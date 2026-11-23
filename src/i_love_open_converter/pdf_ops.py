@@ -1003,6 +1003,14 @@ def _apply_page_numbers(document, options: dict[str, Any]) -> None:
         )
 
 
+def apply_pdf_compression_profile(document: Any, profile: str) -> None:
+    """Apply the selected image-recompression profile to an open PDF."""
+    if profile == "recommended":
+        document.rewrite_images(dpi_threshold=200, dpi_target=150, quality=75)
+    elif profile == "extreme":
+        document.rewrite_images(dpi_threshold=150, dpi_target=96, quality=45)
+
+
 def process_pdf(
     operation: str,
     sources: list[tuple[Path, str]],
@@ -1446,6 +1454,8 @@ def process_pdf(
             return [destination], "application/pdf"
 
         if operation == "pdf.compress":
+            profile = options.get("profile", "lossless")
+            apply_pdf_compression_profile(document, profile)
             destination = output_dir / "compressed.pdf"
             document.save(destination, garbage=3, deflate=True, use_objstms=True)
             return [destination], "application/pdf"
