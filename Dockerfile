@@ -138,7 +138,12 @@ RUN uv pip install --python /app/.venv/bin/python --reinstall-package rawpy --no
     && /app/.venv/bin/python -c "import rawpy; assert rawpy.libraw_version == (0, 22, 3); assert rawpy.libraw_version_compiled == (0, 22, 3); assert not rawpy.flags or not rawpy.flags['OPENMP']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL2']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL3']"
 COPY docker/ocr-smoke.py /tmp/ocr-smoke.py
 COPY docker/translation-smoke.py /tmp/translation-smoke.py
-RUN /app/.venv/bin/python /tmp/ocr-smoke.py && /app/.venv/bin/python /tmp/translation-smoke.py && rm /tmp/ocr-smoke.py /tmp/translation-smoke.py
+COPY docker/summary-smoke.py /tmp/summary-smoke.py
+RUN /app/.venv/bin/python /tmp/ocr-smoke.py \
+    && /app/.venv/bin/python /tmp/translation-smoke.py \
+    && rm /tmp/ocr-smoke.py /tmp/translation-smoke.py
+RUN --network=none /app/.venv/bin/python /tmp/summary-smoke.py \
+    && rm /tmp/summary-smoke.py
 
 EXPOSE 8080
 CMD ["/app/.venv/bin/uvicorn", "i_love_open_converter.main:app", "--host", "0.0.0.0", "--port", "8080"]
