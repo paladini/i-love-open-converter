@@ -8,6 +8,7 @@ Close the remaining runtime verification gap from `.specs/features/pdf-abstracti
 
 **Review:** sent at 270fe42
 **Fix pass:** done - The summary inference step now runs in a separate Docker `RUN --network=none` instruction.
+**CI follow-up review:** sent at 35d5e18
 
 ## CI follow-up
 
