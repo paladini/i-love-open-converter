@@ -9,7 +9,7 @@ RUN mkdir -p /opt/u2net \
     && curl -fsSL -o /opt/u2net/u2netp.onnx https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2netp.onnx \
     && echo "309c8469258dda742793dce0ebea8e6dd393174f89934733ecc8b14c76f4ddd8  /opt/u2net/u2netp.onnx" | sha256sum -c -
 
-FROM python:3.14-slim AS heif-builder
+FROM python:3.15-slim AS heif-builder
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl libde265-dev libjpeg62-turbo-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /tmp/libheif-build
@@ -52,7 +52,7 @@ RUN curl -fsSL -o libheif.tar.gz https://github.com/strukturag/libheif/releases/
     && cp examples/COPYING /usr/local/share/licenses/libheif/COPYING.examples \
     && cp /usr/share/doc/libde265-0/copyright /usr/local/share/licenses/libheif/libde265-copyright
 
-FROM python:3.14-slim AS rawpy-builder
+FROM python:3.15-slim AS rawpy-builder
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates curl libjpeg62-turbo-dev pkg-config zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /tmp
@@ -77,7 +77,7 @@ RUN python -m pip install --no-cache-dir --disable-pip-version-check \
     && RAWPY_USE_SYSTEM_LIBRAW=1 python -m pip wheel --no-deps --no-build-isolation --wheel-dir /tmp/rawpy-wheel . \
     && ldd /usr/local/lib/libraw_r.so
 
-FROM --platform=$BUILDPLATFORM python:3.12-slim AS summary-model-builder
+FROM --platform=$BUILDPLATFORM python:3.15-slim AS summary-model-builder
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --no-cache-dir --disable-pip-version-check \
@@ -93,7 +93,7 @@ RUN ct2-transformers-converter \
         -o /opt/local-summary-model/spiece.model \
         https://huggingface.co/google/flan-t5-small/resolve/0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab/spiece.model
 
-FROM python:3.14-slim AS app-builder
+FROM python:3.15-slim AS app-builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -116,7 +116,7 @@ COPY --from=rawpy-builder /tmp/rawpy-wheel /tmp/rawpy-wheel
 RUN uv pip install --python /app/.venv/bin/python --reinstall-package rawpy --no-deps /tmp/rawpy-wheel/*.whl \
     && rm -rf /tmp/rawpy-wheel
 
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
