@@ -24,4 +24,5 @@ The first stable release. This release consolidates the changes shipped since v0
 ### Fixed
 
 - Hardened temporary-file access, upload limits, image decoder resource use, document conversion isolation, and public URL validation.
+- Allowed isolated workers to load packages from the active Python environment while keeping their filesystem rules limited to that runtime and each job's temporary directory.
 - Addressed conversion edge cases found during feature reviews, including image allocation limits, PDF summary ranking, and editor overlays.
