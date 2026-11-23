@@ -39,7 +39,30 @@ O I Love Open Converter é um conjunto gratuito e self-hosted de ferramentas par
 
 Os formatos dependem da ferramenta escolhida. O processamento fica no seu servidor; o modelo de resumo de PDF é executado localmente.
 
-## Início rápido
+<details>
+<summary>Formatos e limites disponíveis</summary>
+
+### Formatos e limites
+
+| Entrada | Operação | Saída |
+| --- | --- | --- |
+| JPEG, PNG, GIF estático, WebP, BMP, TIFF | Conversão genérica de imagens | JPEG, PNG, WebP ou GIF estático de um quadro por entrada |
+| JPEG (`.jpg`, `.jpeg`) | Converter para PNG ou criar GIF animado com JPEGs na ordem escolhida | PNG ou GIF animado |
+| SVG (`.svg`) | Converter SVG estático localmente | JPEG, PNG ou WebP |
+| PSD (`.psd`) | Converter imagem achatada localmente | JPEG, PNG ou WebP |
+| HEIC, HEIF, HIF | Converter uma imagem estática localmente | JPEG |
+| RAW de câmera (.3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw) | Revelar localmente; suporte varia conforme a câmera | JPEG; até 100 MiB por arquivo |
+| PDF sem criptografia | Mesclar, dividir, organizar, editar, proteger, aplicar OCR, traduzir, reparar, comparar e ocultar conteúdo | PDF |
+| PDF | Converter para documentos Office editáveis | DOCX, PPTX ou XLSX |
+| PDF | Exportar para Markdown ou extrair imagens incorporadas | Arquivo ZIP |
+| Word, PowerPoint, Excel | Converter para PDF | PDF |
+| HTML (`.html`, `.htm`) ou URL pública | HTML para PDF | PDF |
+| HTML (`.html`, `.htm`) ou URL pública | HTML para imagens | Arquivo ZIP |
+
+Limites por job: 100 MB por arquivo, 500 MB por requisição, 10 arquivos e retenção por 24 horas.
+</details>
+
+## Início rápido com Docker
 
 Requisitos: Docker Engine e Docker Compose v2.
 
@@ -59,6 +82,26 @@ Abra <http://localhost:8080>. O aplicativo web e o worker são serviços separad
 - A captura de URLs aceita recursos HTTP(S) públicos com limites; JavaScript e páginas autenticadas não são suportados. O worker processa arquivos offline.
 - Assinaturas em PDF são visuais. Confira ocultações e resumos antes de compartilhar.
 - O app não inclui contas, analytics ou telemetria. Mantenha-o em rede confiável ou atrás de um proxy autenticado.
+
+Use `docker compose ps`, `docker compose logs -f web worker` e `docker compose down` para conferir, investigar e parar os serviços sem apagar os arquivos.
+
+<details>
+<summary>Padrões de configuração</summary>
+
+| Configuração | Padrão |
+| --- | --- |
+| `APP_PORT` | `8080` |
+| `IMAGE_TAG` | `latest` |
+| `MAX_FILE_SIZE_MB` | `100` |
+| `MAX_TOTAL_UPLOAD_MB` | `500` |
+| `MAX_FILES_PER_JOB` | `10` |
+| `JOB_RETENTION_HOURS` | `24` |
+| `WORKER_POLL_SECONDS` | `1` |
+| `PUID` | `1000` |
+| `PGID` | `1000` |
+
+Copie [`.env.example`](.env.example) para `.env` antes de alterar as opções.
+</details>
 
 ## Desenvolvimento
 

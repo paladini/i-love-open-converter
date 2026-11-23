@@ -1,8 +1,8 @@
 # English UI default and concise documentation
 
 **Approved**: 2026-11-23 - user asked for English as the default interface language, shorter direct READMEs, and preservation of the existing opening visual.
-**Review:** approved; independent reviewer found no material issues.
-**Fix pass:** complete - no changes required.
+**Review:** independent static review approved; CI then exposed existing README contracts covered by tests.
+**Fix pass:** restored the supported-format matrix and Compose defaults in collapsible sections, keeping the main README body concise.
 
 ## Problem
 
