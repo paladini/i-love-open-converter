@@ -3,7 +3,7 @@
 **Approved:** 2026-11-23 - user: "É pra seguir, e ir criando PRs de tudo, mergeando, até finalizar completamente a implementação do nosso plano original!"
 **Settled mid-build:** none.
 **Review:** 2026-11-23 - fresh sub-agent review; implementation checks out, but combined OCR-to-Office output and API rejection paths had no regression coverage.
-**Fix pass:** added combined PDF-to-DOCX and PDF-to-XLSX worker-flow regressions, invalid-option and 20-page-limit checks that assert no job is created, and deletion of the OCR intermediate after Office conversion. No changes were needed to OCR processing or isolation decisions.
+**Fix pass:** added combined PDF-to-DOCX and PDF-to-XLSX worker-flow regressions, invalid-option and 20-page-limit checks that assert no job is created, and deletion of the OCR intermediate after Office conversion. The first fix-pass CI run exposed an assertion using FastAPI's nested error shape instead of this app's flat `{"error": ...}` response; the assertions now match the app contract. No changes were needed to OCR processing or isolation decisions.
 
 ## Problem
 

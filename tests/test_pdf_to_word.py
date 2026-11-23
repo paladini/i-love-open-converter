@@ -86,7 +86,7 @@ def test_office_ocr_rejects_invalid_options_before_job_creation(settings, pdf_by
                 files={"files": ("source.pdf", pdf_bytes, "application/pdf")},
             )
             assert response.status_code == 422
-            assert response.json()["detail"]["error"]["code"] == "invalid_options"
+            assert response.json()["error"]["code"] == "invalid_options"
             assert _job_count(settings) == 0
 
 
@@ -110,7 +110,7 @@ def test_office_ocr_page_limit_is_rejected_before_job_creation(settings, operati
             files={"files": ("long-scan.pdf", source, "application/pdf")},
         )
         assert response.status_code == 422
-        assert response.json()["detail"]["error"]["code"] == "page_limit_exceeded"
+        assert response.json()["error"]["code"] == "page_limit_exceeded"
         assert _job_count(settings) == 0
 
 

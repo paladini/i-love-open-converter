@@ -13,4 +13,5 @@
 - Added invalid-option cases for both operations, including a non-string language, and confirmed rejected requests do not create database jobs.
 - Added 21-page OCR option rejections for both operations and assertions that no job is created.
 - Delete the intermediate OCR PDF after Office conversion completes so the temporary recognized-text document does not remain in the output directory with the downloadable result.
-- CI ran for the first commit and passed; the fix-pass commit will trigger the repository's normal PR checks. No local tests were run.
+- The first fix-pass CI run caught that error-body assertions used a nested FastAPI shape instead of the application's flat `{"error": ...}` response; updated them to match the API contract.
+- CI for the first feature commit passed. CI is rerunning on the final fix-pass commit. No local tests were run.
