@@ -532,6 +532,8 @@ def test_editor_card_and_controls_are_active_and_bilingual(settings):
     assert 'editorStickerSize: "Sticker size"' in script
     assert 'editorStickerColor: "Cor do sticker"' in script
     assert 'editorStickerColor: "Sticker color"' in script
-    assert 'fileInput.multiple = ["pdf.merge", "pdf.compress", "image.to_pdf"].includes(operation)' in script
+    assert (
+        'fileInput.multiple = ["pdf.merge", "pdf.compress", "image.to_pdf"].includes(operation)'
+    ) in script
     assert 'operation.startsWith("image.") && operation !== "image.editor"' in script
     assert ".operation-options { display: flex; flex-wrap: wrap;" in css
