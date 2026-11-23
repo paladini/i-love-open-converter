@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -114,3 +115,5 @@ def test_batch_pdf_compression_rejects_more_than_configured_file_limit(settings,
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "too_many_files"
+    with sqlite3.connect(settings.database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0] == 0

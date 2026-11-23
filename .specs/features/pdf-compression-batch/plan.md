@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-23 - user: "É pra seguir, e ir criando PRs de tudo, mergeando, até finalizar completamente a implementação do nosso plano original!"
 **Settled mid-build:** Reuse the configurable per-job file limit; one PDF downloads as a PDF and multiple results download as a ZIP.
-**Review:** pending
-**Fix pass:** pending
+**Review:** sent at bee2e3d
+**Fix pass:** done - The over-limit regression now also asserts that no conversion job was created.
 
 ## Problem
 
