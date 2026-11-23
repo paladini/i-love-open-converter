@@ -1,3 +1,4 @@
+import sqlite3
 from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
@@ -37,8 +38,10 @@ def _tabular_pdf():
     page.draw_line((180, 96), (180, 168), width=1)
     page.draw_line((48, 132), (312, 132), width=1)
     for x, y, value in [
-        (56, 120, "Code"), (188, 120, "Value"),
-        (56, 156, "00123"), (188, 156, "=SUM(1,1)"),
+        (56, 120, "Code"),
+        (188, 120, "Value"),
+        (56, 156, "00123"),
+        (188, 156, "=SUM(1,1)"),
     ]:
         page.insert_text((x, y), value)
     page.insert_text((48, 60), "Outside table: https://example.invalid/data")
@@ -71,6 +74,11 @@ def _ordered_pdf():
     return data
 
 
+def _job_count(settings):
+    with sqlite3.connect(settings.database_path) as connection:
+        return connection.execute("SELECT COUNT(*) FROM conversion_jobs").fetchone()[0]
+
+
 def _sheet_text(archive, name):
     root = ElementTree.fromstring(archive.read(name))
     return "".join(node.text or "" for node in root.iter() if node.tag.endswith("}t"))
@@ -81,10 +89,12 @@ def _sheet_rows(archive, name):
     namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
     rows = []
     for row in root.iter(f"{namespace}row"):
-        rows.append([
-            "".join(node.text or "" for node in cell.iter() if node.tag.endswith("}t"))
-            for cell in row.findall(f"{namespace}c")
-        ])
+        rows.append(
+            [
+                "".join(node.text or "" for node in cell.iter() if node.tag.endswith("}t"))
+                for cell in row.findall(f"{namespace}c")
+            ]
+        )
     return rows
 
 
@@ -96,7 +106,8 @@ def test_pdf_to_excel_extracts_tables_and_text_as_literal_strings(settings, monk
         assert 'href="/tools/pdf-to-excel"' in home.text
         assert client.get("/tools/pdf-to-excel").status_code == 200
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("table.pdf", _tabular_pdf(), "application/pdf")},
         )
         assert response.status_code == 202
@@ -125,12 +136,14 @@ def test_pdf_to_excel_extracts_tables_and_text_as_literal_strings(settings, monk
 def test_pdf_to_excel_rejects_invalid_multiple_and_encrypted_pdfs(settings, pdf_bytes):
     with TestClient(create_app(settings)) as client:
         invalid = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("bad.pdf", b"invalid", "application/pdf")},
         )
         assert invalid.status_code == 422
         multiple = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files=[("files", ("a.pdf", pdf_bytes)), ("files", ("b.pdf", pdf_bytes))],
         )
         assert multiple.status_code == 422
@@ -138,11 +151,13 @@ def test_pdf_to_excel_rejects_invalid_multiple_and_encrypted_pdfs(settings, pdf_
         pdf.new_page()
         encrypted = pdf.tobytes(
             encryption=pymupdf.PDF_ENCRYPT_AES_256,
-            owner_pw="owner-password", user_pw="user-password",
+            owner_pw="owner-password",
+            user_pw="user-password",
         )
         pdf.close()
         locked = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("locked.pdf", encrypted, "application/pdf")},
         )
         assert locked.status_code == 422
@@ -160,7 +175,8 @@ def test_scanned_image_without_text_fails_without_empty_workbook(settings, monke
     pdf.close()
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("scan.pdf", source, "application/pdf")},
         )
         assert response.status_code == 202
@@ -169,6 +185,38 @@ def test_scanned_image_without_text_fails_without_empty_workbook(settings, monke
         assert status["state"] == "failed"
         assert status["error"]["code"] == "no_extractable_data"
         assert client.get(response.json()["status_url"] + "/download").status_code != 200
+
+
+def test_pdf_to_excel_ocr_option_exports_recognized_text(settings, monkeypatch):
+    _run_worker(monkeypatch)
+
+    def add_recognized_text(source, destination, language):
+        assert language == "por+eng"
+        with pymupdf.open(source) as document:
+            document[0].insert_text((72, 72), "Recognized scanned words")
+            document.save(destination)
+
+    monkeypatch.setattr(pdf_ops, "make_searchable_pdf", add_recognized_text)
+    pdf = pymupdf.open()
+    pdf.new_page()
+    source = pdf.tobytes()
+    pdf.close()
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={
+                "operation": "pdf.to_excel",
+                "options": '{"ocr":true,"language":"por+eng"}',
+            },
+            files={"files": ("scan.pdf", source, "application/pdf")},
+        )
+        assert response.status_code == 202
+        assert process_one_job(settings)
+        download = client.get(response.json()["status_url"] + "/download")
+        assert download.status_code == 200
+    with ZipFile(BytesIO(download.content)) as archive:
+        text = _sheet_text(archive, "xl/worksheets/sheet1.xml")
+        assert "Recognized scanned words" in text
 
 
 def test_pdf_to_excel_requires_isolated_worker(settings, pdf_bytes, monkeypatch):
@@ -182,7 +230,8 @@ def test_pdf_to_excel_requires_isolated_worker(settings, pdf_bytes, monkeypatch)
     monkeypatch.setattr(pdf_ops, "_open_pdf", forbidden_open)
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("input.pdf", pdf_bytes, "application/pdf")},
         )
         assert response.status_code == 202
@@ -193,13 +242,12 @@ def test_pdf_to_excel_requires_isolated_worker(settings, pdf_bytes, monkeypatch)
     assert open_calls == []
 
 
-def test_pdf_to_excel_preserves_table_and_text_order_with_source_references(
-    settings, monkeypatch
-):
+def test_pdf_to_excel_preserves_table_and_text_order_with_source_references(settings, monkeypatch):
     _run_worker(monkeypatch)
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("ordered.pdf", _ordered_pdf(), "application/pdf")},
         )
         assert response.status_code == 202
@@ -237,7 +285,8 @@ def test_excel_worker_rejects_more_than_two_hundred_pages(settings, tmp_path, mo
     pdf.close()
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("too-many-pages.pdf", source.read_bytes(), "application/pdf")},
         )
         assert response.status_code == 202
@@ -256,7 +305,8 @@ def test_excel_worker_rejects_oversized_page_without_download(settings, tmp_path
     pdf.close()
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("oversized.pdf", source.read_bytes(), "application/pdf")},
         )
         assert response.status_code == 202
@@ -272,7 +322,8 @@ def test_excel_worker_enforces_table_cell_limit(settings, monkeypatch):
     monkeypatch.setattr(excel_worker, "MAX_TABLE_CELLS", 1)
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("table.pdf", _tabular_pdf(), "application/pdf")},
         )
         assert response.status_code == 202
@@ -288,7 +339,8 @@ def test_excel_worker_enforces_text_line_limit(settings, pdf_bytes, monkeypatch)
     monkeypatch.setattr(excel_worker, "MAX_TEXT_LINES", 1)
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("text.pdf", pdf_bytes, "application/pdf")},
         )
         assert response.status_code == 202
@@ -307,7 +359,8 @@ def test_excel_timeout_fails_without_download(settings, pdf_bytes, monkeypatch):
     monkeypatch.setattr(pdf_ops.subprocess, "run", timeout)
     with TestClient(create_app(settings)) as client:
         response = client.post(
-            "/api/jobs", data={"operation": "pdf.to_excel"},
+            "/api/jobs",
+            data={"operation": "pdf.to_excel"},
             files={"files": ("input.pdf", pdf_bytes, "application/pdf")},
         )
         assert response.status_code == 202
