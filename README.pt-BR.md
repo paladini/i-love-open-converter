@@ -33,7 +33,7 @@ O I Love Open Converter é um conjunto gratuito e self-hosted de ferramentas par
 
 ## Recursos
 
-- **PDF:** comprimir vários arquivos, organizar, editar, mesclar, dividir, proteger, aplicar OCR, resumir, traduzir, comparar, ocultar conteúdo e converter PDFs.
+- **PDF:** comprimir e girar vários arquivos, organizar, editar, mesclar, dividir, proteger, aplicar OCR, resumir, traduzir, comparar, ocultar conteúdo e converter PDFs.
 - **Imagens:** converter, comprimir, redimensionar, recortar, editar, aplicar marca d’água, remover fundos, desfocar rostos ou placas e muito mais.
 - **Documentos e web:** converter arquivos Office, renderizar páginas HTML e exportar PDFs para Markdown ou planilhas.
 

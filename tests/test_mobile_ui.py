@@ -231,6 +231,54 @@ def test_pdf_compression_accepts_multiple_files_in_selection_order(settings, pdf
             browser.close()
 
 
+def test_pdf_rotation_batch_preserves_selection_order(settings, pdf_bytes):
+    with _serve_app(settings) as base_url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(viewport={"width": 1280, "height": 900})
+        page = context.new_page()
+
+        def stub_job_api(route):
+            request = route.request
+            if request.method == "POST":
+                body = request.post_data or ""
+                assert '"degrees":"180"' in body
+                assert body.count('name="files"') == 2
+                route.fulfill(
+                    status=202,
+                    json={"job_id": "rotation-batch", "status_url": "/api/jobs/rotation-batch"},
+                )
+            else:
+                route.fulfill(
+                    status=200,
+                    json={
+                        "state": "succeeded",
+                        "files": [{"name": "converted-files.zip", "size_bytes": 200}],
+                        "download_url": "/api/jobs/rotation-batch/download",
+                    },
+                )
+
+        try:
+            page.route("**/api/jobs**", stub_job_api)
+            page.goto(base_url, wait_until="networkidle")
+            page.locator('[data-tool="pdf.rotate"]').click()
+            file_input = page.locator("#file-input")
+            assert file_input.evaluate("input => input.multiple")
+            page.locator("#degrees").select_option("180")
+            file_input.set_input_files(
+                [
+                    {"name": "first.pdf", "mimeType": "application/pdf", "buffer": pdf_bytes},
+                    {"name": "second.pdf", "mimeType": "application/pdf", "buffer": pdf_bytes},
+                ]
+            )
+            expect(page.locator("#selected-file-name li").nth(0)).to_contain_text("first.pdf")
+            expect(page.locator("#selected-file-name li").nth(1)).to_contain_text("second.pdf")
+            page.locator("#submit-button").click()
+            expect(page.locator("#job-result")).to_be_visible()
+        finally:
+            context.close()
+            browser.close()
+
+
 @pytest.mark.parametrize(
     ("tool", "operation"),
     [
