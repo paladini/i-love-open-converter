@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-23 - user: "Okay, podemos seguir com a TLC Spec Lean em direção ao que precisamos pra validar o funcionamento de todas as tools conforme o plano criado por você."
 **Settled mid-build:** none
-**Review:** not sent
-**Fix pass:** not started
+**Review:** sent at ce64d57
+**Fix pass:** done - closed the six findings with reverse-enforced README format coverage, successful conditional PDF/A API/worker/download smoke coverage, explicit batch and form-option inventories, accepted-at-limit processing cases, and operation-specific malformed-upload status assertions. Validation passed locally; a fresh final-image amd64/arm64 build remains for CI.
 
 ## Problem
 

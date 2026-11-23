@@ -18,6 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from i_love_open_converter import main as main_module
 from i_love_open_converter.main import SUPPORTED_OPERATIONS, create_app
 from i_love_open_converter.office_ops import FAMILIES
 from i_love_open_converter.raw_ops import RAW_EXTENSIONS
@@ -40,6 +41,7 @@ TEST_MODULES = {
     "markdown": "tests/test_markdown.py",
     "office": "tests/test_office.py",
     "powerpoint": "tests/test_pdf_to_powerpoint.py",
+    "pdf_rotate_batch": "tests/test_pdf_rotate_batch.py",
     "psd": "tests/test_psd_ops.py",
     "raw": "tests/test_raw_ops.py",
     "word": "tests/test_pdf_to_word.py",
@@ -71,15 +73,15 @@ OPERATION_CASES = {
     "image.blur_plates": ("coverage", "test_privacy_blur_success_runs_through_job_and_download"),
     "image.blur_regions": ("api", "test_blur_tools_are_listed_and_manual_regions_process"),
     "image.editor": ("editor", "test_editor_returns_selected_output_format"),
-    "image.crop": ("image_crop", "test_single_crop_downloads_one_sanitized_image"),
+    "image.crop": ("image_crop", "test_crop_batch_returns_ordered_images_in_a_zip"),
     "image.watermark": (
         "image_watermark",
-        "test_text_watermark_is_applied_at_selected_position_and_opacity",
+        "test_image_overlay_batch_is_reused_but_not_returned_as_output",
     ),
     "image.to_pdf": ("api", "test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected"),
     "pdf.merge": ("api", "test_pdf_merge_and_page_range_split"),
     "pdf.split": ("api", "test_pdf_merge_and_page_range_split"),
-    "pdf.rotate": ("api", "test_pdf_range_validation_rotation_and_pdf_to_jpg"),
+    "pdf.rotate": ("pdf_rotate_batch", "test_batch_rotation_returns_ordered_collision_safe_zip"),
     "pdf.compress": (
         "compression",
         "test_batch_pdf_compression_returns_ordered_zip_with_unique_names",
@@ -122,7 +124,7 @@ OPERATION_CASES = {
     "pdf.forms": ("api", "test_form_fields_are_listed_filled_and_unsupported_rejected"),
     "pdf.repair": ("api", "test_pdf_repair_recovers_cross_reference_and_handles_unreadable_file"),
     "pdf.compare": ("api", "test_pdf_compare_reports_changed_added_and_removed_pages"),
-    "pdf.pdfa": ("archive", "test_pdfa_is_unavailable_without_installed_dependencies"),
+    "pdf.pdfa": ("coverage", "test_pdfa_runtime_job_flow_or_unavailable_contract"),
     "pdf.ocr": ("api", "test_pdf_ocr_creates_searchable_download_with_selected_language"),
     "pdf.summary": (
         "api",
@@ -131,6 +133,161 @@ OPERATION_CASES = {
     "pdf.translate": ("api", "test_pdf_translation_job_returns_text_pdf_download"),
     **{family: ("office", "test_office_job_and_download") for family in FAMILIES},
 }
+
+BATCH_CASES = {
+    "image.convert": {
+        "minimum": (
+            "coverage",
+            "test_generic_raster_pair_runs_through_job_and_returns_valid_image",
+        ),
+        "multiple": ("coverage", "test_generic_raster_batch_returns_zip_with_valid_entries"),
+    },
+    "image.from_jpg": {
+        "minimum": ("coverage", "test_jpeg_conversion_matrix_runs_through_job_and_download"),
+        "multiple": ("coverage", "test_jpeg_conversion_matrix_runs_through_job_and_download"),
+    },
+    "image.from_heic": {
+        "minimum": ("heic", "test_heic_api_and_worker_return_one_jpeg_or_a_zip_for_batches"),
+        "multiple": ("heic", "test_heic_api_and_worker_return_one_jpeg_or_a_zip_for_batches"),
+    },
+    "image.from_raw": {
+        "minimum": ("raw", "test_raw_api_and_worker_return_jpeg_or_zip_for_batches"),
+        "multiple": ("raw", "test_raw_api_and_worker_return_jpeg_or_zip_for_batches"),
+    },
+    "image.resize": {
+        "minimum": ("coverage", "test_image_resize_single_job_returns_requested_dimensions"),
+        "multiple": ("api", "test_batch_resize_returns_zip_with_aspect_ratio_preserved"),
+    },
+    "image.compress": {
+        "minimum": ("coverage", "test_image_compression_runs_through_job_and_download"),
+        "multiple": ("coverage", "test_image_batch_operations_return_valid_zip_entries"),
+    },
+    "image.rotate": {
+        "minimum": ("api", "test_image_rotate_is_clockwise_and_invalid_dimensions_are_rejected"),
+        "multiple": ("coverage", "test_image_batch_operations_return_valid_zip_entries"),
+    },
+    "image.crop": {
+        "minimum": ("image_crop", "test_single_crop_downloads_one_sanitized_image"),
+        "multiple": ("image_crop", "test_crop_batch_returns_ordered_images_in_a_zip"),
+    },
+    "image.watermark": {
+        "minimum": (
+            "image_watermark",
+            "test_text_watermark_is_applied_at_selected_position_and_opacity",
+        ),
+        "multiple": (
+            "image_watermark",
+            "test_image_overlay_batch_is_reused_but_not_returned_as_output",
+        ),
+    },
+    "image.to_pdf": {
+        "minimum": ("coverage", "test_single_static_image_becomes_one_page_a4_pdf"),
+        "multiple": ("api", "test_static_images_become_a4_pdf_and_invalid_pdf_is_rejected"),
+    },
+    "pdf.merge": {
+        "minimum": ("api", "test_pdf_merge_and_page_range_split"),
+        "multiple": ("coverage", "test_pdf_merge_three_inputs_preserves_order"),
+    },
+    "pdf.rotate": {
+        "minimum": ("api", "test_pdf_range_validation_rotation_and_pdf_to_jpg"),
+        "multiple": ("pdf_rotate_batch", "test_batch_rotation_returns_ordered_collision_safe_zip"),
+    },
+    "pdf.compress": {
+        "minimum": ("coverage", "test_single_pdf_compression_runs_through_job_and_download"),
+        "multiple": (
+            "compression",
+            "test_batch_pdf_compression_returns_ordered_zip_with_unique_names",
+        ),
+    },
+}
+
+FORM_OPTION_OPERATIONS = {
+    ("index.html", "output-format"): {
+        "image.convert",
+        "image.from_jpg",
+        "image.from_heic",
+        "image.from_raw",
+        "image.from_psd",
+        "image.from_svg",
+        "image.resize",
+        "image.compress",
+        "image.rotate",
+        "image.crop",
+        "image.watermark",
+        "image.editor",
+    },
+    ("index.html", "pdf-compression-profile"): {"pdf.compress"},
+    ("index.html", "watermark-kind"): {"image.watermark"},
+    ("index.html", "watermark-text"): {"image.watermark"},
+    ("index.html", "watermark-position"): {"image.watermark"},
+    ("index.html", "watermark-opacity"): {"image.watermark"},
+    ("index.html", "width"): {"image.resize", "image.from_svg"},
+    ("index.html", "height"): {"image.resize", "image.from_svg"},
+    ("index.html", "crop-left"): {"image.crop"},
+    ("index.html", "crop-top"): {"image.crop"},
+    ("index.html", "crop-width"): {"image.crop"},
+    ("index.html", "crop-height"): {"image.crop"},
+    ("index.html", "quality"): {"image.compress", "image.crop", "image.watermark"},
+    ("index.html", "degrees"): {"image.rotate"},
+    ("index.html", "ranges"): {"pdf.rotate", "pdf.split", "pdf.to_image", "pdf.crop"},
+    ("index.html", "meme-top-text"): {"image.meme"},
+    ("index.html", "meme-bottom-text"): {"image.meme"},
+    ("index.html", "upscale-scale"): {"image.upscale"},
+    ("index.html", "editor-text"): {"image.editor"},
+    ("index.html", "editor-text-size"): {"image.editor"},
+    ("index.html", "editor-text-position"): {"image.editor"},
+    ("index.html", "editor-text-color"): {"image.editor"},
+    ("index.html", "editor-opacity"): {"image.editor"},
+    ("index.html", "editor-filter"): {"image.editor"},
+    ("index.html", "editor-frame"): {"image.editor"},
+    ("index.html", "editor-frame-width"): {"image.editor"},
+    ("index.html", "editor-frame-color"): {"image.editor"},
+    ("index.html", "editor-sticker"): {"image.editor"},
+    ("index.html", "editor-sticker-position"): {"image.editor"},
+    ("index.html", "editor-sticker-size"): {"image.editor"},
+    ("index.html", "editor-sticker-color"): {"image.editor"},
+    ("html-to-image.html", "format"): {"html.to_image"},
+    ("pdf-crop.html", "left"): {"pdf.crop"},
+    ("pdf-crop.html", "top"): {"pdf.crop"},
+    ("pdf-crop.html", "right"): {"pdf.crop"},
+    ("pdf-crop.html", "bottom"): {"pdf.crop"},
+    ("pdf-crop.html", "ranges"): {"pdf.crop"},
+    ("pdf-edit.html", "kind"): {"pdf.edit", "pdf.sign"},
+    ("pdf-edit.html", "text"): {"pdf.edit"},
+    ("pdf-edit.html", "shape"): {"pdf.edit"},
+    ("pdf-edit.html", "color"): {"pdf.edit", "pdf.sign"},
+    ("pdf-edit.html", "font"): {"pdf.edit"},
+    ("pdf-edit.html", "font-size"): {"pdf.edit"},
+    ("pdf-edit.html", "left"): {"pdf.edit", "pdf.sign"},
+    ("pdf-edit.html", "top"): {"pdf.edit", "pdf.sign"},
+    ("pdf-edit.html", "right"): {"pdf.edit", "pdf.sign"},
+    ("pdf-edit.html", "bottom"): {"pdf.edit", "pdf.sign"},
+    ("pdf-forms.html", "page"): {"pdf.forms"},
+    ("pdf-forms.html", "new-type"): {"pdf.forms"},
+    ("pdf-organize.html", "insert-ranges"): {"pdf.organize"},
+    ("pdf-organize.html", "insert-position"): {"pdf.organize"},
+    ("pdf-password.html", "password"): {"pdf.protect", "pdf.unlock"},
+    ("pdf-redact.html", "left"): {"pdf.redact"},
+    ("pdf-redact.html", "top"): {"pdf.redact"},
+    ("pdf-redact.html", "right"): {"pdf.redact"},
+    ("pdf-redact.html", "bottom"): {"pdf.redact"},
+    ("pdf-to-word.html", "ocr"): {"pdf.to_word"},
+    ("pdf-to-word.html", "ocr-language"): {"pdf.to_word"},
+    ("pdf-to-excel.html", "ocr"): {"pdf.to_excel"},
+    ("pdf-to-excel.html", "ocr-language"): {"pdf.to_excel"},
+    ("pdf-ocr.html", "ocr-language"): {"pdf.ocr"},
+    ("pdf-tool.html", "watermark-text"): {"pdf.watermark"},
+    ("pdf-tool.html", "font"): {"pdf.watermark", "pdf.page_numbers"},
+    ("pdf-tool.html", "font-size"): {"pdf.watermark", "pdf.page_numbers"},
+    ("pdf-tool.html", "color"): {"pdf.watermark", "pdf.page_numbers"},
+    ("pdf-tool.html", "position"): {"pdf.watermark", "pdf.page_numbers"},
+    ("pdf-tool.html", "opacity"): {"pdf.watermark"},
+    ("pdf-tool.html", "number-format"): {"pdf.page_numbers"},
+    ("pdf-tool.html", "start"): {"pdf.page_numbers"},
+    ("pdf-translate.html", "direction"): {"pdf.translate"},
+}
+
+NON_OPTION_FORM_CONTROLS = {"language", "url", "page-input"}
 
 RASTER_INPUTS = ("JPEG", "PNG", "static GIF", "WebP", "BMP", "TIFF")
 GENERIC_RASTER_OUTPUTS = ("JPEG", "PNG", "WebP", "static GIF")
@@ -149,6 +306,7 @@ FORMAT_PAIRS = tuple(
     + [("image.from_heic", extension, "JPEG", 4) for extension in (".heic", ".heif", ".hif")]
     + [("image.from_raw", extension, "JPEG", 5) for extension in RAW_INPUTS]
     + [
+        ("pdf.rotate", "Unencrypted PDF", "PDF", 6),
         ("pdf.to_word", "selectable PDF", "DOCX", 7),
         ("pdf.to_powerpoint", "selectable PDF", "PPTX", 7),
         ("pdf.to_excel", "selectable PDF", "XLSX", 7),
@@ -190,6 +348,10 @@ ROOT = Path(__file__).resolve().parents[1]
 READMES = {
     "README.md": "Formats and limits",
     "README.pt-BR.md": "Formatos e limites",
+}
+DOCUMENTATION_FORMAT_DIGESTS = {
+    "README.md": "37ca34df117d9daabf448bd5c5073bd5b3e95435ca7adf4beaee9d92cdfa8c8b",
+    "README.pt-BR.md": "db327836c3520f77d8b1a552dda9ec08495c703041babad13145ae209456ae0a",
 }
 
 PDF_TOOL_ROUTES = {
@@ -234,7 +396,7 @@ def _format_alias(value: str) -> str:
         return "jpeg"
     if normalized in {"static gif", "animated gif"}:
         return "gif"
-    if normalized in {"selectable pdf", "scanned pdf with ocr"}:
+    if normalized in {"unencrypted pdf", "selectable pdf", "scanned pdf with ocr"}:
         return "pdf"
     if normalized == "public url":
         return "url"
@@ -247,6 +409,48 @@ def _format_alias(value: str) -> str:
     if normalized.startswith("."):
         return normalized[1:]
     return normalized
+
+
+def _matrix_alias(value: str) -> str:
+    if f".{value.lower().lstrip('.')}" in RAW_EXTENSIONS:
+        return "raw"
+    normalized = _normalized(value)
+    if normalized.startswith("zip of "):
+        return normalized
+    return _format_alias(value)
+
+
+EXPECTED_FORMAT_PAIRS = {
+    *(
+        (0, _matrix_alias(source), _matrix_alias(target))
+        for source in RASTER_INPUTS
+        for target in GENERIC_RASTER_OUTPUTS
+    ),
+    (1, "jpeg", "png"),
+    (1, "jpeg", "gif"),
+    *((2, "svg", output) for output in ("jpeg", "png", "webp")),
+    *((3, "psd", output) for output in ("jpeg", "png", "webp")),
+    *((4, extension[1:], "jpeg") for extension in (".heic", ".heif", ".hif")),
+    *((5, extension, "jpeg") for extension in RAW_INPUTS),
+    (6, "pdf", "pdf"),
+    (7, "pdf", "docx"),
+    (7, "pdf", "pptx"),
+    (7, "pdf", "xlsx"),
+    (8, "pdf", "docx"),
+    (8, "pdf", "xlsx"),
+    (9, "pdf", "zip"),
+    *(
+        (10, _matrix_alias(extension), "pdf")
+        for extensions in FAMILIES.values()
+        for extension in extensions
+    ),
+    *((11, extension, "pdf") for extension in ("html", "htm", "url")),
+    *(
+        (12, extension, f"zip of {image}")
+        for extension in ("html", "htm", "url")
+        for image in ("jpg", "svg")
+    ),
+}
 
 
 def _readme_rows(filename: str) -> list[list[str]]:
@@ -305,11 +509,63 @@ def test_runtime_heic_fixture_has_pinned_source_and_license_provenance():
 def test_mapped_job_cases_reach_the_worker_and_a_download_assertion():
     for operation, (module, test_name) in OPERATION_CASES.items():
         source = _reachable_test_source(TEST_MODULES[module], test_name)
-        if operation == "pdf.pdfa":
-            assert "pdfa_is_unavailable_without_installed_dependencies" in source
-            continue
         assert "process_one_job(" in source, operation
         assert "download" in source.casefold(), operation
+
+
+def test_batch_operation_matrix_maps_minimum_and_multi_file_witnesses():
+    expected_batch_operations = {
+        "image.convert",
+        "image.from_jpg",
+        "image.from_heic",
+        "image.from_raw",
+        "image.resize",
+        "image.compress",
+        "image.rotate",
+        "image.crop",
+        "image.watermark",
+        "image.to_pdf",
+        "pdf.merge",
+        "pdf.rotate",
+        "pdf.compress",
+    }
+    assert set(BATCH_CASES) == expected_batch_operations
+
+    for operation, case_map in BATCH_CASES.items():
+        assert set(case_map) == {"minimum", "multiple"}, operation
+        for batch_size, (module, test_name) in case_map.items():
+            source_path = ROOT / TEST_MODULES[module]
+            source_text = source_path.read_text(encoding="utf-8")
+            assert re.search(rf"^def {re.escape(test_name)}\s*\(", source_text, re.MULTILINE)
+            reachable = _reachable_test_source(TEST_MODULES[module], test_name)
+            assert "process_one_job(" in reachable, (operation, batch_size)
+            assert "download" in reachable.casefold(), (operation, batch_size)
+
+
+def test_every_form_option_is_inventoried_and_points_to_a_tested_operation():
+    discovered = set()
+    for template_path in (ROOT / "src/i_love_open_converter/templates").glob("*.html"):
+        source = template_path.read_text(encoding="utf-8")
+        for match in re.finditer(r"<(input|select|textarea)\b([^>]*)>", source, re.IGNORECASE):
+            attributes = match.group(2)
+            field_id = re.search(r"\bid=[\"']([^\"']+)[\"']", attributes, re.IGNORECASE)
+            field_type = re.search(r"\btype=[\"']([^\"']+)[\"']", attributes, re.IGNORECASE)
+            if not field_id or (field_type and field_type.group(1).lower() == "file"):
+                continue
+            discovered.add((template_path.name, field_id.group(1)))
+
+    ignored = {
+        (filename, control)
+        for filename, control in discovered
+        if control in NON_OPTION_FORM_CONTROLS
+    }
+    assert discovered == set(FORM_OPTION_OPERATIONS) | ignored
+    for fields in FORM_OPTION_OPERATIONS.values():
+        for operation in fields:
+            assert operation in OPERATION_CASES, operation
+            module, test_name = OPERATION_CASES[operation]
+            reachable = _reachable_test_source(TEST_MODULES[module], test_name)
+            assert "assert" in reachable, (operation, test_name)
 
 
 @pytest.mark.parametrize("operation", sorted(SUPPORTED_OPERATIONS))
@@ -321,14 +577,226 @@ def test_every_operation_rejects_malformed_upload_before_creating_a_job(settings
             files=[("files", ("empty.bin", b"", "application/octet-stream"))],
         )
 
-    assert response.status_code in {415, 422, 503}, (operation, response.text)
-    assert response.json()["error"]["code"] in {
+    pdfa_unavailable = operation == "pdf.pdfa" and not main_module.pdfa_available()
+    allowed_statuses = {415, 422, 503} if pdfa_unavailable else {415, 422}
+    allowed_errors = {
         "invalid_file",
         "invalid_options",
         "service_unavailable",
         "unsupported_format",
-    }, operation
+    }
+    if not pdfa_unavailable:
+        allowed_errors.remove("service_unavailable")
+    assert response.status_code in allowed_statuses, (operation, response.text)
+    assert response.json()["error"]["code"] in allowed_errors, operation
     assert list(settings.jobs_dir.iterdir()) == []
+
+
+def test_pdfa_runtime_job_flow_or_unavailable_contract(settings):
+    source = pymupdf.open()
+    source.new_page().insert_text((40, 60), "PDF/A API smoke")
+    pdf_bytes = source.tobytes()
+    source.close()
+
+    available = main_module.pdfa_available()
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.pdfa", "options": "{}"},
+            files={"files": ("source.pdf", pdf_bytes, "application/pdf")},
+        )
+        if not available:
+            assert submitted.status_code == 503
+            assert submitted.json()["error"]["code"] == "service_unavailable"
+            assert list(settings.jobs_dir.iterdir()) == []
+            return
+
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/pdf"
+    with pymupdf.open(stream=download.content, filetype="pdf") as result:
+        with pymupdf.open(stream=pdf_bytes, filetype="pdf") as source:
+            assert result.page_count == source.page_count
+        assert "PDF/A API smoke" in result[0].get_text()
+
+
+def test_image_resize_single_job_returns_requested_dimensions(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={
+                "operation": "image.resize",
+                "options": json.dumps({"width": 8, "height": 8, "format": "PNG"}),
+            },
+            files={"files": ("source.jpg", jpeg_bytes, "image/jpeg")},
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "image/png"
+    with Image.open(BytesIO(download.content)) as result:
+        assert result.format == "PNG"
+        assert result.size == (8, 6)
+
+
+def test_single_static_image_becomes_one_page_a4_pdf(settings, jpeg_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.to_pdf", "options": "{}"},
+            files={"files": ("page.jpg", jpeg_bytes, "image/jpeg")},
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/pdf"
+    with pymupdf.open(stream=download.content, filetype="pdf") as result:
+        assert result.page_count == 1
+        assert {round(result[0].rect.width), round(result[0].rect.height)} == {595, 842}
+
+
+def test_pdf_merge_three_inputs_preserves_order(settings):
+    files = []
+    for index in range(3):
+        document = pymupdf.open()
+        document.new_page().insert_text((40, 60), f"Merge source {index + 1}")
+        files.append(("files", (f"source-{index + 1}.pdf", document.tobytes(), "application/pdf")))
+        document.close()
+
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.merge", "options": "{}"},
+            files=files,
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    with pymupdf.open(stream=download.content, filetype="pdf") as result:
+        assert result.page_count == 3
+        assert [page.get_text().strip() for page in result] == [
+            "Merge source 1",
+            "Merge source 2",
+            "Merge source 3",
+        ]
+
+
+def test_single_pdf_compression_runs_through_job_and_download(settings, pdf_bytes):
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "pdf.compress", "options": '{"profile":"recommended"}'},
+            files={"files": ("source.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    assert download.headers["content-type"] == "application/pdf"
+    with pymupdf.open(stream=download.content, filetype="pdf") as result:
+        with pymupdf.open(stream=pdf_bytes, filetype="pdf") as source:
+            assert result.page_count == source.page_count
+
+
+def _pad_valid_jpeg(content: bytes, target_size: int) -> bytes:
+    assert len(content) <= target_size
+    return content + bytes(target_size - len(content))
+
+
+def test_upload_at_exact_per_file_limit_is_accepted_and_processed(settings, jpeg_bytes):
+    content = _pad_valid_jpeg(jpeg_bytes, settings.max_file_size_bytes)
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files={"files": ("exact-limit.jpg", content, "image/jpeg")},
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    with Image.open(BytesIO(download.content)) as result:
+        assert result.format == "PNG"
+
+
+def test_upload_at_exact_aggregate_limit_is_accepted_and_processed(settings, jpeg_bytes):
+    per_file_size = settings.max_total_upload_bytes // 2
+    files = [
+        (
+            "files",
+            (f"exact-{index}.jpg", _pad_valid_jpeg(jpeg_bytes, per_file_size), "image/jpeg"),
+        )
+        for index in range(2)
+    ]
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files=files,
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    with ZipFile(BytesIO(download.content)) as archive:
+        assert archive.namelist() == ["exact-0.png", "exact-1.png"]
+        for name in archive.namelist():
+            with Image.open(BytesIO(archive.read(name))) as result:
+                assert result.format == "PNG"
+
+
+def test_upload_at_exact_file_count_limit_is_accepted_and_processed(settings, jpeg_bytes):
+    files = [
+        ("files", (f"count-{index}.jpg", jpeg_bytes, "image/jpeg"))
+        for index in range(settings.max_files_per_job)
+    ]
+    with TestClient(create_app(settings)) as client:
+        submitted = client.post(
+            "/api/jobs",
+            data={"operation": "image.convert", "options": '{"format":"PNG"}'},
+            files=files,
+        )
+        assert submitted.status_code == 202, submitted.text
+        assert process_one_job(settings)
+        status = client.get(submitted.json()["status_url"]).json()
+        assert status["state"] == "succeeded"
+        download = client.get(status["download_url"])
+
+    assert download.status_code == 200
+    with ZipFile(BytesIO(download.content)) as archive:
+        assert len(archive.namelist()) == settings.max_files_per_job
+        assert archive.namelist() == [
+            f"count-{index}.png" for index in range(settings.max_files_per_job)
+        ]
+        for name in archive.namelist():
+            with Image.open(BytesIO(archive.read(name))) as result:
+                assert result.format == "PNG"
 
 
 def test_active_home_catalog_tools_map_to_supported_operations():
@@ -342,11 +810,26 @@ def test_active_home_catalog_tools_map_to_supported_operations():
 
 
 def test_format_pair_matrix_has_an_operation_case_and_documentation_row():
+    for filename in READMES:
+        table = json.dumps(
+            [[row[0], row[2]] for row in _readme_rows(filename)],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        assert hashlib.sha256(table.encode()).hexdigest() == DOCUMENTATION_FORMAT_DIGESTS[filename]
+
     expected_generic_pairs = {
         ("image.convert", source, output, 0)
         for source, output in product(RASTER_INPUTS, GENERIC_RASTER_OUTPUTS)
     }
     assert {pair for pair in FORMAT_PAIRS if pair[3] == 0} == expected_generic_pairs
+    documented_pairs = {
+        (row_index, _matrix_alias(input_format), _matrix_alias(output_format))
+        for _, input_format, output_format, row_index in FORMAT_PAIRS
+    }
+    expected_pairs = {pair for pair in EXPECTED_FORMAT_PAIRS if pair[0] != 5}
+    expected_pairs.add((5, "raw", "jpeg"))
+    assert documented_pairs == expected_pairs
 
     for operation, input_format, output_format, row_index in FORMAT_PAIRS:
         assert operation in OPERATION_CASES, (operation, input_format, output_format)
