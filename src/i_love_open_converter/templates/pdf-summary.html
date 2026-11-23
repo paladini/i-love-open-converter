@@ -17,7 +17,7 @@
     <section class="pdf-tool-heading">
       <span class="pdf-tool-icon">TXT</span>
       <h1 data-pt="Resumir PDF localmente" data-en="Summarize PDF locally">Resumir PDF localmente</h1>
-      <p data-pt="Selecione um PDF com texto. O resumo extrativo escolhe até 12 frases do documento, sem inventar conteúdo." data-en="Choose a PDF with text. The extractive summary selects up to 12 sentences from the document without generating new content.">Selecione um PDF com texto. O resumo extrativo escolhe até 12 frases do documento, sem inventar conteúdo.</p>
+      <p data-pt="Gere um resumo conciso com o modelo de IA local. Confira os detalhes no documento original; se o modelo estiver indisponível, será usado um resumo extrativo." data-en="Generate a concise summary with the local AI model. Verify details against the source; an extractive summary is used if the model is unavailable.">Gere um resumo conciso com o modelo de IA local. Confira os detalhes no documento original; se o modelo estiver indisponível, será usado um resumo extrativo.</p>
     </section>
     <section class="pdf-tool-card">
       <form id="form">
@@ -27,7 +27,7 @@
           <span data-pt="PDF com texto selecionável · até 100 páginas" data-en="PDF with selectable text · up to 100 pages">PDF com texto selecionável · até 100 páginas</span>
         </label>
         <p id="filename" class="picked-file"></p>
-        <p class="scan-disclosure" data-pt="O processamento acontece no servidor que você controla. Para documentos digitalizados, use OCR PDF antes de resumir." data-en="Processing runs on the server you control. For scanned documents, run PDF OCR before summarizing.">O processamento acontece no servidor que você controla. Para documentos digitalizados, use OCR PDF antes de resumir.</p>
+        <p class="scan-disclosure" data-pt="O processamento acontece no servidor que você controla. O resumo pode omitir detalhes. Para documentos digitalizados, use OCR PDF primeiro." data-en="Processing runs on the server you control. Summaries can omit details. Run PDF OCR first on scanned documents.">O processamento acontece no servidor que você controla. O resumo pode omitir detalhes. Para documentos digitalizados, use OCR PDF primeiro.</p>
         <button id="submit" class="primary-button" type="submit" disabled data-pt="Gerar resumo" data-en="Create summary">Gerar resumo</button>
       </form>
       <p id="message" role="status" aria-live="polite"></p>

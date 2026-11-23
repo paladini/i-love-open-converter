@@ -1791,7 +1791,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                             if operation == "pdf.translate"
                                             else "summary_too_large"
                                         ),
-                                        "message": "O PDF excede o limite de 100 páginas.",
+                                        "message": "O PDF excede os limites de tamanho "
+                                        "da operação.",
                                     }
                                 },
                             )

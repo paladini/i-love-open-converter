@@ -77,6 +77,22 @@ RUN python -m pip install --no-cache-dir --disable-pip-version-check \
     && RAWPY_USE_SYSTEM_LIBRAW=1 python -m pip wheel --no-deps --no-build-isolation --wheel-dir /tmp/rawpy-wheel . \
     && ldd /usr/local/lib/libraw_r.so
 
+FROM --platform=$BUILDPLATFORM python:3.12-slim AS summary-model-builder
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m pip install --no-cache-dir --disable-pip-version-check \
+    --index-url https://download.pytorch.org/whl/cpu "torch==2.9.1+cpu"
+RUN python -m pip install --no-cache-dir --disable-pip-version-check \
+    "ctranslate2==4.9.0" "sentencepiece==0.2.3" "transformers==4.57.1"
+RUN ct2-transformers-converter \
+        --model google/flan-t5-small \
+        --revision 0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab \
+        --quantization int8 \
+        --output_dir /opt/local-summary-model \
+    && curl -fsSL --retry 3 \
+        -o /opt/local-summary-model/spiece.model \
+        https://huggingface.co/google/flan-t5-small/resolve/0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab/spiece.model
+
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -91,6 +107,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ghostscript fon
     && rm -rf /var/lib/apt/lists/*
 COPY --from=verapdf-installer /opt/verapdf /opt/verapdf
 COPY --from=verapdf-installer /opt/u2net /opt/u2net
+COPY --from=summary-model-builder /opt/local-summary-model /opt/local-summary-model
 COPY --from=heif-builder /usr/local/bin/heif-info /usr/local/bin/heif-dec /usr/local/bin/
 COPY --from=heif-builder /usr/local/lib/libheif.so* /usr/local/lib/
 COPY --from=heif-builder /usr/local/share/licenses/libheif /app/licenses/heif
@@ -102,7 +119,8 @@ COPY --from=rawpy-builder /tmp/libraw-source/COPYRIGHT /app/licenses/libraw/COPY
 COPY --from=rawpy-builder /tmp/rawpy-source/LICENSE /app/licenses/rawpy/LICENSE
 RUN ldconfig
 ENV VERAPDF_BIN=/opt/verapdf/verapdf \
-    U2NET_HOME=/opt/u2net
+    U2NET_HOME=/opt/u2net \
+    LOCAL_SUMMARY_MODEL_DIR=/opt/local-summary-model
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /bin/
 

@@ -70,8 +70,9 @@ retention.
 
 - This is a set of supported PDF and image workflows, not a converter for any
   arbitrary pair of file types. Input and output formats depend on the tool.
-- PDF signatures are visual marks, form filling supports existing fields, and
-  summaries extract sentences from selectable text. Run OCR on scans first.
+- PDF signatures are visual marks and forms can be filled or created. Summaries
+  use a bundled local AI model, with extractive fallback. Run OCR on scans first
+  and verify generated details against the source.
 - Translation runs locally between Brazilian Portuguese and English. HTML
   capture supports static content; JavaScript and login sessions are not
   supported. URL capture makes bounded public HTTP(S) requests from your web
@@ -91,6 +92,9 @@ cp .env.example .env
 mkdir -p data
 docker compose up -d
 ```
+
+The Docker image bundles a pinned local summarization model; no document text is
+sent to a hosted AI service.
 
 On Windows PowerShell, use `Copy-Item .env.example .env` and
 `New-Item -ItemType Directory -Force data` in place of `cp` and `mkdir`.
