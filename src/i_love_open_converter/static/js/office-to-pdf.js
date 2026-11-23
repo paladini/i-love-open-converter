@@ -1,7 +1,7 @@
 const form = document.querySelector('#office-form'), file = document.querySelector('#office-file');
 const submit = document.querySelector('#office-submit'), message = document.querySelector('#office-message');
 const download = document.querySelector('#office-download'), language = document.querySelector('#language');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let statusKey = null;
 const words = {
   'pt-BR': {queued:'Na fila…', working:'Convertendo…', done:'Seu PDF está pronto.', failed:'Não foi possível converter o documento. Confira se ele é válido e não está protegido por senha.', unavailable:'Conversor indisponível. Confira o LibreOffice, o isolamento de rede e o suporte ao Landlock no worker.'},

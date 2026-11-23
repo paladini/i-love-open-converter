@@ -6,7 +6,7 @@ const message = document.querySelector('#message');
 const download = document.querySelector('#download');
 const submit = document.querySelector('#submit');
 const language = document.querySelector('#language');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let pages = [];
 let files = [];
 let revision = 0, secondaryCount = 0;

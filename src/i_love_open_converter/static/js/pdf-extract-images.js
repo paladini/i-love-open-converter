@@ -1,6 +1,6 @@
 const file = document.querySelector('#file'), form = document.querySelector('#form'), language = document.querySelector('#language');
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let statusKey = null;
 const words = {'pt-BR':{queued:'Na fila…',working:'Extraindo imagens…',done:'As imagens estão prontas.',empty:'O PDF não contém imagens extraíveis.',error:'Não foi possível processar o PDF. Confira o arquivo.'},en:{queued:'Queued…',working:'Extracting images…',done:'Your images are ready.',empty:'This PDF has no extractable images.',error:'Could not process the PDF. Check the file.'}};
 function setStatus(key) {statusKey = key; message.textContent = key ? words[lang][key] : '';}

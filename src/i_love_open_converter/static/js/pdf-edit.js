@@ -4,7 +4,7 @@ const preview = $('#preview'), selection = $('#edit-selection'), image = $('#ima
 const controls = ['left','top','right','bottom'].map(id => $(`#${id}`));
 const isSign = $('.pdf-tool').dataset.sign === 'true';
 const canvas = $('#signature');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let page = 1, count = 0, generation = 0, imageUrl = null, overlayUrl = null, drawn = false, previewReady = false;
 const words = {'pt-BR':{loading:'Carregando prévia…',error:'Não foi possível processar o PDF. Confira o arquivo, a área e as opções.',invalid:'Preencha os campos e escolha uma área com largura e altura maiores que zero.',working:'Processando…',done:'Seu PDF está pronto.',page:'Página',of:'de',alt:'Prévia da página PDF',note:'Anotação'},en:{loading:'Loading preview…',error:'Could not process the PDF. Check the file, area and options.',invalid:'Complete the fields and choose an area with positive width and height.',working:'Processing…',done:'Your PDF is ready.',page:'Page',of:'of',alt:'PDF page preview',note:'Note'}};
 function translate() { document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;}); for (const [value,name] of Object.entries({helv:'DejaVu Sans',tiro:'DejaVu Serif',cour:'DejaVu Sans Mono'})) $(`#font option[value="${value}"]`).textContent = name; if (isSign) $('#submit').textContent = lang === 'en' ? 'Apply signature' : 'Aplicar assinatura'; preview.alt = words[lang].alt; showPage(); draw(); }

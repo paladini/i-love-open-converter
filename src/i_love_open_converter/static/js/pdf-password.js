@@ -1,7 +1,7 @@
 const file = document.querySelector('#file'), password = document.querySelector('#password'), form = document.querySelector('#form');
 const options = document.querySelector('#options'), message = document.querySelector('#message'), download = document.querySelector('#download'), language = document.querySelector('#language');
 const action = document.querySelector('.pdf-tool').dataset.action;
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 const words = {'pt-BR':{protect:'Proteger PDF',unlock:'Desbloquear PDF',invalid:'Informe uma senha de 1 a 40 bytes.',error:'Não foi possível processar o PDF. Confira o arquivo e a senha.',working:'Processando…',done:'Seu PDF está pronto.'},en:{protect:'Protect PDF',unlock:'Unlock PDF',invalid:'Enter a password of 1 to 40 bytes.',error:'Could not process the PDF. Check the file and password.',working:'Processing…',done:'Your PDF is ready.'}};
 function translate() {document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;}); document.querySelector('#submit').textContent = words[lang][action];}
 language.addEventListener('change', () => {lang = language.value; localStorage.setItem('i-love-open-converter-language',lang); translate();});

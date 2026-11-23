@@ -5,7 +5,7 @@ const submit = document.querySelector('#submit');
 const message = document.querySelector('#message');
 const download = document.querySelector('#download');
 const filename = document.querySelector('#filename');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 const words = {
   'pt-BR': { queued: 'Na fila…', working: 'Gerando resumo com o modelo local…', done: 'Resumo pronto. Confira os detalhes no PDF original.', noText: 'Este PDF não tem texto selecionável. Use OCR PDF e tente novamente.', tooLarge: 'Este PDF excede o limite do resumo local.', error: 'Não foi possível gerar o resumo. Confira o arquivo e tente novamente.' },
   en: { queued: 'Queued…', working: 'Generating a summary with the local model…', done: 'Summary ready. Verify details against the source PDF.', noText: 'This PDF has no selectable text. Run PDF OCR and try again.', tooLarge: 'This PDF exceeds the local summary limit.', error: 'Could not create the summary. Check the file and try again.' },

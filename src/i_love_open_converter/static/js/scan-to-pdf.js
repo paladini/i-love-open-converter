@@ -10,7 +10,7 @@ const strings = {
   'pt-BR': { page: 'Página', up: 'Subir página', down: 'Descer página', rotate: 'Girar página', remove: 'Remover página', empty: 'Adicione pelo menos uma página para criar o PDF.', queued: 'Na fila…', working: 'Criando seu PDF…', done: 'PDF pronto. Confira o resultado antes de usar.', error: 'Não foi possível criar o PDF. Confira as imagens e tente novamente.' },
   en: { page: 'Page', up: 'Move page up', down: 'Move page down', rotate: 'Rotate page', remove: 'Remove page', empty: 'Add at least one page to create a PDF.', queued: 'Queued…', working: 'Creating your PDF…', done: 'PDF ready. Review the result before using it.', error: 'Could not create the PDF. Check the images and try again.' },
 };
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let pages = [];
 let busy = false;
 
