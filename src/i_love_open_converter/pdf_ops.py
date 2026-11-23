@@ -1215,6 +1215,10 @@ def process_pdf(
                 "pdf.to_excel": ExcelUnavailableError,
             }
             raise unavailable_errors[operation]
+    if operation in {"pdf.to_word", "pdf.to_excel"} and options.get("ocr"):
+        ocr_source = output_dir / "ocr-input.pdf"
+        make_searchable_pdf(source, ocr_source, options["language"])
+        source = ocr_source
     document = _open_pdf(source)
     try:
         if operation == "pdf.to_word":

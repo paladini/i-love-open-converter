@@ -19,7 +19,7 @@ This inventory reconciles the capabilities named in the goal objective with the 
 | Split by page/range | Implemented; selected ranges are returned as separate PDFs |
 | Compress PDF | Implemented with local PyMuPDF optimization |
 | Office documents to PDF (Word, PowerPoint, Excel) | Implemented with isolated local LibreOffice worker |
-| PDF to Word, PowerPoint, Excel | Implemented with local conversion and extraction pipelines |
+| PDF to Word, PowerPoint, Excel | Implemented with local conversion and extraction pipelines; Word and Excel also support optional local OCR for scanned PDFs up to 20 pages |
 | Edit PDF (text, images, shapes, annotations) | Implemented |
 | PDF to JPG / extract images | Implemented, including embedded image extraction |
 | JPG/images to PDF | Implemented for supported raster images |

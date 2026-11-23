@@ -1,12 +1,124 @@
-const file = document.querySelector('#file'), form = document.querySelector('#form'), language = document.querySelector('#language');
-const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
+const file = document.querySelector('#file');
+const form = document.querySelector('#form');
+const language = document.querySelector('#language');
+const ocr = document.querySelector('#ocr');
+const ocrLanguage = document.querySelector('#ocr-language');
+const ocrLanguageControl = document.querySelector('#ocr-language-control');
+const message = document.querySelector('#message');
+const download = document.querySelector('#download');
+const submit = document.querySelector('#submit');
 let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let statusKey = null;
-const words = {'pt-BR':{queued:'Na fila…',working:'Extraindo dados…',done:'Sua planilha Excel está pronta.',error:'Não foi possível extrair os dados. Confira o PDF e os limites de processamento.',noData:'Não foram encontradas tabelas nem texto selecionável neste PDF.',unavailable:'A conversão exige um worker Linux isolado da rede.'},en:{queued:'Queued…',working:'Extracting data…',done:'Your Excel workbook is ready.',error:'Could not extract the data. Check the PDF and processing limits.',noData:'No detected tables or selectable text were found in this PDF.',unavailable:'Conversion requires a network-isolated Linux worker.'}};
-function setStatus(key) {statusKey = key; message.textContent = key ? words[lang][key] : '';}
-function translate() {document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;}); setStatus(statusKey);}
-language.addEventListener('change', () => {lang = language.value; localStorage.setItem('i-love-open-converter-language',lang); translate();});
-file.addEventListener('change', () => {document.querySelector('#filename').textContent = file.files[0]?.name || ''; submit.disabled = !file.files.length; setStatus(null); download.hidden = true;});
-form.addEventListener('submit', async event => {event.preventDefault(); if (!file.files.length || submit.disabled) return; const body = new FormData(); body.append('files',file.files[0]); body.append('operation','pdf.to_excel'); file.disabled = true; submit.disabled = true; download.hidden = true; setStatus('queued');
-  try {const response = await fetch('/api/jobs',{method:'POST',body}); const job = await response.json(); if (!response.ok) throw new Error(); while (true) {await new Promise(resolve => setTimeout(resolve,800)); const response = await fetch(job.status_url); const state = await response.json(); if (!response.ok || state.state === 'failed') throw new Error(state.error?.code); if (state.state === 'queued') setStatus('queued'); if (state.state === 'processing') setStatus('working'); if (state.state === 'succeeded') {download.href = state.download_url; download.hidden = false; setStatus('done'); break;}}} catch (error) {setStatus(error.message === 'no_extractable_data' ? 'noData' : error.message === 'excel_unavailable' ? 'unavailable' : 'error');} finally {file.disabled = false; submit.disabled = false;}
-}); translate();
+
+const words = {
+  'pt-BR': {
+    queued: 'Na fila…', working: 'Extraindo dados…', done: 'Sua planilha Excel está pronta.',
+    error: 'Não foi possível extrair os dados. Confira o PDF e os limites de processamento.',
+    noData: 'Não foram encontradas tabelas nem texto selecionável neste PDF.',
+    unavailable: 'A conversão exige um worker Linux isolado da rede.',
+    ocrFailed: 'Não foi possível reconhecer o texto neste PDF. Confira a qualidade do arquivo.',
+    pageLimit: 'O OCR aceita PDFs com até 20 páginas.',
+  },
+  en: {
+    queued: 'Queued…', working: 'Extracting data…', done: 'Your Excel workbook is ready.',
+    error: 'Could not extract the data. Check the PDF and processing limits.',
+    noData: 'No detected tables or selectable text were found in this PDF.',
+    unavailable: 'Conversion requires a network-isolated Linux worker.',
+    ocrFailed: 'Could not recognize text in this PDF. Check the file quality.',
+    pageLimit: 'OCR supports PDFs with up to 20 pages.',
+  },
+};
+
+function setStatus(key) {
+  statusKey = key;
+  message.textContent = key ? words[lang][key] : '';
+}
+
+function translate() {
+  document.documentElement.lang = lang;
+  language.value = lang;
+  document.querySelectorAll('[data-pt][data-en]').forEach((element) => {
+    element.textContent = lang === 'en' ? element.dataset.en : element.dataset.pt;
+  });
+  [...ocrLanguage.options].forEach((option, index) => {
+    const labels = lang === 'en'
+      ? ['English', 'Portuguese', 'Portuguese + English']
+      : ['Inglês', 'Português', 'Português + inglês'];
+    option.textContent = labels[index];
+  });
+  setStatus(statusKey);
+}
+
+function setBusy(busy) {
+  file.disabled = busy;
+  ocr.disabled = busy;
+  ocrLanguage.disabled = busy;
+  submit.disabled = busy || !file.files.length;
+}
+
+language.addEventListener('change', () => {
+  lang = language.value;
+  localStorage.setItem('i-love-open-converter-language', lang);
+  translate();
+});
+
+ocr.addEventListener('change', () => {
+  ocrLanguageControl.hidden = !ocr.checked;
+});
+
+file.addEventListener('change', () => {
+  document.querySelector('#filename').textContent = file.files[0]?.name || '';
+  submit.disabled = !file.files.length;
+  setStatus(null);
+  download.hidden = true;
+});
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!file.files.length || submit.disabled) return;
+
+  const body = new FormData();
+  body.append('files', file.files[0]);
+  body.append('operation', 'pdf.to_excel');
+  if (ocr.checked) {
+    body.append('options', JSON.stringify({ ocr: true, language: ocrLanguage.value }));
+  }
+
+  setBusy(true);
+  download.hidden = true;
+  setStatus('queued');
+  try {
+    const response = await fetch('/api/jobs', { method: 'POST', body });
+    const job = await response.json();
+    if (!response.ok) {
+      const code = job.detail?.error?.code || job.error?.code;
+      throw new Error(code || 'request_failed');
+    }
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      const response = await fetch(job.status_url);
+      const state = await response.json();
+      if (!response.ok || state.state === 'failed') {
+        throw new Error(state.error?.code || 'conversion_failed');
+      }
+      if (state.state === 'queued') setStatus('queued');
+      if (state.state === 'processing') setStatus('working');
+      if (state.state === 'succeeded') {
+        download.href = state.download_url;
+        download.hidden = false;
+        setStatus('done');
+        break;
+      }
+    }
+  } catch (error) {
+    const code = error.message;
+    setStatus(code === 'excel_unavailable' ? 'unavailable'
+      : code === 'no_extractable_data' ? 'noData'
+        : code === 'ocr_failed' ? 'ocrFailed'
+          : code === 'page_limit_exceeded' ? 'pageLimit' : 'error');
+  } finally {
+    setBusy(false);
+  }
+});
+
+translate();

@@ -1036,6 +1036,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["language"] = language
+        if operation in {"pdf.to_word", "pdf.to_excel"}:
+            use_ocr = parsed_options.get("ocr", False)
+            language = parsed_options.get("language", "eng")
+            if (
+                set(parsed_options) - {"ocr", "language"}
+                or type(use_ocr) is not bool
+                or (
+                    use_ocr
+                    and (not isinstance(language, str) or language not in {"por", "eng", "por+eng"})
+                )
+                or (not use_ocr and "language" in parsed_options)
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {"code": "invalid_options", "message": "Opções de OCR inválidas."}
+                    },
+                )
+            if use_ocr:
+                validated_options.update(ocr=True, language=language)
         if operation == "pdf.summary" and parsed_options:
             raise HTTPException(
                 status_code=422,
@@ -1826,6 +1846,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 "error": {
                                     "code": "page_limit_exceeded",
                                     "message": "O PDF pode ter no máximo 20 páginas para OCR.",
+                                }
+                            },
+                        )
+                    if (
+                        operation in {"pdf.to_word", "pdf.to_excel"}
+                        and validated_options.get("ocr")
+                        and page_count > MAX_OCR_PAGES
+                    ):
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "error": {
+                                    "code": "page_limit_exceeded",
+                                    "message": "OCR local aceita no máximo 20 páginas por PDF.",
                                 }
                             },
                         )

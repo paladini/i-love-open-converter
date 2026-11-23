@@ -347,6 +347,7 @@ h2 { margin: 0; font-size: 24px; letter-spacing: -.045em; font-weight: 720; }
 .option-grid input, .option-grid select, .image-upload-option input { width: 100%; min-height: 43px; padding: 9px 11px; border: 1px solid #dedfe5; border-radius: 10px; color: var(--ink); background: white; }
 .option-grid input[type=color] { padding: 5px; }
 .option-grid input[type=range] { padding: 0; accent-color: #6455e8; }
+#ocr { width: 18px; min-height: 18px; padding: 0; accent-color: #6455e8; }
 .common-options { margin-top: 18px; }
 .image-upload-option { margin-top: 6px; }
 .image-upload-option input { height: auto; }

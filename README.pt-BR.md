@@ -53,7 +53,8 @@ Os formatos dependem da ferramenta escolhida. O processamento fica no seu servid
 | HEIC, HEIF, HIF | Converter uma imagem estática localmente | JPEG |
 | RAW de câmera (.3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw) | Revelar localmente; suporte varia conforme a câmera | JPEG; até 100 MiB por arquivo |
 | PDF sem criptografia | Mesclar, dividir, organizar, editar, proteger, aplicar OCR, traduzir, reparar, comparar e ocultar conteúdo | PDF |
-| PDF | Converter para documentos Office editáveis | DOCX, PPTX ou XLSX |
+| PDF com texto selecionável | Converter para documentos Office editáveis | DOCX, PPTX ou XLSX |
+| PDF digitalizado (até 20 páginas) | OCR local opcional antes da exportação para Word ou Excel | DOCX ou XLSX; layout e precisão do OCR variam |
 | PDF | Exportar para Markdown ou extrair imagens incorporadas | Arquivo ZIP |
 | Word, PowerPoint, Excel | Converter para PDF | PDF |
 | HTML (`.html`, `.htm`) ou URL pública | HTML para PDF | PDF |

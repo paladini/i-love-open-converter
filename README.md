@@ -53,7 +53,8 @@ Supported formats depend on the selected tool. Processing stays on your server; 
 | HEIC, HEIF, HIF | Convert one static image locally | JPEG |
 | Camera RAW (.3fr, .ari, .arw, .bay, .cap, .cr2, .cr3, .crw, .dcr, .dcs, .dng, .drf, .eip, .erf, .fff, .gpr, .iiq, .k25, .kdc, .mdc, .mef, .mos, .mrw, .nef, .nrw, .orf, .pef, .ptx, .raf, .raw, .rw2, .rwl, .sr2, .srf, .srw) | Develop locally; camera support varies | JPEG; up to 100 MiB per file |
 | Unencrypted PDF | Merge, split, organize, edit, secure, OCR, translate, repair, compare, redact | PDF |
-| PDF | Convert to editable Office documents | DOCX, PPTX, or XLSX |
+| PDF with selectable text | Convert to editable Office documents | DOCX, PPTX, or XLSX |
+| Scanned PDF (up to 20 pages) | Optional local OCR, then export to Word or Excel | DOCX or XLSX; layout and OCR accuracy vary |
 | PDF | Export to Markdown or extract embedded images | ZIP archive |
 | Word, PowerPoint, Excel | Convert to PDF | PDF |
 | HTML (.html, .htm) or public URL | HTML to PDF | PDF |
