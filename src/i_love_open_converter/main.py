@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import mimetypes
 import os
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import threading
 from contextlib import asynccontextmanager
@@ -59,6 +62,7 @@ from .pdf_ops import (
     list_form_fields,
     validate_crop_options,
     validate_edit_options,
+    validate_form_fields,
     validate_form_updates,
     validate_page_ranges,
     validate_redactions,
@@ -76,12 +80,31 @@ from .url_snapshot import (
 
 logger = logging.getLogger(__name__)
 _URL_FETCH_SLOTS = threading.BoundedSemaphore(4)
+_PDF_FORM_OCR_SLOTS = threading.BoundedSemaphore(1)
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=BASE_DIR / "templates")
 PDF_COMING_SOON = [
     ("PDF para PDF/A", "PDF to PDF/A", "convert", 20),
 ]
 IMAGE_COMING_SOON: list[tuple[str, str, str, int]] = []
+
+
+def _run_pdf_form_suggestions(path: Path) -> list[dict[str, Any]]:
+    result = subprocess.run(
+        [sys.executable, "-m", "i_love_open_converter.pdf_form_suggestions", str(path)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        timeout=90,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Local PDF field detection failed")
+    suggestions = json.loads(result.stdout)
+    if not isinstance(suggestions, list) or len(suggestions) > 200:
+        raise ValueError("Invalid local PDF field detection output")
+    return suggestions
 
 
 class UploadLimitExceeded(Exception):
@@ -470,6 +493,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             files = form.getlist("files")
             if len(files) != 1 or not isinstance(files[0], UploadFile):
                 raise HTTPException(status_code=422, detail={"error": {"code": "invalid_file"}})
+            page_number = form.get("page", "1")
+            if not isinstance(page_number, str) or not page_number.isdigit():
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_options"}})
             with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
                 path = Path(directory) / "input.pdf"
                 with path.open("wb") as target:
@@ -477,12 +503,66 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 try:
                     inspect_pdf(path)
                     with pymupdf.open(path) as document:
+                        if not 1 <= int(page_number) <= document.page_count:
+                            raise InvalidPdfError
                         fields = list_form_fields(document)
+                        page = document[int(page_number) - 1]
+                        scale = min(1.5, 1000 / max(page.rect.width, page.rect.height))
+                        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
+                        preview = base64.b64encode(pixmap.tobytes("png")).decode("ascii")
+                        page_count = document.page_count
+                        page_size = [page.rect.width, page.rect.height]
                 except (InvalidPdfError, RuntimeError, ValueError) as exc:
                     raise HTTPException(
                         status_code=422, detail={"error": {"code": "invalid_file"}}
                     ) from exc
-            return {"fields": fields}
+            return {
+                "fields": fields,
+                "page_count": page_count,
+                "page": int(page_number),
+                "page_size": page_size,
+                "preview": preview,
+            }
+        finally:
+            await form.close()
+
+    @app.post("/api/pdf/form-fields/suggest")
+    async def suggest_pdf_fields(request: Request):
+        form = await parse_limited_upload_form(request, settings)
+        try:
+            files = form.getlist("files")
+            if len(files) != 1 or not isinstance(files[0], UploadFile):
+                raise HTTPException(status_code=422, detail={"error": {"code": "invalid_file"}})
+            with tempfile.TemporaryDirectory(dir=settings.data_dir) as directory:
+                path = Path(directory) / "input.pdf"
+                with path.open("wb") as target:
+                    shutil.copyfileobj(files[0].file, target)
+                if not _PDF_FORM_OCR_SLOTS.acquire(blocking=False):
+                    raise HTTPException(
+                        status_code=429,
+                        detail={
+                            "error": {"code": "detection_busy", "message": "Try again shortly."}
+                        },
+                    )
+                try:
+                    suggestions = await run_in_threadpool(_run_pdf_form_suggestions, path)
+                except subprocess.TimeoutExpired as exc:
+                    raise HTTPException(
+                        status_code=504,
+                        detail={
+                            "error": {
+                                "code": "detection_timeout",
+                                "message": "Local detection timed out.",
+                            }
+                        },
+                    ) from exc
+                except Exception as exc:
+                    raise HTTPException(
+                        status_code=422, detail={"error": {"code": "invalid_file"}}
+                    ) from exc
+                finally:
+                    _PDF_FORM_OCR_SLOTS.release()
+            return {"suggestions": suggestions}
         finally:
             await form.close()
 
@@ -654,8 +734,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 or not isinstance(rotations, list)
                 or len(rotations) != len(files)
                 or any(
-                    type(value) is not int or value not in {0, 90, 180, 270}
-                    for value in rotations
+                    type(value) is not int or value not in {0, 90, 180, 270} for value in rotations
                 )
             ):
                 raise HTTPException(
@@ -820,17 +899,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "pdf.translate",
         }
         if (
-            operation in single_pdf_operations
-            or operation in FAMILIES
-            or operation in {
-                "html.to_pdf",
-                "html.to_image",
-                "image.meme",
-                "image.upscale",
-                "image.remove_background",
-                "image.blur_faces",
-            }
-        ) and len(files) != 1 and not (url_mode and operation in {"html.to_pdf", "html.to_image"}):
+            (
+                operation in single_pdf_operations
+                or operation in FAMILIES
+                or operation
+                in {
+                    "html.to_pdf",
+                    "html.to_image",
+                    "image.meme",
+                    "image.upscale",
+                    "image.remove_background",
+                    "image.blur_faces",
+                }
+            )
+            and len(files) != 1
+            and not (url_mode and operation in {"html.to_pdf", "html.to_image"})
+        ):
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "Selecione um arquivo."}},
@@ -960,10 +1044,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if operation == "pdf.translate":
             source_language = parsed_options.get("from")
             target_language = parsed_options.get("to")
-            if (
-                set(parsed_options) != {"from", "to"}
-                or (source_language, target_language) not in {("pt-BR", "en"), ("en", "pt-BR")}
-            ):
+            if set(parsed_options) != {"from", "to"} or (source_language, target_language) not in {
+                ("pt-BR", "en"),
+                ("en", "pt-BR"),
+            }:
                 raise HTTPException(
                     status_code=422,
                     detail={
@@ -1344,10 +1428,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 detail={"error": {"code": "invalid_options", "message": "Opções inválidas."}},
             )
         if operation == "image.blur_regions":
-            if (
-                set(parsed_options) - {"format", "regions"}
-                or "regions" not in parsed_options
-            ):
+            if set(parsed_options) - {"format", "regions"} or "regions" not in parsed_options:
                 raise HTTPException(
                     status_code=422,
                     detail={
@@ -1358,10 +1439,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     },
                 )
             validated_options["regions"] = parsed_options["regions"]
-        if (
-            operation in {"image.from_heic", "image.from_raw", "image.from_psd", "image.from_svg"}
-            and set(parsed_options) - {"format"}
-        ):
+        if operation in {
+            "image.from_heic",
+            "image.from_raw",
+            "image.from_psd",
+            "image.from_svg",
+        } and set(parsed_options) - {"format"}:
             raise HTTPException(
                 status_code=422,
                 detail={"error": {"code": "invalid_options", "message": "OpÃ§Ãµes invÃ¡lidas."}},
@@ -1451,7 +1534,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if operation == "pdf.redact":
             validated_options = {"regions": parsed_options.get("regions")}
         if operation == "pdf.forms":
-            validated_options = {"updates": parsed_options.get("updates")}
+            validated_options = {
+                "updates": parsed_options.get("updates"),
+                "create": parsed_options.get("create", []),
+            }
         if operation in {"pdf.edit", "pdf.sign"}:
             validated_options = {
                 key: parsed_options.get(key)
@@ -1531,7 +1617,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 original_name = safe_filename(upload.filename or "imagem")
                 extension = Path(original_name).suffix.lower()
                 accepted_extensions = {
-                    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff"
+                    ".jpg",
+                    ".jpeg",
+                    ".png",
+                    ".gif",
+                    ".webp",
+                    ".bmp",
+                    ".tif",
+                    ".tiff",
                 }
                 if operation == "image.from_jpg":
                     accepted_extensions = {".jpg", ".jpeg"}
@@ -1583,8 +1676,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if is_html_operation and extension not in {".html", ".htm"}:
                     raise HTTPException(
                         status_code=415,
-                        detail={"error": {"code": "unsupported_format",
-                                           "message": "Envie um arquivo HTML (.html ou .htm)."}},
+                        detail={
+                            "error": {
+                                "code": "unsupported_format",
+                                "message": "Envie um arquivo HTML (.html ou .htm).",
+                            }
+                        },
                     )
                 if (
                     not is_pdf_operation
@@ -1611,8 +1708,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         if is_html_operation and file_size > html_limit:
                             raise HTTPException(
                                 status_code=413,
-                                detail={"error": {"code": "file_too_large",
-                                                   "message": "O HTML capturado excede o limite."}},
+                                detail={
+                                    "error": {
+                                        "code": "file_too_large",
+                                        "message": "O HTML capturado excede o limite.",
+                                    }
+                                },
                             )
                         if file_size > settings.max_file_size_bytes:
                             raise HTTPException(
@@ -1647,8 +1748,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         if operation == "image.from_svg" and file_size > MAX_SVG_BYTES:
                             raise HTTPException(
                                 status_code=413,
-                                detail={"error": {"code": "file_too_large",
-                                                   "message": "O SVG excede o limite de 10 MiB."}},
+                                detail={
+                                    "error": {
+                                        "code": "file_too_large",
+                                        "message": "O SVG excede o limite de 10 MiB.",
+                                    }
+                                },
                             )
                         if total_size > settings.max_total_upload_bytes:
                             raise HTTPException(
@@ -1753,6 +1858,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         try:
                             with pymupdf.open(destination) as document:
                                 validate_form_updates(document, validated_options["updates"])
+                                validate_form_fields(document, validated_options["create"])
                         except InvalidPdfError as exc:
                             raise HTTPException(
                                 status_code=422,
@@ -1848,10 +1954,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 }
                             },
                         ) from exc
-                    if image_format not in INPUT_FORMATS or (
-                        operation == "image.from_jpg" and image_format != "JPEG"
-                    ) or (
-                        is_watermark_image and image_format not in {"PNG", "JPEG", "WEBP"}
+                    if (
+                        image_format not in INPUT_FORMATS
+                        or (operation == "image.from_jpg" and image_format != "JPEG")
+                        or (is_watermark_image and image_format not in {"PNG", "JPEG", "WEBP"})
                     ):
                         raise HTTPException(
                             status_code=415,
