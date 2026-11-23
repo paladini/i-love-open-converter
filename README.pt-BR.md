@@ -73,9 +73,9 @@ retenção por 24 horas.
 - O projeto oferece fluxos compatíveis para PDF e imagens; não converte
   qualquer tipo de arquivo para qualquer outro. Os formatos variam conforme a
   ferramenta.
-- Assinaturas em PDF são marcas visuais, o preenchimento aceita campos já
-  existentes e os resumos extraem frases de texto selecionável. Aplique OCR a
-  documentos digitalizados antes.
+- Assinaturas em PDF são marcas visuais; formulários podem ser preenchidos ou
+  criados. Resumos usam um modelo de IA local, com alternativa extrativa. Aplique
+  OCR a documentos digitalizados e confira os detalhes no original.
 - A tradução é local e funciona entre português brasileiro e inglês. A captura
   de HTML aceita conteúdo estático, sem JavaScript ou sessões autenticadas. A
   captura de URLs faz requisições limitadas a endereços HTTP(S) públicos pelo
@@ -95,6 +95,9 @@ cp .env.example .env
 mkdir -p data
 docker compose up -d
 ```
+
+A imagem Docker inclui um modelo local de resumo. Nenhum texto do documento é
+enviado a um serviço de IA hospedado.
 
 No Windows PowerShell, use `Copy-Item .env.example .env` e
 `New-Item -ItemType Directory -Force data` no lugar de `cp` e `mkdir`. Abra

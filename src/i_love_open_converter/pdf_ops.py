@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import html
 import math
@@ -81,6 +82,76 @@ class SummaryLimitError(Exception):
 
 MAX_SUMMARY_SENTENCES = 2_000
 MAX_SUMMARY_OUTPUT_SENTENCES = 12
+MAX_SUMMARY_CHARACTERS = 100_000
+MAX_SUMMARY_CHUNK_TOKENS = 440
+
+
+@functools.lru_cache(maxsize=1)
+def _load_summary_model(model_path: str):
+    import ctranslate2
+    import sentencepiece
+
+    path = Path(model_path)
+    tokenizer = sentencepiece.SentencePieceProcessor(model_file=str(path / "spiece.model"))
+    translator = ctranslate2.Translator(str(path), device="cpu", inter_threads=1, intra_threads=1)
+    return tokenizer, translator
+
+
+def _summary_chunks(sentences: list[str], tokenizer) -> list[str]:
+    chunks: list[str] = []
+    current: list[str] = []
+    current_length = 0
+    for sentence in sentences:
+        tokens = tokenizer.encode(sentence, out_type=str)
+        while len(tokens) > MAX_SUMMARY_CHUNK_TOKENS:
+            if current:
+                chunks.append(tokenizer.decode(current))
+                current, current_length = [], 0
+            chunks.append(tokenizer.decode(tokens[:MAX_SUMMARY_CHUNK_TOKENS]))
+            tokens = tokens[MAX_SUMMARY_CHUNK_TOKENS:]
+        if current and current_length + len(tokens) > MAX_SUMMARY_CHUNK_TOKENS:
+            chunks.append(tokenizer.decode(current))
+            current, current_length = [], 0
+        current.extend(tokens)
+        current_length += len(tokens)
+    if current:
+        chunks.append(tokenizer.decode(current))
+    return chunks
+
+
+def _generate_summary(text: str, tokenizer, translator) -> str:
+    prompt = (
+        "Summarize the following text in the same language as the source, "
+        f"in no more than {MAX_SUMMARY_OUTPUT_SENTENCES} concise sentences. "
+        "Keep only information supported by the source:\n{text}"
+    )
+    tokens = tokenizer.encode(prompt, out_type=str)
+    result = translator.translate_batch(
+        [tokens], beam_size=2, num_hypotheses=1, max_decoding_length=128
+    )[0]
+    return tokenizer.decode(result.hypotheses[0]).strip()
+
+
+def _abstractive_summary(sentences: list[str]) -> str | None:
+    model_path = os.getenv("LOCAL_SUMMARY_MODEL_DIR")
+    if not model_path or not (Path(model_path) / "spiece.model").is_file():
+        return None
+    try:
+        tokenizer, translator = _load_summary_model(model_path)
+        pending = _summary_chunks(sentences, tokenizer)
+        for _ in range(8):
+            reduced = [_generate_summary(chunk, tokenizer, translator) for chunk in pending]
+            reduced = [summary for summary in reduced if summary]
+            if not reduced:
+                return None
+            if len(reduced) == 1:
+                return reduced[0]
+            pending = _summary_chunks(reduced, tokenizer)
+        if len(pending) != 1:
+            return None
+        return _generate_summary(pending[0], tokenizer, translator)
+    except (ImportError, OSError, RuntimeError, ValueError):
+        return None
 
 
 def _rank_summary_sentences(sentences: list[str]) -> list[int]:
@@ -138,6 +209,7 @@ def _rank_summary_sentences(sentences: list[str]) -> list[int]:
 
 def summarize_pdf(source: Path, destination: Path) -> None:
     sentences: list[str] = []
+    text_characters = 0
     try:
         with pymupdf.open(source) as document:
             if not document.is_pdf or document.needs_pass or document.page_count < 1:
@@ -146,6 +218,9 @@ def summarize_pdf(source: Path, destination: Path) -> None:
                 raise SummaryLimitError
             for page in document:
                 page_text = page.get_text("text")
+                text_characters += len(page_text)
+                if text_characters > MAX_SUMMARY_CHARACTERS:
+                    raise SummaryLimitError
                 sentences.extend(
                     sentence.strip()
                     for sentence in re.split(r"(?<=[.!?])\s+|\n+", page_text)
@@ -157,6 +232,22 @@ def summarize_pdf(source: Path, destination: Path) -> None:
         raise InvalidPdfError from exc
     if not sentences:
         raise NoSummaryTextError
+
+    generated = _abstractive_summary(sentences)
+    if generated:
+        generated_sentences = [
+            sentence.strip()
+            for sentence in re.split(r"(?<=[.!?])\s+|\n+", generated)
+            if sentence.strip()
+        ]
+        generated = " ".join(generated_sentences[:MAX_SUMMARY_OUTPUT_SENTENCES])
+        summary = (
+            "Resumo gerado por IA local / Local AI summary. "
+            "Verifique os detalhes no original / Verify details against the source.\n\n" + generated
+        )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(summary + "\n", encoding="utf-8")
+        return
 
     selected = _rank_summary_sentences(sentences)
     summary = "Resumo extraído / Extractive summary\n\n" + "\n\n".join(

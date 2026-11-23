@@ -36,8 +36,8 @@ This inventory reconciles the capabilities named in the goal objective with the 
 | OCR / searchable PDF | Implemented locally for Portuguese and English |
 | Compare PDFs | Implemented as a visual page comparison |
 | Redact PDF | Implemented with safeguards for tagged content |
-| Fillable PDF forms | Implemented for existing fields |
-| AI summary / translation | Local extractive PDF summary and offline PT-BR/English PDF text translation are implemented; scanned documents require OCR first |
+| Fillable PDF forms | Implemented: fill existing fields, create text/checkbox/radio/combo/list fields, and review local OCR/geometry suggestions |
+| AI summary / translation | Local abstractive PDF summary with pinned FLAN-T5-small/CTranslate2 and labeled extractive fallback, and offline PT-BR/English PDF text translation are implemented. Scanned documents require OCR first |
 | PDF to Markdown | Implemented |
 
 ## Image capabilities named in the objective
