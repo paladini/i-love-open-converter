@@ -45,7 +45,7 @@ RUN curl -fsSL -o libheif.tar.gz https://github.com/strukturag/libheif/releases/
         -DWITH_GDK_PIXBUF=OFF \
         -DBUILD_TESTING=OFF \
         -DBUILD_DOCUMENTATION=OFF \
-    && cmake --build build --parallel 2 --target heif-info heif-dec heif-enc \
+    && cmake --build build --parallel 4 --target heif-info heif-dec heif-enc \
     && cmake --install build \
     && mkdir -p /usr/local/share/licenses/libheif \
     && cp COPYING /usr/local/share/licenses/libheif/COPYING \
@@ -93,13 +93,34 @@ RUN ct2-transformers-converter \
         -o /opt/local-summary-model/spiece.model \
         https://huggingface.co/google/flan-t5-small/resolve/0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab/spiece.model
 
-FROM python:3.14-slim
+FROM python:3.14-slim AS app-builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     ORT_DISABLE_TELEMETRY=1 \
-    UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
+
+WORKDIR /app
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /bin/
+COPY pyproject.toml uv.lock README.md README.pt-BR.md LICENSE THIRD_PARTY_NOTICES.md ./
+COPY licenses ./licenses
+COPY docker/install_translation_models.py /tmp/install_translation_models.py
+RUN python /tmp/install_translation_models.py && rm /tmp/install_translation_models.py
+ENV TRANSLATION_MODEL_DIR=/opt/translation-models
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY src ./src
+RUN uv sync --frozen --no-dev
+COPY --from=rawpy-builder /tmp/rawpy-wheel /tmp/rawpy-wheel
+RUN uv pip install --python /app/.venv/bin/python --reinstall-package rawpy --no-deps /tmp/rawpy-wheel/*.whl \
+    && rm -rf /tmp/rawpy-wheel
+
+FROM python:3.14-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    ORT_DISABLE_TELEMETRY=1
 
 WORKDIR /app
 
@@ -117,25 +138,17 @@ COPY --from=rawpy-builder /tmp/libraw-source/LICENSE.LGPL /app/licenses/libraw/L
 COPY --from=rawpy-builder /tmp/libraw-source/LICENSE.CDDL /app/licenses/libraw/LICENSE.CDDL
 COPY --from=rawpy-builder /tmp/libraw-source/COPYRIGHT /app/licenses/libraw/COPYRIGHT
 COPY --from=rawpy-builder /tmp/rawpy-source/LICENSE /app/licenses/rawpy/LICENSE
+COPY --from=app-builder /app/.venv /app/.venv
+COPY --from=app-builder /app/src /app/src
+COPY --from=app-builder /opt/translation-models /opt/translation-models
 RUN ldconfig
 ENV VERAPDF_BIN=/opt/verapdf/verapdf \
     U2NET_HOME=/opt/u2net \
-    LOCAL_SUMMARY_MODEL_DIR=/opt/local-summary-model
+    LOCAL_SUMMARY_MODEL_DIR=/opt/local-summary-model \
+    TRANSLATION_MODEL_DIR=/opt/translation-models
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /bin/
-
-COPY pyproject.toml uv.lock README.md README.pt-BR.md LICENSE THIRD_PARTY_NOTICES.md ./
 COPY licenses ./licenses
-COPY docker/install_translation_models.py /tmp/install_translation_models.py
-RUN python /tmp/install_translation_models.py && rm /tmp/install_translation_models.py
-ENV TRANSLATION_MODEL_DIR=/opt/translation-models
-RUN uv sync --frozen --no-dev --no-install-project
-
-COPY src ./src
-RUN uv sync --frozen --no-dev
-RUN uv pip install --python /app/.venv/bin/python --reinstall-package rawpy --no-deps /tmp/rawpy-wheel/*.whl \
-    && rm -rf /tmp/rawpy-wheel \
-    && /app/.venv/bin/python -c "import rawpy; assert rawpy.libraw_version == (0, 22, 3); assert rawpy.libraw_version_compiled == (0, 22, 3); assert not rawpy.flags or not rawpy.flags['OPENMP']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL2']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL3']"
+RUN /app/.venv/bin/python -c "import rawpy; assert rawpy.libraw_version == (0, 22, 3); assert rawpy.libraw_version_compiled == (0, 22, 3); assert not rawpy.flags or not rawpy.flags['OPENMP']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL2']; assert not rawpy.flags or not rawpy.flags['DEMOSAIC_PACK_GPL3']"
 COPY docker/ocr-smoke.py /tmp/ocr-smoke.py
 COPY docker/translation-smoke.py /tmp/translation-smoke.py
 COPY docker/summary-smoke.py /tmp/summary-smoke.py
