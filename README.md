@@ -33,7 +33,7 @@ I Love Open Converter is a free, self-hosted toolkit for everyday PDF and image 
 
 ## Features
 
-- **PDF:** organize, edit, merge, split, secure, OCR, summarize, translate, compare, redact, and convert PDFs.
+- **PDF:** compress batches, organize, edit, merge, split, secure, OCR, summarize, translate, compare, redact, and convert PDFs.
 - **Images:** convert, compress, resize, crop, edit, watermark, remove backgrounds, blur faces or plates, and more.
 - **Documents and web:** convert Office files, render HTML pages, and export PDFs to Markdown or spreadsheets.
 

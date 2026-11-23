@@ -1212,6 +1212,29 @@ def process_pdf(
             document.close()
         return [destination], "application/pdf"
 
+    if operation == "pdf.compress" and len(sources) > 1:
+        outputs: list[Path] = []
+        used_names: set[str] = set()
+        profile = options.get("profile", "lossless")
+        for source, original_name in sources:
+            stem = Path(original_name).stem or "document"
+            base_name = f"{stem}-compressed"
+            candidate = f"{base_name}.pdf"
+            suffix = 2
+            while candidate.casefold() in used_names:
+                candidate = f"{base_name}-{suffix}.pdf"
+                suffix += 1
+            used_names.add(candidate.casefold())
+            document = _open_pdf(source)
+            try:
+                apply_pdf_compression_profile(document, profile)
+                destination = output_dir / candidate
+                document.save(destination, garbage=3, deflate=True, use_objstms=True)
+                outputs.append(destination)
+            finally:
+                document.close()
+        return outputs, "application/pdf"
+
     if len(sources) != 1:
         raise InvalidPdfError
     source, original_name = sources[0]

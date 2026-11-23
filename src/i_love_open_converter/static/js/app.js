@@ -337,7 +337,7 @@ function selectTool(operation) {
           : operation === "image.from_jpg"
             ? ".jpg,.jpeg,image/jpeg"
             : ".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff";
-  fileInput.multiple = ["pdf.merge", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions" && operation !== "image.from_svg" && operation !== "image.from_psd");
+  fileInput.multiple = ["pdf.merge", "pdf.compress", "image.to_pdf"].includes(operation) || (operation.startsWith("image.") && operation !== "image.editor" && operation !== "image.meme" && operation !== "image.upscale" && operation !== "image.remove_background" && operation !== "image.blur_faces" && operation !== "image.blur_plates" && operation !== "image.blur_regions" && operation !== "image.from_svg" && operation !== "image.from_psd");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
   fileTypes.dataset.i18n = isPdf ? "pdfFileTypes" : operation === "image.from_jpg" ? "jpgFileTypes" : operation === "image.from_svg" ? "svgFileTypes" : operation === "image.from_psd" ? "psdFileTypes" : operation === "image.from_heic" ? "heicFileTypes" : operation === "image.from_raw" ? "rawFileTypes" : "fileTypes";
