@@ -878,7 +878,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         single_pdf_operations = {
             "pdf.split",
-            "pdf.rotate",
             "pdf.to_image",
             "pdf.extract_images",
             "pdf.to_markdown",
