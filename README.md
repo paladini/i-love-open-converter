@@ -83,7 +83,7 @@ Open <http://localhost:8080>. The web app and worker run as separate services, a
 - PDF signatures are visual. Review redactions and generated summaries before sharing.
 - No accounts, third-party analytics, or telemetry are built in. Keep the app on a trusted network or behind an authenticated proxy.
 
-Use `docker compose ps`, `docker compose logs -f web worker`, and `docker compose down` to inspect, troubleshoot, and stop the services without deleting their files.
+Use `docker compose ps`, `docker compose logs -f web worker`, and `docker compose down` to inspect, troubleshoot, and stop the services without deleting its files.
 
 <details>
 <summary>Configuration defaults</summary>

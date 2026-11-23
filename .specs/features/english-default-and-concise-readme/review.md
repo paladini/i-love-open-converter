@@ -18,4 +18,4 @@ Static review only. No tests, build, or browser session was run as part of this 
 
 ## CI fix pass
 
-The subsequent GitHub CI run found that existing documentation checks depend on the detailed format matrix and exact Compose defaults being present in both READMEs. Those checks were written before this review and were not visible to static content review. The values and supported-path rows are retained in collapsible sections, while the main reading flow stays concise. CI is being rerun against this fix.
+The subsequent GitHub CI run found that existing documentation checks depend on the detailed format matrix, exact Compose defaults, and a specific Compose shutdown phrase being present in both READMEs. Those checks were written before this review and were not visible to static content review. The values and supported-path rows are retained in collapsible sections, the shutdown phrase is restored, and the main reading flow stays concise. CI is being rerun against this fix.
