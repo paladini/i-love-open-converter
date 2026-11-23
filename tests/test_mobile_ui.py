@@ -129,6 +129,59 @@ def test_home_conversion_flow_is_usable_at_360px(
             browser.close()
 
 
+def test_pdf_compression_profile_is_localized_and_submitted(settings, pdf_bytes):
+    with _serve_app(settings) as base_url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(viewport={"width": 1280, "height": 900})
+        page = context.new_page()
+
+        def stub_job_api(route):
+            request = route.request
+            if request.method == "POST":
+                body = request.post_data or ""
+                assert '"profile":"extreme"' in body
+                route.fulfill(
+                    status=202,
+                    json={
+                        "job_id": "compression-profile",
+                        "status_url": "/api/jobs/compression-profile",
+                    },
+                )
+            else:
+                route.fulfill(
+                    status=200,
+                    json={
+                        "state": "succeeded",
+                        "files": [{"name": "compressed.pdf", "size_bytes": 100}],
+                        "download_url": "/api/jobs/compression-profile/download",
+                    },
+                )
+
+        try:
+            page.route("**/api/jobs**", stub_job_api)
+            page.goto(base_url, wait_until="networkidle")
+            page.locator('[data-tool="pdf.compress"]').click()
+            profile = page.locator("#pdf-compression-profile")
+            expect(profile).to_be_visible()
+            expect(profile).to_have_value("lossless")
+            expect(profile.locator('option[value="lossless"]')).to_have_text("Lossless")
+            page.locator("#language").select_option("pt-BR")
+            expect(page.locator('[data-option="pdf-compression-profile"] span')).to_have_text(
+                "Perfil de compressão"
+            )
+            expect(profile.locator('option[value="recommended"]')).to_have_text("Recomendado")
+            page.locator("#language").select_option("en")
+            profile.select_option("extreme")
+            page.locator("#file-input").set_input_files(
+                {"name": "source.pdf", "mimeType": "application/pdf", "buffer": pdf_bytes}
+            )
+            page.locator("#submit-button").click()
+            expect(page.locator("#job-result")).to_be_visible()
+        finally:
+            context.close()
+            browser.close()
+
+
 @pytest.mark.parametrize(
     ("tool", "operation"),
     [
@@ -137,9 +190,7 @@ def test_home_conversion_flow_is_usable_at_360px(
     ],
 )
 @pytest.mark.parametrize("language", ["pt-BR", "en"])
-def test_public_url_conversion_controls_are_usable_at_360px(
-    settings, tool, operation, language
-):
+def test_public_url_conversion_controls_are_usable_at_360px(settings, tool, operation, language):
     done_text = (
         "Seu PDF est\u00e1 pronto."
         if operation == "html.to_pdf" and language == "pt-BR"

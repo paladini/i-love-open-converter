@@ -1013,6 +1013,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 status_code=503,
                 detail={"error": {"code": "service_unavailable", "message": "PDF/A indisponível."}},
             )
+        if operation == "pdf.compress":
+            profile = parsed_options.get("profile", "lossless")
+            if (
+                set(parsed_options) - {"profile"}
+                or not isinstance(profile, str)
+                or profile
+                not in {
+                    "lossless",
+                    "recommended",
+                    "extreme",
+                }
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "invalid_options",
+                            "message": "Opções de compressão inválidas.",
+                        }
+                    },
+                )
+            validated_options["profile"] = profile
         if operation == "pdf.compare":
             language = parsed_options.get("language", "pt-BR")
             if len(files) != 2 or language not in ("pt-BR", "en"):
