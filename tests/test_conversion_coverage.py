@@ -301,6 +301,25 @@ def test_mapped_job_cases_reach_the_worker_and_a_download_assertion():
         assert "download" in source.casefold(), operation
 
 
+@pytest.mark.parametrize("operation", sorted(SUPPORTED_OPERATIONS))
+def test_every_operation_rejects_malformed_upload_before_creating_a_job(settings, operation):
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/api/jobs",
+            data={"operation": operation, "options": "{}"},
+            files=[("files", ("empty.bin", b"", "application/octet-stream"))],
+        )
+
+    assert response.status_code in {415, 422, 503}, (operation, response.text)
+    assert response.json()["error"]["code"] in {
+        "invalid_file",
+        "invalid_options",
+        "service_unavailable",
+        "unsupported_format",
+    }, operation
+    assert list(settings.jobs_dir.iterdir()) == []
+
+
 def test_active_home_catalog_tools_map_to_supported_operations():
     template = (ROOT / "src/i_love_open_converter/templates/index.html").read_text(encoding="utf-8")
     catalog_operations = set(re.findall(r'data-tool="([a-z0-9_.]+)"', template))
