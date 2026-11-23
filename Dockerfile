@@ -81,7 +81,7 @@ FROM --platform=$BUILDPLATFORM python:3.12-slim AS summary-model-builder
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --no-cache-dir --disable-pip-version-check \
-    --index-url https://download.pytorch.org/whl/cpu "torch==2.9.1+cpu"
+    --index-url https://download.pytorch.org/whl/cpu "torch==2.14.1+cpu"
 RUN python -m pip install --no-cache-dir --disable-pip-version-check \
     "ctranslate2==4.9.0" "sentencepiece==0.2.3" "transformers==4.57.1"
 RUN ct2-transformers-converter \

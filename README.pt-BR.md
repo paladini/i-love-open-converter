@@ -92,7 +92,7 @@ Use `docker compose ps`, `docker compose logs -f web worker` e `docker compose d
 | Configuração | Padrão |
 | --- | --- |
 | `APP_PORT` | `8080` |
-| `IMAGE_TAG` | `latest` |
+| `IMAGE_TAG` | `1.0.0` |
 | `MAX_FILE_SIZE_MB` | `100` |
 | `MAX_TOTAL_UPLOAD_MB` | `500` |
 | `MAX_FILES_PER_JOB` | `10` |
