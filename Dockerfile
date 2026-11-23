@@ -146,7 +146,7 @@ RUN --network=none /app/.venv/bin/python /tmp/ocr-smoke.py \
     && /app/.venv/bin/python /tmp/translation-smoke.py \
     && /app/.venv/bin/python /tmp/summary-smoke.py \
     && OFFICE_NETWORK_ISOLATED=1 /app/.venv/bin/python /tmp/runtime-smoke.py \
-    && /app/.venv/bin/python /tmp/html-to-pdf-smoke.py \
+    && OFFICE_NETWORK_ISOLATED=1 /app/.venv/bin/python /tmp/html-to-pdf-smoke.py \
     && rm /tmp/ocr-smoke.py /tmp/translation-smoke.py /tmp/summary-smoke.py \
         /tmp/runtime-smoke.py /tmp/html-to-pdf-smoke.py /app/smoke-fixtures/Canon-EOS-D60.CRW \
         /app/smoke-fixtures/example.heic \
