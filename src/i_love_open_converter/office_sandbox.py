@@ -44,7 +44,13 @@ def restrict(root: Path, *, allow_app: bool = False, allow_tmp: bool = True) -> 
         if allow_tmp:
             paths.append((Path("/tmp"), (1 << 9) | (1 << 5)))
         paths += (
-            [(Path("/app"), _READ_EXECUTE), (Path(sys.prefix), _READ_EXECUTE)] if allow_app else []
+            [
+                (Path("/app"), _READ_EXECUTE),
+                (Path(sys.prefix), _READ_EXECUTE),
+                (Path(sys.base_prefix), _READ_EXECUTE),
+            ]
+            if allow_app
+            else []
         ) + [
             (Path(item), _READ_EXECUTE)
             for item in ("/usr", "/lib", "/lib64", "/etc", "/dev", "/proc/self")
