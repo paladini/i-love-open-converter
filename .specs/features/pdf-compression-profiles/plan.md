@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-23 - user: "Ã‰ pra seguir, e ir criando PRs de tudo, mergeando, atÃ© finalizar completamente a implementaÃ§Ã£o do nosso plano original!"
 **Settled mid-build:** Keep lossless as the default; add lossy image profiles as an extension to the planned PDF compressor.
-**Review:** pending
-**Fix pass:** pending
+**Review:** sent at 03f960f
+**Fix pass:** done - Added a browser regression covering the selector default, PT-BR labels, and submission of the selected profile.
 
 ## Problem
 
