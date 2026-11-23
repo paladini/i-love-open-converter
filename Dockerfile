@@ -77,7 +77,7 @@ RUN python -m pip install --no-cache-dir --disable-pip-version-check \
     && RAWPY_USE_SYSTEM_LIBRAW=1 python -m pip wheel --no-deps --no-build-isolation --wheel-dir /tmp/rawpy-wheel . \
     && ldd /usr/local/lib/libraw_r.so
 
-FROM python:3.12-slim AS summary-model-builder
+FROM --platform=$BUILDPLATFORM python:3.12-slim AS summary-model-builder
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 RUN python -m pip install --no-cache-dir --disable-pip-version-check \
