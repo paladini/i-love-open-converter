@@ -1,8 +1,8 @@
 # English UI default and concise documentation
 
 **Approved**: 2026-11-23 - user asked for English as the default interface language, shorter direct READMEs, and preservation of the existing opening visual.
-**Review:** pending.
-**Fix pass:** pending.
+**Review:** approved; independent reviewer found no material issues.
+**Fix pass:** complete - no changes required.
 
 ## Problem
 
