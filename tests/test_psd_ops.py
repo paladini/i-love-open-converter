@@ -125,6 +125,7 @@ def test_psd_conversion_creates_one_bounded_raster_artifact(
         assert process_one_job(settings)
         status = client.get(response.json()["status_url"])
         download = client.get(response.json()["status_url"] + "/download")
+        assert status.json()["state"] == "succeeded", status.json()
         with sqlite3.connect(settings.database_path) as connection:
             stored = connection.execute(
                 "SELECT operation, options_json FROM conversion_jobs WHERE id = ?",
@@ -135,7 +136,6 @@ def test_psd_conversion_creates_one_bounded_raster_artifact(
 
     assert stored[0] == "image.from_psd"
     assert json.loads(stored[1])["width"] == 8
-    assert status.json()["state"] == "succeeded"
     assert job_count == 1
     assert len(outputs) == 1
     assert download.status_code == 200
