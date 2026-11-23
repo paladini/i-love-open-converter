@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import sys
 from io import BytesIO
 from pathlib import Path
 
@@ -109,6 +110,9 @@ def test_inspect_psd_rejects_unsupported_header(tmp_path, header):
 
 
 @pytest.mark.parametrize("output_format", ["PNG", "JPEG", "WEBP"])
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="PSD conversion requires the isolated Linux worker"
+)
 def test_psd_conversion_creates_one_bounded_raster_artifact(
     settings, tmp_path, monkeypatch, output_format
 ):
@@ -135,11 +139,14 @@ def test_psd_conversion_creates_one_bounded_raster_artifact(
     assert job_count == 1
     assert len(outputs) == 1
     assert download.status_code == 200
-    assert download.headers["content-type"] == {
-        "PNG": "image/png",
-        "JPEG": "image/jpeg",
-        "WEBP": "image/webp",
-    }[output_format]
+    assert (
+        download.headers["content-type"]
+        == {
+            "PNG": "image/png",
+            "JPEG": "image/jpeg",
+            "WEBP": "image/webp",
+        }[output_format]
+    )
     with Image.open(BytesIO(download.content)) as output:
         assert output.format == output_format
         assert output.size == (8, 6)
@@ -153,6 +160,9 @@ def test_psd_conversion_creates_one_bounded_raster_artifact(
             assert all(channel > 245 for channel in rgba.getpixel((7, 0))[:3])
 
 
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="PSD conversion requires the isolated Linux worker"
+)
 def test_grayscale_psd_preserves_gray_values_and_opaque_alpha(settings, tmp_path, monkeypatch):
     source = _grayscale_psd(tmp_path / "grayscale.psd")
     monkeypatch.setattr(psd_ops, "office_isolated", lambda: True)

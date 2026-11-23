@@ -139,11 +139,18 @@ RUN uv pip install --python /app/.venv/bin/python --reinstall-package rawpy --no
 COPY docker/ocr-smoke.py /tmp/ocr-smoke.py
 COPY docker/translation-smoke.py /tmp/translation-smoke.py
 COPY docker/summary-smoke.py /tmp/summary-smoke.py
-RUN /app/.venv/bin/python /tmp/ocr-smoke.py \
+COPY docker/html-to-pdf-smoke.py /tmp/html-to-pdf-smoke.py
+COPY docker/runtime-smoke.py /tmp/runtime-smoke.py
+COPY tests/fixtures/raw/Canon-EOS-D60.CRW tests/fixtures/heic/example.heic /app/smoke-fixtures/
+RUN --network=none /app/.venv/bin/python /tmp/ocr-smoke.py \
     && /app/.venv/bin/python /tmp/translation-smoke.py \
-    && rm /tmp/ocr-smoke.py /tmp/translation-smoke.py
-RUN --network=none /app/.venv/bin/python /tmp/summary-smoke.py \
-    && rm /tmp/summary-smoke.py
+    && /app/.venv/bin/python /tmp/summary-smoke.py \
+    && OFFICE_NETWORK_ISOLATED=1 /app/.venv/bin/python /tmp/runtime-smoke.py \
+    && /app/.venv/bin/python /tmp/html-to-pdf-smoke.py \
+    && rm /tmp/ocr-smoke.py /tmp/translation-smoke.py /tmp/summary-smoke.py \
+        /tmp/runtime-smoke.py /tmp/html-to-pdf-smoke.py /app/smoke-fixtures/Canon-EOS-D60.CRW \
+        /app/smoke-fixtures/example.heic \
+    && rmdir /app/smoke-fixtures
 
 EXPOSE 8080
 CMD ["/app/.venv/bin/uvicorn", "i_love_open_converter.main:app", "--host", "0.0.0.0", "--port", "8080"]

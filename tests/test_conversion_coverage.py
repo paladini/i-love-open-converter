@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import re
 import unicodedata
@@ -289,6 +290,16 @@ def test_operation_matrix_matches_the_api_contract_and_existing_tests():
         filename = TEST_MODULES[module]
         source = (ROOT / filename).read_text(encoding="utf-8")
         assert re.search(rf"^def {re.escape(test_name)}\s*\(", source, re.MULTILINE), operation
+
+
+def test_runtime_heic_fixture_has_pinned_source_and_license_provenance():
+    fixture = ROOT / "tests/fixtures/heic/example.heic"
+    provenance = (fixture.parent / "README.md").read_text(encoding="utf-8")
+
+    assert "strukturag/libheif` v1.23.7" in provenance
+    assert "tests/data/rainbow-451x461.heic" in provenance
+    assert "COPYING" in provenance and "LGPL-3.0-or-later" in provenance
+    assert hashlib.sha256(fixture.read_bytes()).hexdigest() in provenance
 
 
 def test_mapped_job_cases_reach_the_worker_and_a_download_assertion():

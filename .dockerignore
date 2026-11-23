@@ -6,4 +6,12 @@ __pycache__
 data
 .env
 .specs
-tests
+tests/*
+!tests/fixtures/
+tests/fixtures/*
+!tests/fixtures/raw/
+!tests/fixtures/heic/
+tests/fixtures/raw/*
+tests/fixtures/heic/*
+!tests/fixtures/raw/Canon-EOS-D60.CRW
+!tests/fixtures/heic/example.heic
