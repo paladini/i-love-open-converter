@@ -48,12 +48,14 @@ def test_batch_rotation_returns_ordered_collision_safe_zip(settings, pdf_bytes):
     assert result.headers["content-type"].startswith("application/zip")
     with ZipFile(BytesIO(result.content)) as archive:
         assert archive.namelist() == ["report-rotated.pdf", "Report-rotated-2.pdf"]
-        for member, expected_text in zip(
-            archive.namelist(), ("Test page 1", "Second source"), strict=True
-        ):
+        expected_pages = (
+            ("Test page 1", "Test page 2"),
+            ("Second source",),
+        )
+        for member, expected_texts in zip(archive.namelist(), expected_pages, strict=True):
             with pymupdf.open(stream=archive.read(member), filetype="pdf") as document:
-                assert document.page_count == (2 if expected_text == "Test page 1" else 1)
-                assert expected_text in document[0].get_text()
+                assert document.page_count == len(expected_texts)
+                assert [page.get_text().strip() for page in document] == list(expected_texts)
                 assert all(page.rotation == 90 for page in document)
 
 

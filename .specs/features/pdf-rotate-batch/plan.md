@@ -2,8 +2,8 @@
 
 **Approved**: 2026-11-23 - user: "Gire o PDF que quiser. Gire vários arquivos PDF de uma só vez!"
 **Settled mid-build:** Apply the existing degree choice to every page of every PDF in the batch; keep one-file output unchanged and ZIP multiple outputs.
-**Review:** pending
-**Fix pass:** pending
+**Review:** sent at 417107c
+**Fix pass:** done - The ZIP regression now compares extracted text from every output page against every source page.
 
 ## Problem
 
