@@ -428,19 +428,33 @@ def redact_pages(document, options: dict[str, Any]) -> None:
 
 def list_form_fields(document) -> list[dict[str, Any]]:
     fields = []
-    for page_number in range(document.page_count):
-        page = document[page_number]
-        for widget in page.widgets() or []:
+    pages = [list(page.widgets() or []) for page in document]
+    radio_groups: dict[str, list[str]] = {}
+    for page_widgets in pages:
+        for widget in page_widgets:
+            if widget.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+                radio_groups.setdefault(widget.field_name or "", []).append(widget.on_state())
+    seen_radio_groups: set[str] = set()
+    for page_number, page_widgets in enumerate(pages):
+        for widget in page_widgets:
+            group_name = widget.field_name or ""
+            if widget.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+                if group_name in seen_radio_groups:
+                    continue
+                seen_radio_groups.add(group_name)
             field_type = {
                 pymupdf.PDF_WIDGET_TYPE_TEXT: "text",
                 pymupdf.PDF_WIDGET_TYPE_CHECKBOX: "checkbox",
+                pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON: "radio",
+                pymupdf.PDF_WIDGET_TYPE_COMBOBOX: "combo",
+                pymupdf.PDF_WIDGET_TYPE_LISTBOX: "list",
             }.get(widget.field_type, "unsupported")
             if widget.field_flags & pymupdf.PDF_FIELD_IS_READ_ONLY:
                 field_type = "unsupported"
             value = widget.field_value
             if field_type == "checkbox":
                 value = value not in (None, "", "Off", False, 0)
-            elif field_type == "text":
+            elif field_type in {"text", "radio", "combo", "list"}:
                 value = str(value or "")
             else:
                 value = None
@@ -456,6 +470,13 @@ def list_form_fields(document) -> list[dict[str, Any]]:
                         and widget.field_flags & pymupdf.PDF_TX_FIELD_IS_MULTILINE
                     ),
                     "max_length": widget.text_maxlen if field_type == "text" else 0,
+                    "choices": (
+                        radio_groups.get(group_name, [])
+                        if field_type == "radio"
+                        else list(widget.choice_values or [])
+                        if field_type in {"combo", "list"}
+                        else []
+                    ),
                 }
             )
     return fields
@@ -482,6 +503,7 @@ def validate_form_updates(document, updates: Any) -> None:
             not isinstance(value, str)
             or len(value) > 5000
             or (field["max_length"] and len(value) > field["max_length"])
+            or (field.get("choices") and value not in field["choices"])
         ):
             raise InvalidPdfError
 
@@ -499,6 +521,118 @@ def fill_form(document, updates: list[dict[str, Any]]) -> None:
                     else ("Off" if widget.field_type == pymupdf.PDF_WIDGET_TYPE_CHECKBOX else value)
                 )
                 widget.update()
+
+
+def validate_form_fields(document, fields: Any) -> None:
+    if not isinstance(fields, list) or len(fields) > 200:
+        raise InvalidPdfError
+    existing = {
+        (widget.field_name or "").casefold()
+        for page in document
+        for widget in (page.widgets() or [])
+    }
+    names: set[str] = set()
+    supported = {"text", "checkbox", "radio", "combo", "list"}
+    for item in fields:
+        if not isinstance(item, dict) or item.get("type") not in supported:
+            raise InvalidPdfError
+        name = item.get("name")
+        page_number = item.get("page")
+        rect = item.get("rect")
+        if (
+            not isinstance(name, str)
+            or not name.strip()
+            or len(name) > 100
+            or re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]*", name) is None
+            or name.casefold() in existing
+            or name.casefold() in names
+            or type(page_number) is not int
+            or not 1 <= page_number <= document.page_count
+            or not isinstance(rect, list)
+            or len(rect) != 4
+            or any(type(value) not in (int, float) for value in rect)
+        ):
+            raise InvalidPdfError
+        page = document[page_number - 1]
+        box = pymupdf.Rect(*rect)
+        bounds = page.rect
+        if (
+            not all(math.isfinite(value) for value in rect)
+            or box.is_empty
+            or box.width < 12
+            or box.height < 10
+            or box.x0 < bounds.x0
+            or box.y0 < bounds.y0
+            or box.x1 > bounds.x1
+            or box.y1 > bounds.y1
+        ):
+            raise InvalidPdfError
+        choices = item.get("choices", [])
+        label = item.get("label", name)
+        if not isinstance(label, str) or not label.strip() or len(label) > 150:
+            raise InvalidPdfError
+        if item["type"] in {"combo", "list", "radio"}:
+            if (
+                not isinstance(choices, list)
+                or not 2 <= len(choices) <= 50
+                or any(
+                    not isinstance(choice, str) or not choice.strip() or len(choice) > 100
+                    for choice in choices
+                )
+                or len({choice.casefold() for choice in choices}) != len(choices)
+            ):
+                raise InvalidPdfError
+        elif choices not in (None, []):
+            raise InvalidPdfError
+        if item["type"] == "radio" and box.height < 12 * len(choices):
+            raise InvalidPdfError
+        names.add(name.casefold())
+
+
+def create_form_fields(document, fields: list[dict[str, Any]]) -> None:
+    validate_form_fields(document, fields)
+    types = {
+        "text": pymupdf.PDF_WIDGET_TYPE_TEXT,
+        "checkbox": pymupdf.PDF_WIDGET_TYPE_CHECKBOX,
+        "radio": pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON,
+        "combo": pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+        "list": pymupdf.PDF_WIDGET_TYPE_LISTBOX,
+    }
+    for item in fields:
+        page = document[item["page"] - 1]
+        display_rect = pymupdf.Rect(*item["rect"])
+        rect = display_rect * page.derotation_matrix
+        if item["type"] == "radio":
+            row_height = display_rect.height / len(item["choices"])
+            for index, choice in enumerate(item["choices"]):
+                widget = pymupdf.Widget()
+                widget.field_name = item["name"]
+                widget.field_label = item.get("label", item["name"])
+                widget.field_type = types["radio"]
+                widget.field_value = choice
+                widget.button_caption = choice
+                button_rect = pymupdf.Rect(
+                    display_rect.x0,
+                    display_rect.y0 + index * row_height,
+                    display_rect.x1,
+                    display_rect.y0 + (index + 1) * row_height,
+                )
+                widget.rect = button_rect * page.derotation_matrix
+                page.add_widget(widget)
+            continue
+        widget = pymupdf.Widget()
+        widget.field_name = item["name"]
+        widget.field_label = item.get("label", item["name"])
+        widget.field_type = types[item["type"]]
+        widget.rect = rect
+        if item["type"] in {"combo", "list"}:
+            widget.choice_values = item["choices"]
+            widget.field_value = item["choices"][0]
+        elif item["type"] == "checkbox":
+            widget.field_value = "Off"
+        else:
+            widget.field_value = ""
+        page.add_widget(widget)
 
 
 def validate_edit_options(options: dict[str, Any], page_count: int) -> None:
@@ -996,10 +1130,18 @@ def process_pdf(
             destination = output_dir / "converted.docx"
             try:
                 completed = subprocess.run(
-                    [sys.executable, "-m", "i_love_open_converter.word_worker",
-                     str(source.resolve()), str(destination.resolve())],
-                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    timeout=180, check=False,
+                    [
+                        sys.executable,
+                        "-m",
+                        "i_love_open_converter.word_worker",
+                        str(source.resolve()),
+                        str(destination.resolve()),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=180,
+                    check=False,
                 )
                 if completed.returncode != 0 or not destination.is_file():
                     raise WordConversionError
@@ -1009,8 +1151,12 @@ def process_pdf(
                     if archive.getinfo("word/document.xml").file_size > 64 * 1024 * 1024:
                         raise WordConversionError
                     ElementTree.fromstring(archive.read("word/document.xml"))
-            except (OSError, subprocess.TimeoutExpired, zipfile.BadZipFile,
-                    ElementTree.ParseError) as exc:
+            except (
+                OSError,
+                subprocess.TimeoutExpired,
+                zipfile.BadZipFile,
+                ElementTree.ParseError,
+            ) as exc:
                 raise WordConversionError from exc
             content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             return [destination], content_type
@@ -1019,10 +1165,18 @@ def process_pdf(
             destination = output_dir / "presentation.pptx"
             try:
                 completed = subprocess.run(
-                    [sys.executable, "-m", "i_love_open_converter.powerpoint_worker",
-                     str(source.resolve()), str(destination.resolve())],
-                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    timeout=180, check=False,
+                    [
+                        sys.executable,
+                        "-m",
+                        "i_love_open_converter.powerpoint_worker",
+                        str(source.resolve()),
+                        str(destination.resolve()),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=180,
+                    check=False,
                 )
                 if completed.returncode != 0 or not destination.is_file():
                     raise PowerPointConversionError
@@ -1030,10 +1184,13 @@ def process_pdf(
                     raise PowerPointConversionError
                 with zipfile.ZipFile(destination) as archive:
                     names = set(archive.namelist())
-                    slide_names = {name for name in names
-                                   if re.fullmatch(r"ppt/slides/slide\d+\.xml", name)}
-                    if not {"[Content_Types].xml", "ppt/presentation.xml",
-                            "ppt/slides/slide1.xml"} <= names:
+                    slide_names = {
+                        name for name in names if re.fullmatch(r"ppt/slides/slide\d+\.xml", name)
+                    }
+                    if (
+                        not {"[Content_Types].xml", "ppt/presentation.xml", "ppt/slides/slide1.xml"}
+                        <= names
+                    ):
                         raise PowerPointConversionError
                     if len(slide_names) != document.page_count or len(names) > 10_000:
                         raise PowerPointConversionError
@@ -1043,8 +1200,13 @@ def process_pdf(
                         if archive.getinfo(name).file_size > 64 * 1024**2:
                             raise PowerPointConversionError
                         ElementTree.fromstring(archive.read(name))
-            except (OSError, subprocess.TimeoutExpired, zipfile.BadZipFile,
-                    ElementTree.ParseError, RuntimeError) as exc:
+            except (
+                OSError,
+                subprocess.TimeoutExpired,
+                zipfile.BadZipFile,
+                ElementTree.ParseError,
+                RuntimeError,
+            ) as exc:
                 raise PowerPointConversionError from exc
             content_type = (
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -1055,10 +1217,18 @@ def process_pdf(
             destination = output_dir / "extracted-data.xlsx"
             try:
                 completed = subprocess.run(
-                    [sys.executable, "-m", "i_love_open_converter.excel_worker",
-                     str(source.resolve()), str(destination.resolve())],
-                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    timeout=180, check=False,
+                    [
+                        sys.executable,
+                        "-m",
+                        "i_love_open_converter.excel_worker",
+                        str(source.resolve()),
+                        str(destination.resolve()),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=180,
+                    check=False,
                 )
                 if completed.returncode == 3:
                     raise NoSpreadsheetDataError
@@ -1069,8 +1239,7 @@ def process_pdf(
                 with zipfile.ZipFile(destination) as archive:
                     names = set(archive.namelist())
                     worksheet_names = {
-                        name for name in names
-                        if re.fullmatch(r"xl/worksheets/sheet\d+\.xml", name)
+                        name for name in names if re.fullmatch(r"xl/worksheets/sheet\d+\.xml", name)
                     }
                     if not {"[Content_Types].xml", "xl/workbook.xml"} <= names:
                         raise ExcelConversionError
@@ -1083,8 +1252,13 @@ def process_pdf(
                             if archive.getinfo(name).file_size > 64 * 1024**2:
                                 raise ExcelConversionError
                             ElementTree.fromstring(archive.read(name))
-            except (OSError, subprocess.TimeoutExpired, zipfile.BadZipFile,
-                    ElementTree.ParseError, RuntimeError) as exc:
+            except (
+                OSError,
+                subprocess.TimeoutExpired,
+                zipfile.BadZipFile,
+                ElementTree.ParseError,
+                RuntimeError,
+            ) as exc:
                 raise ExcelConversionError from exc
             content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             return [destination], content_type
@@ -1092,10 +1266,18 @@ def process_pdf(
         if operation == "pdf.to_markdown":
             try:
                 completed = subprocess.run(
-                    [sys.executable, "-m", "i_love_open_converter.markdown_worker",
-                     str(source.resolve()), str(output_dir.resolve())],
-                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    timeout=180, check=False,
+                    [
+                        sys.executable,
+                        "-m",
+                        "i_love_open_converter.markdown_worker",
+                        str(source.resolve()),
+                        str(output_dir.resolve()),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=180,
+                    check=False,
                 )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 raise MarkdownConversionError from exc
@@ -1141,6 +1323,7 @@ def process_pdf(
             return paths, "image/png"
 
         if operation == "pdf.forms":
+            create_form_fields(document, options.get("create", []))
             fill_form(document, options["updates"])
             destination = output_dir / "filled.pdf"
             document.save(destination, garbage=3, deflate=True)
@@ -1199,9 +1382,16 @@ def process_pdf(
                 outputs.append(destination)
             return outputs, "image/jpeg"
 
-    except (InvalidPdfError, NoOcrTextError, OcrProcessingError, MarkdownConversionError,
-            NoEmbeddedImagesError, WordConversionError, PowerPointConversionError,
-            ExcelConversionError):
+    except (
+        InvalidPdfError,
+        NoOcrTextError,
+        OcrProcessingError,
+        MarkdownConversionError,
+        NoEmbeddedImagesError,
+        WordConversionError,
+        PowerPointConversionError,
+        ExcelConversionError,
+    ):
         raise
     except Exception as exc:
         raise InvalidPdfError from exc
