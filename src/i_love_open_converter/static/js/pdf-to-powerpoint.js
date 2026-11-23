@@ -1,6 +1,6 @@
 const file = document.querySelector('#file'), form = document.querySelector('#form'), language = document.querySelector('#language');
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let statusKey = null;
 const words = {'pt-BR':{queued:'Na fila…',working:'Convertendo…',done:'Sua apresentação PowerPoint está pronta.',error:'Não foi possível converter o PDF. Confira o arquivo e os limites de processamento.',unavailable:'A conversão exige um worker Linux isolado da rede.'},en:{queued:'Queued…',working:'Converting…',done:'Your PowerPoint presentation is ready.',error:'Could not convert the PDF. Check the file and processing limits.',unavailable:'Conversion requires a network-isolated Linux worker.'}};
 function setStatus(key) {statusKey = key; message.textContent = key ? words[lang][key] : '';}

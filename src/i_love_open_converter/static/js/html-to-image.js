@@ -2,7 +2,7 @@ const file = document.querySelector('#file'), form = document.querySelector('#fo
 const url = document.querySelector('#url'), fileMode = document.querySelector('#file-mode'), urlMode = document.querySelector('#url-mode');
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
 const format = document.querySelector('#format');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let statusKey = null;
 const words = {
   'pt-BR': {

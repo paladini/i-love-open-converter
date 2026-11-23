@@ -9,7 +9,7 @@ const pageLabel = document.querySelector('#page-label');
 const submit = document.querySelector('#submit');
 const ranges = document.querySelector('#ranges');
 const controls = ['left','top','right','bottom'].map(id => document.querySelector(`#${id}`));
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let page = 1, count = 0, generation = 0, imageUrl = null, previewReady = false;
 const words = {'pt-BR':{loading:'Carregando prévia…',error:'Não foi possível processar o PDF. Confira o arquivo e as opções.',invalid:'A área deve ter largura e altura maiores que zero.',working:'Processando…',done:'Seu PDF está pronto.',page:'Página',of:'de',alt:'Prévia da página PDF'},en:{loading:'Loading preview…',error:'Could not process the PDF. Check the file and options.',invalid:'The area must have a positive width and height.',working:'Processing…',done:'Your PDF is ready.',page:'Page',of:'of',alt:'PDF page preview'}};
 function translate() { document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;}); preview.alt = words[lang].alt; showPageLabel(); }

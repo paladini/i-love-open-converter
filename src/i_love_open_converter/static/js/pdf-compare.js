@@ -1,6 +1,6 @@
 const form = document.querySelector('#form'), before = document.querySelector('#before'), after = document.querySelector('#after');
 const language = document.querySelector('#language'), submit = document.querySelector('#submit'), message = document.querySelector('#message'), summary = document.querySelector('#summary'), download = document.querySelector('#download');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 const words = {'pt-BR':{queued:'Na fila…',working:'Comparando páginas…',done:'Comparação pronta. Baixe o relatório para ver as páginas lado a lado.',error:'Não foi possível comparar os PDFs. Confira os arquivos.'},en:{queued:'Queued…',working:'Comparing pages…',done:'Comparison ready. Download the report to view pages side by side.',error:'Could not compare the PDFs. Check the files.'}};
 function translate() {document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;});}
 language.addEventListener('change', () => {lang = language.value; localStorage.setItem('i-love-open-converter-language',lang); translate();});

@@ -6,7 +6,7 @@ const submit = document.querySelector('#submit');
 const message = document.querySelector('#message');
 const download = document.querySelector('#download');
 const filename = document.querySelector('#filename');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 const words = {
   'pt-BR': { queued: 'Na fila…', working: 'Traduzindo localmente…', done: 'Tradução pronta.', noText: 'Este PDF não tem texto selecionável. Use OCR PDF e tente novamente.', tooLarge: 'Este PDF excede os limites da tradução local.', overflow: 'O texto traduzido não cabe na página com tamanho legível.', unavailable: 'Os modelos locais de tradução estão indisponíveis.', error: 'Não foi possível traduzir o PDF. Confira o arquivo e tente novamente.' },
   en: { queued: 'Queued…', working: 'Translating locally…', done: 'Translation ready.', noText: 'This PDF has no selectable text. Run PDF OCR and try again.', tooLarge: 'This PDF exceeds the local translation limits.', overflow: 'The translated text does not fit at a readable size.', unavailable: 'Local translation models are unavailable.', error: 'Could not translate the PDF. Check the file and try again.' },

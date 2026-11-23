@@ -1,7 +1,7 @@
 const file = document.querySelector('#file'), form = document.querySelector('#form');
 const language = document.querySelector('#language'), ocrLanguage = document.querySelector('#ocr-language');
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 const words = {
   'pt-BR': {queued:'Na fila…',working:'Reconhecendo texto localmente…',done:'PDF pesquisável pronto. Revise o texto reconhecido.',noText:'Nenhum texto foi reconhecido. Confira a qualidade do documento.',error:'Não foi possível criar o PDF pesquisável. Confira o arquivo e tente novamente.'},
   en: {queued:'Queued…',working:'Recognizing text locally…',done:'Searchable PDF ready. Review the recognized text.',noText:'No text was recognized. Check the document quality.',error:'Could not create the searchable PDF. Check the file and try again.'}

@@ -149,7 +149,7 @@ let blurPreviewRequest = 0;
 const languageSelect = document.querySelector("#language");
 let currentFiles = [];
 let currentOperation = "image.convert";
-let currentLanguage = localStorage.getItem("i-love-open-converter-language") || "pt-BR";
+let currentLanguage = localStorage.getItem("i-love-open-converter-language") === "pt-BR" ? "pt-BR" : "en";
 let pollTimer = null;
 let currentStatusKey = null;
 let currentErrorKey = null;

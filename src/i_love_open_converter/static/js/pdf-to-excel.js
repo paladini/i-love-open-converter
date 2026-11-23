@@ -1,6 +1,6 @@
 const file = document.querySelector('#file'), form = document.querySelector('#form'), language = document.querySelector('#language');
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let statusKey = null;
 const words = {'pt-BR':{queued:'Na fila…',working:'Extraindo dados…',done:'Sua planilha Excel está pronta.',error:'Não foi possível extrair os dados. Confira o PDF e os limites de processamento.',noData:'Não foram encontradas tabelas nem texto selecionável neste PDF.',unavailable:'A conversão exige um worker Linux isolado da rede.'},en:{queued:'Queued…',working:'Extracting data…',done:'Your Excel workbook is ready.',error:'Could not extract the data. Check the PDF and processing limits.',noData:'No detected tables or selectable text were found in this PDF.',unavailable:'Conversion requires a network-isolated Linux worker.'}};
 function setStatus(key) {statusKey = key; message.textContent = key ? words[lang][key] : '';}

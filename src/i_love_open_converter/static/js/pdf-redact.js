@@ -2,7 +2,7 @@ const $ = selector => document.querySelector(selector);
 const file = $('#file'), editor = $('#editor'), language = $('#language'), message = $('#message'), download = $('#download');
 const preview = $('#preview'), selection = $('#crop-selection'), list = $('#regions'), container = $('#preview-container');
 const controls = ['left','top','right','bottom'].map(id => $(`#${id}`));
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 let page = 1, count = 0, generation = 0, imageUrl = null, regions = [];
 const words = {'pt-BR':{loading:'Carregando prévia…',error:'Não foi possível ocultar as áreas. PDFs com conteúdo marcado ou estruturas de acessibilidade não são aceitos.',invalid:'Escolha uma área válida e adicione-a à lista.',limit:'O limite é de 100 áreas.',working:'Processando…',done:'Seu PDF está pronto. Confira o resultado antes de compartilhá-lo.',page:'Página',of:'de',alt:'Prévia da página PDF',remove:'Remover área'},en:{loading:'Loading preview…',error:'Could not redact the areas. PDFs with marked content or accessibility structures are not supported.',invalid:'Choose a valid area and add it to the list.',limit:'The limit is 100 areas.',working:'Processing…',done:'Your PDF is ready. Check the result before sharing it.',page:'Page',of:'of',alt:'PDF page preview',remove:'Remove area'}};
 function rectangle() {return controls.map(el => Number(el.value));}

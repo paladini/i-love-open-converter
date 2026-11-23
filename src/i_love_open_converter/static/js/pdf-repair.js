@@ -1,6 +1,6 @@
 const file = document.querySelector('#file'), form = document.querySelector('#form'), language = document.querySelector('#language');
 const message = document.querySelector('#message'), download = document.querySelector('#download'), submit = document.querySelector('#submit');
-let lang = localStorage.getItem('i-love-open-converter-language') === 'en' ? 'en' : 'pt-BR';
+let lang = localStorage.getItem('i-love-open-converter-language') === 'pt-BR' ? 'pt-BR' : 'en';
 const words = {'pt-BR':{queued:'Na fila…',working:'Tentando reparar…',done:'O PDF foi processado. Confira se o conteúdo foi recuperado.',error:'Não foi possível recuperar este PDF. Confira o arquivo e se ele está protegido por senha.'},en:{queued:'Queued…',working:'Attempting repair…',done:'The PDF was processed. Check whether its contents were recovered.',error:'Could not recover this PDF. Check the file and whether it is password-protected.'}};
 function translate() {document.documentElement.lang = lang; language.value = lang; document.querySelectorAll('[data-pt][data-en]').forEach(el => {el.textContent = lang === 'en' ? el.dataset.en : el.dataset.pt;});}
 language.addEventListener('change', () => {lang = language.value; localStorage.setItem('i-love-open-converter-language',lang); translate();});

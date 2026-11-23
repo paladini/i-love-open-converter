@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f8f8f5">
-    <title>{% if tool == 'watermark' %}Marca d’água{% else %}Números de página{% endif %} · I Love Open Converter</title>
+    <title>PDF tool · I Love Open Converter</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
     <script defer src="{{ url_for('static', path='/js/pdf-tool.js') }}"></script>
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="/" aria-label="I Love Open Converter — início"><span class="brand-mark" aria-hidden="true">✓</span><span class="brand-name">I Love <strong>Open Converter</strong></span></a>
-      <div class="header-actions"><span class="privacy-badge"><span class="status-dot"></span>100% local</span><label class="language-picker"><span class="sr-only">Idioma</span><select id="language" aria-label="Idioma"><option value="pt-BR">PT</option><option value="en">EN</option></select></label></div>
+      <div class="header-actions"><span class="privacy-badge"><span class="status-dot"></span>100% local</span><label class="language-picker"><span class="sr-only">Idioma</span><select id="language" aria-label="Idioma"><option value="en">EN</option><option value="pt-BR">PT</option></select></label></div>
     </header>
     <main class="pdf-tool" data-tool="{{ tool }}" data-max-file-mb="{{ max_file_size_mb }}">
       <nav class="breadcrumbs"><a href="/" data-pt="Todas as ferramentas" data-en="All tools">Todas as ferramentas</a><span aria-hidden="true">›</span><span>PDF</span></nav>
