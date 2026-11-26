@@ -6,8 +6,10 @@
     <meta name="theme-color" content="#f9f8f5">
     <meta name="description" content="Conversões de arquivos simples, locais e open-source.">
     <title>I Love Open Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/vendor/cropper.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
-    <script defer src="{{ url_for('static', path='/js/app.js') }}?v=4"></script>
+    <script defer src="{{ url_for('static', path='/vendor/cropper.min.js') }}"></script>
+    <script defer src="{{ url_for('static', path='/js/app.js') }}?v=5"></script>
   </head>
   <body>
     <header class="site-header">
@@ -98,6 +100,12 @@
                 <div class="blur-region-controls"><span id="blur-region-count" aria-live="polite"></span><button id="blur-region-clear" type="button" data-i18n="blurRegionsClear">Limpar regiões</button></div>
                 <ol id="blur-region-list"></ol>
               </section>
+              <section class="image-crop-editor" id="image-crop-editor" hidden aria-label="Área de recorte visual" data-i18n-aria="cropVisualLabel">
+                <p data-i18n="cropVisualInstructions">Arraste a caixa ou as alças para ajustar a área de recorte.</p>
+                <div class="image-crop-stage">
+                  <img id="image-crop-preview" alt="">
+                </div>
+              </section>
             </div>
 
             <div class="workspace-sidebar">
@@ -115,6 +123,15 @@
                 <label data-option="watermark-opacity" hidden><span data-i18n="watermarkOpacityLabel">Transparência (%)</span><input id="watermark-opacity" type="range" min="10" max="100" value="30"><output id="watermark-opacity-value">30%</output></label>
                 <label data-option="width"><span data-i18n="widthLabel">Largura (px)</span><input id="width" type="number" min="1" max="10000" inputmode="numeric"></label>
                 <label data-option="height"><span data-i18n="heightLabel">Altura (px)</span><input id="height" type="number" min="1" max="10000" inputmode="numeric"></label>
+                <div class="crop-aspect-field" data-option="crop-aspect" hidden>
+                  <span data-i18n="cropAspectLabel">Proporção</span>
+                  <div class="crop-aspect-presets" role="group" aria-label="Proporção do recorte" data-i18n-aria="cropAspectLabel">
+                    <button type="button" class="crop-aspect-btn active" data-crop-aspect="free" aria-pressed="true" data-i18n="cropAspectFree">Livre</button>
+                    <button type="button" class="crop-aspect-btn" data-crop-aspect="1" aria-pressed="false">1:1</button>
+                    <button type="button" class="crop-aspect-btn" data-crop-aspect="1.7777777777777777" aria-pressed="false">16:9</button>
+                    <button type="button" class="crop-aspect-btn" data-crop-aspect="1.3333333333333333" aria-pressed="false">4:3</button>
+                  </div>
+                </div>
                 <label data-option="crop-left" hidden><span data-i18n="cropLeftLabel">Esquerda (px)</span><input id="crop-left" type="number" min="0" max="9999" inputmode="numeric" required></label>
                 <label data-option="crop-top" hidden><span data-i18n="cropTopLabel">Topo (px)</span><input id="crop-top" type="number" min="0" max="9999" inputmode="numeric" required></label>
                 <label data-option="crop-width" hidden><span data-i18n="cropWidthLabel">Largura do recorte (px)</span><input id="crop-width" type="number" min="1" max="10000" inputmode="numeric" required></label>

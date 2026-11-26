@@ -32,7 +32,7 @@ const messages = {
     splitTitle: "Dividir PDF", splitHint: "Escolha intervalos de páginas", rotatePdfTitle: "Girar PDF", rotatePdfHint: "Gire todas as páginas",
     compressPdfTitle: "Comprimir PDF", compressPdfHint: "Otimização local sem perdas", pdfCompressionProfileLabel: "Perfil de compressão", profileLossless: "Sem perdas", profileRecommended: "Recomendado", profileExtreme: "Extremo", mergeHint: "Una arquivos na ordem desejada",
     pdfToImageTitle: "PDF para JPG", pdfToImageHint: "Uma imagem por página", imageToPdfTitle: "JPG para PDF",
-    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkImageTitle: "Marcar imagem", watermarkImageHint: "Texto ou imagem sobre suas fotos", watermarkModeLabel: "Tipo de marca d'água", watermarkTextMode: "Texto", watermarkOverlayMode: "Imagem", watermarkTextLabel: "Texto da marca d'água", watermarkFileLabel: "Imagem da marca d'água (PNG, JPG ou WebP)", watermarkPositionLabel: "Posição", watermarkOpacityLabel: "Transparência (%)", positionTopLeft: "Superior esquerda", positionTopCenter: "Superior central", positionTopRight: "Superior direita", positionCenterLeft: "Centro esquerda", positionCenter: "Centro", positionCenterRight: "Centro direita", positionBottomLeft: "Inferior esquerda", positionBottomCenter: "Inferior central", positionBottomRight: "Inferior direita", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números de página", rangesLabel: "Intervalos (ex.: 1-3,5)", memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme", upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).", removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.", blurFacesTitle: "Desfocar cara", blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP.", blurFacesNote: "A detecção pode não encontrar todos os rostos. Revise a imagem antes de compartilhar.", noFacesDetected: "Nenhum rosto foi detectado. Revise a imagem e tente novamente.", blurPlatesTitle: "Desfocar placas", blurPlatesHint: "Detecção local até 40 MP; selecione uma imagem.", blurPlatesNote: "A detecção automática pode não encontrar todas as placas. Revise a imagem antes de compartilhar.", noPlatesDetected: "Nenhuma placa foi detectada. Confira a imagem ou selecione as regiões manualmente.", blurRegionsTitle: "Desfocar objetos", blurRegionsHint: "Marque regiões manualmente em uma imagem de até 40 MP.", blurRegionsNote: "Marque as áreas que deseja ocultar na prévia. Apenas as regiões selecionadas serão desfocadas.", blurRegionsLabel: "Seleção de regiões", blurRegionsPreviewLabel: "Prévia da imagem para seleção de regiões", blurRegionsInstructions: "Arraste sobre a imagem para marcar uma região. O máximo é 20 regiões.", blurRegionsClear: "Limpar regiões", blurRegionsSelected: "Regiões selecionadas: {count}/20", blurRegionRemove: "Remover região {index}", blurRegionTooSmall: "A região precisa ter pelo menos 4 pixels de largura e altura.", blurRegionLimit: "Você pode marcar até 20 regiões.", blurRegionRequired: "Marque pelo menos uma região na imagem.", previewFailed: "Não foi possível abrir a prévia desta imagem.",
+    imageToPdfHint: "Uma página para cada imagem", cropImageTitle: "Recortar imagem", cropImageHint: "Defina uma área em pixels", cropVisualLabel: "Área de recorte visual", cropVisualInstructions: "Arraste a caixa ou as alças para ajustar a área de recorte.", cropAspectLabel: "Proporção", cropAspectFree: "Livre", cropLeftLabel: "Esquerda (px)", cropTopLabel: "Topo (px)", cropWidthLabel: "Largura do recorte (px)", cropHeightLabel: "Altura do recorte (px)", cropOutOfBounds: "O recorte precisa caber dentro de cada imagem.", watermarkImageTitle: "Marcar imagem", watermarkImageHint: "Texto ou imagem sobre suas fotos", watermarkModeLabel: "Tipo de marca d'água", watermarkTextMode: "Texto", watermarkOverlayMode: "Imagem", watermarkTextLabel: "Texto da marca d'água", watermarkFileLabel: "Imagem da marca d'água (PNG, JPG ou WebP)", watermarkPositionLabel: "Posição", watermarkOpacityLabel: "Transparência (%)", positionTopLeft: "Superior esquerda", positionTopCenter: "Superior central", positionTopRight: "Superior direita", positionCenterLeft: "Centro esquerda", positionCenter: "Centro", positionCenterRight: "Centro direita", positionBottomLeft: "Inferior esquerda", positionBottomCenter: "Inferior central", positionBottomRight: "Inferior direita", watermarkTitle: "Marca d’água", watermarkHint: "Texto ou imagem em cada página", pageNumbersTitle: "Números de página", pageNumbersHint: "Adicione números de página", rangesLabel: "Intervalos (ex.: 1-3,5)", memeTitle: "Criar meme", memeHint: "Adicione legendas à sua imagem", memeTopLabel: "Texto superior", memeBottomLabel: "Texto inferior", memeTextPlaceholder: "Digite sua legenda (até 300 caracteres)", memeButton: "Criar meme", upscaleTitle: "Melhorar imagem", upscaleHint: "Ampliação local em 2× ou 4×; saída de até 40 MP, sem IA.", upscaleScaleLabel: "Escala", upscaleLimit: "Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.", upscaleDimensions: "Saída estimada: {width} × {height} px ({megapixels} MP).", removeBackgroundTitle: "Remover fundo", removeBackgroundHint: "Remoção local com IA; PNG transparente até 40 MP.", removeBackgroundNote: "O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.", blurFacesTitle: "Desfocar cara", blurFacesHint: "Desfoque frontal e de perfil local; até 40 MP.", blurFacesNote: "A detecção pode não encontrar todos os rostos. Revise a imagem antes de compartilhar.", noFacesDetected: "Nenhum rosto foi detectado. Revise a imagem e tente novamente.", blurPlatesTitle: "Desfocar placas", blurPlatesHint: "Detecção local até 40 MP; selecione uma imagem.", blurPlatesNote: "A detecção automática pode não encontrar todas as placas. Revise a imagem antes de compartilhar.", noPlatesDetected: "Nenhuma placa foi detectada. Confira a imagem ou selecione as regiões manualmente.", blurRegionsTitle: "Desfocar objetos", blurRegionsHint: "Marque regiões manualmente em uma imagem de até 40 MP.", blurRegionsNote: "Marque as áreas que deseja ocultar na prévia. Apenas as regiões selecionadas serão desfocadas.", blurRegionsLabel: "Seleção de regiões", blurRegionsPreviewLabel: "Prévia da imagem para seleção de regiões", blurRegionsInstructions: "Arraste sobre a imagem para marcar uma região. O máximo é 20 regiões.", blurRegionsClear: "Limpar regiões", blurRegionsSelected: "Regiões selecionadas: {count}/20", blurRegionRemove: "Remover região {index}", blurRegionTooSmall: "A região precisa ter pelo menos 4 pixels de largura e altura.", blurRegionLimit: "Você pode marcar até 20 regiões.", blurRegionRequired: "Marque pelo menos uma região na imagem.", previewFailed: "Não foi possível abrir a prévia desta imagem.",
     imageDropTitle: "Solte suas imagens aqui", pdfDropTitle: "Solte seus PDFs aqui",
     pdfConvertButton: "Processar PDF", imageToPdfButton: "Criar PDF",
     comingSoon: "Em breve", soon: "Em breve", selectedTool: "FERRAMENTA SELECIONADA",
@@ -89,7 +89,7 @@ const messages = {
     splitTitle: "Split PDF", splitHint: "Choose page ranges", rotatePdfTitle: "Rotate PDF", rotatePdfHint: "Rotate every page",
     compressPdfTitle: "Compress PDF", compressPdfHint: "Local lossless optimization", pdfCompressionProfileLabel: "Compression profile", profileLossless: "Lossless", profileRecommended: "Recommended", profileExtreme: "Extreme", mergeHint: "Join files in the order shown",
     pdfToImageTitle: "PDF to JPG", pdfToImageHint: "One image per page", imageToPdfTitle: "JPG to PDF",
-    imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkImageTitle: "Watermark image", watermarkImageHint: "Add text or a logo to your photos", watermarkModeLabel: "Watermark type", watermarkTextMode: "Text", watermarkOverlayMode: "Image", watermarkTextLabel: "Watermark text", watermarkFileLabel: "Watermark image (PNG, JPG, or WebP)", watermarkPositionLabel: "Position", watermarkOpacityLabel: "Opacity (%)", positionTopLeft: "Top left", positionTopCenter: "Top center", positionTopRight: "Top right", positionCenterLeft: "Center left", positionCenter: "Center", positionCenterRight: "Center right", positionBottomLeft: "Bottom left", positionBottomCenter: "Bottom center", positionBottomRight: "Bottom right", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add page numbers", rangesLabel: "Page ranges (e.g. 1-3,5)", memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme", upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
+    imageToPdfHint: "One page for each image", cropImageTitle: "Crop image", cropImageHint: "Set an area in pixels", cropVisualLabel: "Visual crop area", cropVisualInstructions: "Drag the box or handles to adjust the crop area.", cropAspectLabel: "Aspect ratio", cropAspectFree: "Free", cropLeftLabel: "Left (px)", cropTopLabel: "Top (px)", cropWidthLabel: "Crop width (px)", cropHeightLabel: "Crop height (px)", cropOutOfBounds: "The crop must fit within every image.", watermarkImageTitle: "Watermark image", watermarkImageHint: "Add text or a logo to your photos", watermarkModeLabel: "Watermark type", watermarkTextMode: "Text", watermarkOverlayMode: "Image", watermarkTextLabel: "Watermark text", watermarkFileLabel: "Watermark image (PNG, JPG, or WebP)", watermarkPositionLabel: "Position", watermarkOpacityLabel: "Opacity (%)", positionTopLeft: "Top left", positionTopCenter: "Top center", positionTopRight: "Top right", positionCenterLeft: "Center left", positionCenter: "Center", positionCenterRight: "Center right", positionBottomLeft: "Bottom left", positionBottomCenter: "Bottom center", positionBottomRight: "Bottom right", watermarkTitle: "Watermark", watermarkHint: "Text or image on every page", pageNumbersTitle: "Page numbers", pageNumbersHint: "Add page numbers", rangesLabel: "Page ranges (e.g. 1-3,5)", memeTitle: "Create meme", memeHint: "Add captions to your image", memeTopLabel: "Top text", memeBottomLabel: "Bottom text", memeTextPlaceholder: "Enter a caption (up to 300 characters)", memeButton: "Create meme", upscaleTitle: "Upscale image", upscaleHint: "Local 2× or 4× resize; output up to 40 MP, no AI.", upscaleScaleLabel: "Scale", upscaleLimit: "Uses Lanczos resampling and light sharpening. Upscaling cannot create details missing from the original.", upscaleDimensions: "Estimated output: {width} × {height} px ({megapixels} MP).",
     removeBackgroundTitle: "Remove background", removeBackgroundHint: "Local AI removal; transparent PNG up to 40 MP.", removeBackgroundNote: "The model runs locally. Results depend on the image and may not remove every edge perfectly.",
     blurFacesTitle: "Blur faces", blurFacesHint: "Blur frontal and profile faces locally; up to 40 MP.", blurFacesNote: "Detection may miss faces. Review the image before sharing.", noFacesDetected: "No faces were detected. Review the image and try again.", blurPlatesTitle: "Blur license plates", blurPlatesHint: "Local detection up to 40 MP; choose one image.", blurPlatesNote: "Automatic detection may miss plates. Review the image before sharing.", noPlatesDetected: "No plate was detected. Check the image or select regions manually.", blurRegionsTitle: "Blur objects", blurRegionsHint: "Mark regions manually on one image up to 40 MP.", blurRegionsNote: "Mark the areas you want to hide on the preview. Only selected regions are blurred.", blurRegionsLabel: "Region selection", blurRegionsPreviewLabel: "Image preview for region selection", blurRegionsInstructions: "Drag over the image to mark a region. You can mark up to 20 regions.", blurRegionsClear: "Clear regions", blurRegionsSelected: "Selected regions: {count}/20", blurRegionRemove: "Remove region {index}", blurRegionTooSmall: "A region must be at least 4 pixels wide and high.", blurRegionLimit: "You can mark up to 20 regions.", blurRegionRequired: "Mark at least one region on the image.", previewFailed: "This image preview could not be opened.",
     imageDropTitle: "Drop your images here", pdfDropTitle: "Drop your PDFs here",
@@ -149,10 +149,19 @@ const blurRegionCanvas = document.querySelector("#blur-region-canvas");
 const blurRegionContext = blurRegionCanvas.getContext("2d");
 const blurRegionCount = document.querySelector("#blur-region-count");
 const blurRegionList = document.querySelector("#blur-region-list");
+const imageCropEditor = document.querySelector("#image-crop-editor");
+const imageCropPreview = document.querySelector("#image-crop-preview");
+const cropAspectButtons = Array.from(document.querySelectorAll("[data-option='crop-aspect'] .crop-aspect-btn"));
+const cropInputs = ["crop-left", "crop-top", "crop-width", "crop-height"].map((id) => document.querySelector(`#${id}`));
 let blurRegions = [];
 let blurPreviewBitmap = null;
 let blurPointerStart = null;
 let blurPreviewRequest = 0;
+let imageCropper = null;
+let imageCropUrl = null;
+let imageCropRequest = 0;
+let isSyncingImageCrop = false;
+let imageCropAspectRatio = NaN;
 let previewObjectUrls = [];
 let appendNextSelection = false;
 let activeCategory = "all";
@@ -302,6 +311,8 @@ function selectTool(operation, userInitiated = false) {
   updateDomainTheme(operation);
   blurRegionEditor.hidden = operation !== "image.blur_regions" || !currentFiles.length;
   if (operation === "image.blur_regions" && currentFiles.length) void loadBlurRegionPreview();
+  if (operation === "image.crop" && currentFiles.length) loadImageCropPreview();
+  else destroyImageCropper();
   syncOutputFormats(operation);
   syncWatermarkControls();
   if (operation === "image.meme") outputFormat.value = "JPEG";
@@ -325,6 +336,7 @@ function selectTool(operation, userInitiated = false) {
   submitButton.querySelector("[data-i18n]").textContent = t(submitKey);
   document.querySelector('[data-option="width"]').hidden = operation !== "image.resize";
   document.querySelector('[data-option="height"]').hidden = operation !== "image.resize";
+  document.querySelector('[data-option="crop-aspect"]').hidden = operation !== "image.crop";
   for (const name of ["crop-left", "crop-top", "crop-width", "crop-height"]) {
     const label = document.querySelector(`[data-option="${name}"]`);
     label.hidden = operation !== "image.crop";
@@ -510,6 +522,8 @@ function showFiles(files) {
   revokePreviewUrls();
   currentFiles = incoming;
   if (currentOperation === "image.blur_regions") void loadBlurRegionPreview();
+  if (currentOperation === "image.crop") loadImageCropPreview();
+  else destroyImageCropper();
   void updateUpscaleDimensions();
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
@@ -726,6 +740,82 @@ blurRegionCanvas.addEventListener("pointerup", (event) => {
   blurRegions.push({ x, y, width, height }); clearError(); renderBlurRegions();
 });
 document.querySelector("#blur-region-clear").addEventListener("click", () => { blurRegions = []; renderBlurRegions(); });
+
+function destroyImageCropper() {
+  imageCropRequest += 1;
+  if (imageCropper) {
+    imageCropper.destroy();
+    imageCropper = null;
+  }
+  if (imageCropUrl) {
+    URL.revokeObjectURL(imageCropUrl);
+    imageCropUrl = null;
+  }
+  if (imageCropPreview) {
+    imageCropPreview.onload = null;
+    imageCropPreview.onerror = null;
+    imageCropPreview.removeAttribute("src");
+  }
+  if (imageCropEditor) imageCropEditor.hidden = true;
+}
+
+function loadImageCropPreview() {
+  destroyImageCropper();
+  if (currentOperation !== "image.crop" || !currentFiles.length || !canRenderImagePreview(currentFiles[0])) return;
+  const request = ++imageCropRequest;
+  imageCropEditor.hidden = false;
+  imageCropUrl = URL.createObjectURL(currentFiles[0]);
+  imageCropPreview.onload = () => {
+    if (request !== imageCropRequest || currentOperation !== "image.crop" || typeof Cropper !== "function") return;
+    imageCropper = new Cropper(imageCropPreview, {
+      viewMode: 1,
+      autoCropArea: 0.8,
+      responsive: true,
+      background: false,
+      guides: true,
+      movable: true,
+      zoomable: false,
+      scalable: false,
+      rotatable: false,
+      aspectRatio: imageCropAspectRatio,
+      crop(event) {
+        if (isSyncingImageCrop) return;
+        cropInputs[0].value = String(Math.max(0, Math.round(event.detail.x)));
+        cropInputs[1].value = String(Math.max(0, Math.round(event.detail.y)));
+        cropInputs[2].value = String(Math.max(1, Math.round(event.detail.width)));
+        cropInputs[3].value = String(Math.max(1, Math.round(event.detail.height)));
+      },
+    });
+  };
+  imageCropPreview.onerror = () => {
+    if (request === imageCropRequest) destroyImageCropper();
+  };
+  imageCropPreview.src = imageCropUrl;
+}
+
+cropInputs.forEach((input) => {
+  input.addEventListener("input", () => {
+    if (!imageCropper) return;
+    const [left, top, width, height] = cropInputs.map((el) => Number(el.value));
+    if (![left, top, width, height].every(Number.isFinite) || left < 0 || top < 0 || width < 1 || height < 1) return;
+    isSyncingImageCrop = true;
+    imageCropper.setData({ x: left, y: top, width, height });
+    isSyncingImageCrop = false;
+  });
+});
+
+cropAspectButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const raw = button.dataset.cropAspect;
+    imageCropAspectRatio = raw === "free" ? NaN : Number(raw);
+    cropAspectButtons.forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    if (imageCropper) imageCropper.setAspectRatio(imageCropAspectRatio);
+  });
+});
 
 function renderResult(payload) {
   const file = payload.files?.[0];
