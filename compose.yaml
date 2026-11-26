@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-1.0.0}
+    image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-1.1.0}
     init: true
     restart: unless-stopped
     ports:
@@ -33,7 +33,7 @@ services:
       start_period: 15s
 
   worker:
-    image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-1.0.0}
+    image: ghcr.io/paladini/i-love-open-converter:${IMAGE_TAG:-1.1.0}
     init: true
     restart: unless-stopped
     network_mode: none

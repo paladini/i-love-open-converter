@@ -3,7 +3,7 @@
 # This builds amd64 locally, copies both architectures to Docker Hub, and creates manifests.
 param(
     [Parameter()]
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.1.0",
 
     [Parameter()]
     [string]$DockerHubImage = "paladini/i-love-open-converter",
