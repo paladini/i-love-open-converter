@@ -2778,3 +2778,86 @@ fieldset.option-grid legend {
     transition-duration: 0.01ms !important;
   }
 }
+
+.image-crop-editor {
+  margin: 4px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.image-crop-editor p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.image-crop-stage,
+.crop-preview {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.image-crop-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+}
+
+.crop-preview .cropper-container,
+.image-crop-stage .cropper-container {
+  max-width: 100%;
+  max-height: 60vh;
+}
+
+.cropper-point {
+  width: 10px;
+  height: 10px;
+  opacity: 0.9;
+}
+
+.cropper-point.point-se {
+  width: 12px;
+  height: 12px;
+}
+
+.crop-aspect-field {
+  display: grid;
+  gap: 8px;
+}
+
+.crop-aspect-field > span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.crop-aspect-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.crop-aspect-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.crop-aspect-btn:hover {
+  border-color: var(--accent, var(--ink));
+}
+
+.crop-aspect-btn.active {
+  background: var(--accent, var(--ink));
+  border-color: var(--accent, var(--ink));
+  color: #fff;
+}

@@ -33,3 +33,7 @@ The `translate-pb_en-1_9` and `translate-en_pb-1_9` Argos model packages are der
 ## Local PDF summarization
 
 The Docker image includes the [Google FLAN-T5-small model](https://huggingface.co/google/flan-t5-small) at revision `0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab`, converted to INT8 CTranslate2 format during the image build. The model is Apache License 2.0; a copy is included at [licenses/FLAN-T5-APACHE-2.0.txt](licenses/FLAN-T5-APACHE-2.0.txt). CTranslate2 is MIT licensed and SentencePiece is Apache-2.0; their license texts are distributed with the installed packages.
+
+## Interactive visual crop
+
+The browser-side interactive crop UI for images and PDFs uses [Cropper.js v1.6.2](https://github.com/fengyuanchen/cropperjs), vendored locally under `src/i_love_open_converter/static/vendor/` and licensed under the MIT License.

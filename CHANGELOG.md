@@ -2,6 +2,12 @@
 
 This changelog records user-facing changes included in each release.
 
+## [Unreleased]
+
+### Added
+
+- **Interactive visual crop (`image.crop` and `/tools/pdf-crop`):** vendored `Cropper.js` v1.6.2 locally for 100% offline visual cropping with 8 resize handles, dimmed scrim, rule-of-thirds guides, touch support, aspect ratio presets (`Free`, `1:1`, `16:9`, `4:3`), and bidirectional real-time synchronization with the existing numeric coordinate inputs.
+
 ## [1.1.0] - 2026-11-26
 
 Substantial UI/UX Studio redesign inspired by iLovePDF and iLoveIMG, preserving 100% local, self-hosted operation.
