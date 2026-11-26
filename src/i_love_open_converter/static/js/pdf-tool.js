@@ -1,4 +1,5 @@
 const root = document.querySelector(".pdf-tool");
+window.__ilovepdfDropzoneReady = true;
 const tool = root.dataset.tool;
 const isWatermark = tool === "watermark";
 const form = document.querySelector("#pdf-tool-form");

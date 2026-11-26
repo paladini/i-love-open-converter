@@ -1,7 +1,8 @@
 const messages = {
   "pt-BR": {
-    localBadge: "100% local", languageLabel: "Idioma", brandHome: "I Love Open Converter — início",
-    removeFile: "Remover arquivos", moveUp: "Mover para cima", moveDown: "Mover para baixo", privacyLabel: "Privacidade e software livre", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
+    localBadge: "100% local", languageLabel: "Idioma", brandHome: "I Love Open Converter — início", quickNavLabel: "Atalhos de ferramentas",
+    searchToolsLabel: "Buscar ferramenta", searchToolsPlaceholder: "Buscar ferramenta…", removeSingleFile: "Remover {name}",
+    removeFile: "Remover arquivos", addMoreFiles: "+ Adicionar", moveUp: "Mover para cima", moveDown: "Mover para baixo", privacyLabel: "Privacidade e software livre", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
     heroTitle: 'Ferramentas online para PDFs e imagens.<br><span>Gratuitas e no seu servidor.</span>',
     heroDescription: "Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.",
     metaOpen: "Open-source", metaPrivate: "Arquivos permanecem locais", metaFree: "Gratuito para self-host",
@@ -56,8 +57,9 @@ const messages = {
     conversionFailed: "A conversão falhou. Verifique o arquivo e tente novamente.",
   },
   en: {
-    localBadge: "100% local", languageLabel: "Language", brandHome: "I Love Open Converter — home",
-    removeFile: "Remove files", moveUp: "Move up", moveDown: "Move down", privacyLabel: "Privacy and open-source software", heroEyebrow: "YOUR FILES, YOUR RULES",
+    localBadge: "100% local", languageLabel: "Language", brandHome: "I Love Open Converter — home", quickNavLabel: "Tool shortcuts",
+    searchToolsLabel: "Search tools", searchToolsPlaceholder: "Search tools…", removeSingleFile: "Remove {name}",
+    removeFile: "Remove files", addMoreFiles: "+ Add more", moveUp: "Move up", moveDown: "Move down", privacyLabel: "Privacy and open-source software", heroEyebrow: "YOUR FILES, YOUR RULES",
     heroTitle: 'Online tools for PDF and images.<br><span>Free and on your server.</span>',
     heroDescription: "Practical tools for your files, running on your own server. No ads. No sending documents to the cloud.",
     metaOpen: "Open source", metaPrivate: "Files stay on your server", metaFree: "Free to self-host",
@@ -115,11 +117,16 @@ const messages = {
   },
 };
 
+const converterPanel = document.querySelector("#converter-panel");
+const converterHeadingIcon = document.querySelector("#converter-heading-icon");
+const activeDomainPill = document.querySelector("#active-domain-pill");
+const catalogSearchInput = document.querySelector("[data-catalog-search]");
 const form = document.querySelector("#convert-form");
 const fileInput = document.querySelector("#file-input");
 const selectedFile = document.querySelector("#selected-file");
 const selectedName = document.querySelector("#selected-file-name");
 const selectedSize = document.querySelector("#selected-file-size");
+const addMoreButton = document.querySelector("#add-more-files");
 const outputFormat = document.querySelector("#output-format");
 const watermarkKind = document.querySelector("#watermark-kind");
 const watermarkText = document.querySelector("#watermark-text");
@@ -146,6 +153,9 @@ let blurRegions = [];
 let blurPreviewBitmap = null;
 let blurPointerStart = null;
 let blurPreviewRequest = 0;
+let previewObjectUrls = [];
+let appendNextSelection = false;
+let activeCategory = "all";
 const languageSelect = document.querySelector("#language");
 let currentFiles = [];
 let currentOperation = "image.convert";
@@ -156,6 +166,21 @@ let currentErrorKey = null;
 let currentResultPayload = null;
 
 function t(key) { return messages[currentLanguage][key] || messages["pt-BR"][key] || key; }
+
+function updateDomainTheme(operation) {
+  const isPdfDomain = operation.startsWith("pdf.") || operation === "image.to_pdf";
+  if (converterPanel) {
+    converterPanel.dataset.domain = isPdfDomain ? "pdf" : "image";
+  }
+  if (activeDomainPill) {
+    activeDomainPill.dataset.i18n = isPdfDomain ? "pdfGroup" : "imageGroup";
+    activeDomainPill.textContent = t(isPdfDomain ? "pdfGroup" : "imageGroup");
+  }
+  const activeCardSvg = document.querySelector(`[data-tool="${operation}"] .tool-icon svg`);
+  if (converterHeadingIcon && activeCardSvg) {
+    converterHeadingIcon.replaceChildren(activeCardSvg.cloneNode(true));
+  }
+}
 
 function applyLanguage(language) {
   currentLanguage = language === "en" ? "en" : "pt-BR";
@@ -181,6 +206,7 @@ function applyLanguage(language) {
   document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
     element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
   });
+  updateDomainTheme(currentOperation);
   const isPdf = currentOperation.startsWith("pdf.");
   document.querySelector("#drop-title").textContent = t(isPdf ? "pdfDropTitle" : "imageDropTitle");
   const fileTypes = document.querySelector("#file-types");
@@ -210,6 +236,7 @@ function applyLanguage(language) {
     );
   }
   updateFormatTarget();
+  filterCatalog();
 }
 
 function updateFormatTarget() {
@@ -259,7 +286,8 @@ const operationTitles = {
   "pdf.compress": "compressPdfTitle", "pdf.to_image": "pdfToImageTitle", "image.to_pdf": "imageToPdfTitle",
 };
 
-function selectTool(operation) {
+function selectTool(operation, userInitiated = false) {
+  if (!operationTitles[operation]) operation = "image.convert";
   if (currentOperation !== operation) {
     clearInterval(pollTimer);
     jobStatus.hidden = true;
@@ -271,6 +299,7 @@ function selectTool(operation) {
     currentResultPayload = null;
   }
   currentOperation = operation;
+  updateDomainTheme(operation);
   blurRegionEditor.hidden = operation !== "image.blur_regions" || !currentFiles.length;
   if (operation === "image.blur_regions" && currentFiles.length) void loadBlurRegionPreview();
   syncOutputFormats(operation);
@@ -350,6 +379,12 @@ function selectTool(operation) {
   }
   showFiles([]);
   updateFormatTarget();
+  if (userInitiated && converterPanel) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("tool", operation);
+    window.history.replaceState(null, "", nextUrl);
+    converterPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 function syncWatermarkControls() {
@@ -380,30 +415,89 @@ const categoryOperations = {
   "img-create": ["image.meme", "image.upscale"],
   "img-security": ["image.blur_faces", "image.blur_plates", "image.blur_regions"],
 };
-document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
-  document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
-  const category = chip.dataset.category;
+
+function filterCatalog() {
+  const query = (catalogSearchInput?.value || "").trim().toLowerCase();
   document.querySelectorAll(".tool-group").forEach((group) => {
     let shown = 0;
     group.querySelectorAll(".tool-card").forEach((card) => {
       const operation = card.dataset.tool || ((card.getAttribute("href") || "").includes("watermark") ? "pdf.watermark" : "pdf.page_numbers");
       const declared = card.dataset.catalogCategory;
-      const visible = category === "all" ||
-        (category === "images" && declared?.startsWith("img-")) ||
-        (declared ? declared === category : (categoryOperations[category] || []).includes(operation));
+      const matchesCategory = activeCategory === "all" ||
+        (activeCategory === "images" && declared?.startsWith("img-")) ||
+        (declared ? declared === activeCategory : (categoryOperations[activeCategory] || []).includes(operation));
+      const matchesSearch = !query || card.textContent.toLowerCase().includes(query);
+      const visible = matchesCategory && matchesSearch;
       card.hidden = !visible;
       if (visible) shown += 1;
     });
     group.hidden = shown === 0;
   });
-  document.querySelector("#empty-category").hidden = category === "all" ||
+  document.querySelector("#empty-category").hidden =
+    (activeCategory === "all" && !query) ||
     Boolean(document.querySelector(".tool-card:not([hidden])"));
+}
+
+document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
+  document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
+  activeCategory = chip.dataset.category;
+  filterCatalog();
 }));
+if (catalogSearchInput) {
+  catalogSearchInput.addEventListener("input", filterCatalog);
+}
+document.querySelectorAll(".header-nav-link").forEach((link) => {
+  link.addEventListener("click", () => {
+    if (catalogSearchInput && catalogSearchInput.value) {
+      catalogSearchInput.value = "";
+    }
+    const domain = link.dataset.domainLink;
+    const targetCategory = domain === "image" ? "images" : "all";
+    const chip = document.querySelector(`.category-chip[data-category="${targetCategory}"]`);
+    if (chip) {
+      document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
+      activeCategory = targetCategory;
+      filterCatalog();
+    }
+  });
+});
 document.querySelectorAll("[data-catalog-order]").forEach((card) => { card.style.order = card.dataset.catalogOrder; });
 
 function formatBytes(size) {
   if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function revokePreviewUrls() {
+  previewObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  previewObjectUrls = [];
+}
+
+function fileBadgeLabel(file) {
+  const ext = (file.name.split(".").pop() || "").toUpperCase();
+  if (ext && ext.length <= 5) return ext;
+  return currentOperation.startsWith("pdf.") ? "PDF" : "IMG";
+}
+
+function canRenderImagePreview(file) {
+  const mime = (file.type || "").toLowerCase();
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  return mime.startsWith("image/") && !["heic", "heif", "hif", "psd"].includes(ext)
+    || ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(ext);
+}
+
+function createSheetPlaceholder(file) {
+  const sheet = document.createElement("div");
+  sheet.className = "file-sheet-doc";
+  const badge = document.createElement("div");
+  badge.className = "file-card-badge";
+  badge.textContent = fileBadgeLabel(file);
+  const lines = document.createElement("div");
+  lines.className = "file-sheet-lines";
+  lines.setAttribute("aria-hidden", "true");
+  lines.append(document.createElement("i"), document.createElement("i"), document.createElement("i"));
+  sheet.append(badge, lines);
+  return sheet;
 }
 
 function showFiles(files) {
@@ -413,19 +507,66 @@ function showFiles(files) {
     formError.hidden = false;
     return;
   }
+  revokePreviewUrls();
   currentFiles = incoming;
   if (currentOperation === "image.blur_regions") void loadBlurRegionPreview();
   void updateUpscaleDimensions();
   selectedFile.hidden = currentFiles.length === 0;
   dropZone.hidden = currentFiles.length > 0;
+  if (addMoreButton) {
+    addMoreButton.hidden = !fileInput.multiple || currentFiles.length === 0;
+  }
   if (currentFiles.length) {
     selectedName.replaceChildren();
     currentFiles.forEach((file, index) => {
       const item = document.createElement("li");
+
+      const removeSingle = document.createElement("button");
+      removeSingle.type = "button";
+      removeSingle.className = "file-remove-item";
+      removeSingle.dataset.removeIndex = String(index);
+      removeSingle.textContent = "×";
+      removeSingle.setAttribute("aria-label", t("removeSingleFile").replace("{name}", file.name));
+      removeSingle.addEventListener("click", () => {
+        const next = currentFiles.filter((_, itemIndex) => itemIndex !== index);
+        if (!next.length) fileInput.value = "";
+        showFiles(next);
+      });
+      item.append(removeSingle);
+
+      const previewBox = document.createElement("div");
+      previewBox.className = "file-card-preview";
+      if (canRenderImagePreview(file) && file.size > 32) {
+        const thumb = document.createElement("img");
+        const url = URL.createObjectURL(file);
+        previewObjectUrls.push(url);
+        thumb.src = url;
+        thumb.alt = "";
+        thumb.width = 120;
+        thumb.height = 96;
+        thumb.addEventListener("error", () => {
+          previewBox.replaceChildren(createSheetPlaceholder(file));
+        });
+        previewBox.append(thumb);
+      } else {
+        previewBox.append(createSheetPlaceholder(file));
+      }
+
+      const meta = document.createElement("div");
+      meta.className = "file-card-meta";
       const name = document.createElement("span");
       name.textContent = file.name;
-      item.append(name);
+      name.title = file.name;
+      const sizeSub = document.createElement("small");
+      sizeSub.className = "file-card-sub";
+      sizeSub.textContent = formatBytes(file.size || 0);
+      meta.append(name, sizeSub);
+
+      item.append(previewBox, meta);
+
       if (currentOperation === "pdf.merge") {
+        const controls = document.createElement("div");
+        controls.className = "file-card-controls";
         for (const [direction, key, delta] of [["up", "moveUp", -1], ["down", "moveDown", 1]]) {
           const button = document.createElement("button");
           button.type = "button";
@@ -437,8 +578,9 @@ function showFiles(files) {
             [next[index], next[index + delta]] = [next[index + delta], next[index]];
             showFiles(next);
           });
-          item.append(button);
+          controls.append(button);
         }
+        item.append(controls);
       }
       selectedName.append(item);
     });
@@ -634,7 +776,23 @@ async function pollJob(statusUrl) {
   }
 }
 
-fileInput.addEventListener("change", () => showFiles(fileInput.files));
+fileInput.addEventListener("change", () => {
+  const picked = Array.from(fileInput.files || []);
+  if (appendNextSelection && fileInput.multiple && currentFiles.length) {
+    appendNextSelection = false;
+    showFiles([...currentFiles, ...picked]);
+  } else {
+    appendNextSelection = false;
+    showFiles(picked);
+  }
+});
+if (addMoreButton) {
+  addMoreButton.addEventListener("click", () => {
+    appendNextSelection = true;
+    fileInput.value = "";
+    fileInput.click();
+  });
+}
 watermarkKind.addEventListener("change", syncWatermarkControls);
 watermarkImage.addEventListener("change", () => {
   document.querySelector("#watermark-file-name").textContent = watermarkImage.files[0]?.name || "";
@@ -647,7 +805,7 @@ document.querySelector("#remove-file").addEventListener("click", () => {
   showFiles([]);
 });
 document.querySelectorAll("[data-tool]").forEach((tool) => {
-  tool.addEventListener("click", () => selectTool(tool.dataset.tool));
+  tool.addEventListener("click", () => selectTool(tool.dataset.tool, true));
 });
 outputFormat.addEventListener("change", updateFormatTarget);
 languageSelect.addEventListener("change", () => applyLanguage(languageSelect.value));
@@ -786,5 +944,6 @@ resetButton.addEventListener("click", () => {
   dropZone.scrollIntoView({ behavior: "smooth", block: "center" });
 });
 
-selectTool(new URLSearchParams(window.location.search).get('tool') === 'pdf.to_image' ? 'pdf.to_image' : currentOperation);
+const requestedTool = new URLSearchParams(window.location.search).get("tool");
+selectTool(requestedTool && operationTitles[requestedTool] ? requestedTool : currentOperation);
 applyLanguage(currentLanguage);
