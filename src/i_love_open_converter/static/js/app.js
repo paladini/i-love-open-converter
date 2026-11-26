@@ -1,6 +1,7 @@
 const messages = {
   "pt-BR": {
     localBadge: "100% local", languageLabel: "Idioma", brandHome: "I Love Open Converter — início", quickNavLabel: "Atalhos de ferramentas",
+    searchToolsLabel: "Buscar ferramenta", searchToolsPlaceholder: "Buscar ferramenta…", removeSingleFile: "Remover {name}",
     removeFile: "Remover arquivos", addMoreFiles: "+ Adicionar", moveUp: "Mover para cima", moveDown: "Mover para baixo", privacyLabel: "Privacidade e software livre", heroEyebrow: "SEUS ARQUIVOS, SUAS REGRAS",
     heroTitle: 'Ferramentas online para PDFs e imagens.<br><span>Gratuitas e no seu servidor.</span>',
     heroDescription: "Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.",
@@ -57,6 +58,7 @@ const messages = {
   },
   en: {
     localBadge: "100% local", languageLabel: "Language", brandHome: "I Love Open Converter — home", quickNavLabel: "Tool shortcuts",
+    searchToolsLabel: "Search tools", searchToolsPlaceholder: "Search tools…", removeSingleFile: "Remove {name}",
     removeFile: "Remove files", addMoreFiles: "+ Add more", moveUp: "Move up", moveDown: "Move down", privacyLabel: "Privacy and open-source software", heroEyebrow: "YOUR FILES, YOUR RULES",
     heroTitle: 'Online tools for PDF and images.<br><span>Free and on your server.</span>',
     heroDescription: "Practical tools for your files, running on your own server. No ads. No sending documents to the cloud.",
@@ -116,7 +118,9 @@ const messages = {
 };
 
 const converterPanel = document.querySelector("#converter-panel");
+const converterHeadingIcon = document.querySelector("#converter-heading-icon");
 const activeDomainPill = document.querySelector("#active-domain-pill");
+const catalogSearchInput = document.querySelector("[data-catalog-search]");
 const form = document.querySelector("#convert-form");
 const fileInput = document.querySelector("#file-input");
 const selectedFile = document.querySelector("#selected-file");
@@ -151,6 +155,7 @@ let blurPointerStart = null;
 let blurPreviewRequest = 0;
 let previewObjectUrls = [];
 let appendNextSelection = false;
+let activeCategory = "all";
 const languageSelect = document.querySelector("#language");
 let currentFiles = [];
 let currentOperation = "image.convert";
@@ -170,6 +175,10 @@ function updateDomainTheme(operation) {
   if (activeDomainPill) {
     activeDomainPill.dataset.i18n = isPdfDomain ? "pdfGroup" : "imageGroup";
     activeDomainPill.textContent = t(isPdfDomain ? "pdfGroup" : "imageGroup");
+  }
+  const activeCardSvg = document.querySelector(`[data-tool="${operation}"] .tool-icon svg`);
+  if (converterHeadingIcon && activeCardSvg) {
+    converterHeadingIcon.replaceChildren(activeCardSvg.cloneNode(true));
   }
 }
 
@@ -227,6 +236,7 @@ function applyLanguage(language) {
     );
   }
   updateFormatTarget();
+  filterCatalog();
 }
 
 function updateFormatTarget() {
@@ -370,6 +380,9 @@ function selectTool(operation, userInitiated = false) {
   showFiles([]);
   updateFormatTarget();
   if (userInitiated && converterPanel) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("tool", operation);
+    window.history.replaceState(null, "", nextUrl);
     converterPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 }
@@ -402,25 +415,52 @@ const categoryOperations = {
   "img-create": ["image.meme", "image.upscale"],
   "img-security": ["image.blur_faces", "image.blur_plates", "image.blur_regions"],
 };
-document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
-  document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
-  const category = chip.dataset.category;
+
+function filterCatalog() {
+  const query = (catalogSearchInput?.value || "").trim().toLowerCase();
   document.querySelectorAll(".tool-group").forEach((group) => {
     let shown = 0;
     group.querySelectorAll(".tool-card").forEach((card) => {
       const operation = card.dataset.tool || ((card.getAttribute("href") || "").includes("watermark") ? "pdf.watermark" : "pdf.page_numbers");
       const declared = card.dataset.catalogCategory;
-      const visible = category === "all" ||
-        (category === "images" && declared?.startsWith("img-")) ||
-        (declared ? declared === category : (categoryOperations[category] || []).includes(operation));
+      const matchesCategory = activeCategory === "all" ||
+        (activeCategory === "images" && declared?.startsWith("img-")) ||
+        (declared ? declared === activeCategory : (categoryOperations[activeCategory] || []).includes(operation));
+      const matchesSearch = !query || card.textContent.toLowerCase().includes(query);
+      const visible = matchesCategory && matchesSearch;
       card.hidden = !visible;
       if (visible) shown += 1;
     });
     group.hidden = shown === 0;
   });
-  document.querySelector("#empty-category").hidden = category === "all" ||
+  document.querySelector("#empty-category").hidden =
+    (activeCategory === "all" && !query) ||
     Boolean(document.querySelector(".tool-card:not([hidden])"));
+}
+
+document.querySelectorAll(".category-chip").forEach((chip) => chip.addEventListener("click", () => {
+  document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
+  activeCategory = chip.dataset.category;
+  filterCatalog();
 }));
+if (catalogSearchInput) {
+  catalogSearchInput.addEventListener("input", filterCatalog);
+}
+document.querySelectorAll(".header-nav-link").forEach((link) => {
+  link.addEventListener("click", () => {
+    if (catalogSearchInput && catalogSearchInput.value) {
+      catalogSearchInput.value = "";
+    }
+    const domain = link.dataset.domainLink;
+    const targetCategory = domain === "image" ? "images" : "all";
+    const chip = document.querySelector(`.category-chip[data-category="${targetCategory}"]`);
+    if (chip) {
+      document.querySelectorAll(".category-chip").forEach((item) => item.classList.toggle("active", item === chip));
+      activeCategory = targetCategory;
+      filterCatalog();
+    }
+  });
+});
 document.querySelectorAll("[data-catalog-order]").forEach((card) => { card.style.order = card.dataset.catalogOrder; });
 
 function formatBytes(size) {
@@ -446,6 +486,20 @@ function canRenderImagePreview(file) {
     || ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(ext);
 }
 
+function createSheetPlaceholder(file) {
+  const sheet = document.createElement("div");
+  sheet.className = "file-sheet-doc";
+  const badge = document.createElement("div");
+  badge.className = "file-card-badge";
+  badge.textContent = fileBadgeLabel(file);
+  const lines = document.createElement("div");
+  lines.className = "file-sheet-lines";
+  lines.setAttribute("aria-hidden", "true");
+  lines.append(document.createElement("i"), document.createElement("i"), document.createElement("i"));
+  sheet.append(badge, lines);
+  return sheet;
+}
+
 function showFiles(files) {
   const incoming = Array.from(files || []);
   if (currentOperation === "image.editor" && incoming.length > 1) {
@@ -467,6 +521,19 @@ function showFiles(files) {
     currentFiles.forEach((file, index) => {
       const item = document.createElement("li");
 
+      const removeSingle = document.createElement("button");
+      removeSingle.type = "button";
+      removeSingle.className = "file-remove-item";
+      removeSingle.dataset.removeIndex = String(index);
+      removeSingle.textContent = "×";
+      removeSingle.setAttribute("aria-label", t("removeSingleFile").replace("{name}", file.name));
+      removeSingle.addEventListener("click", () => {
+        const next = currentFiles.filter((_, itemIndex) => itemIndex !== index);
+        if (!next.length) fileInput.value = "";
+        showFiles(next);
+      });
+      item.append(removeSingle);
+
       const previewBox = document.createElement("div");
       previewBox.className = "file-card-preview";
       if (canRenderImagePreview(file) && file.size > 32) {
@@ -478,17 +545,11 @@ function showFiles(files) {
         thumb.width = 120;
         thumb.height = 96;
         thumb.addEventListener("error", () => {
-          const badge = document.createElement("div");
-          badge.className = "file-card-badge";
-          badge.textContent = fileBadgeLabel(file);
-          previewBox.replaceChildren(badge);
+          previewBox.replaceChildren(createSheetPlaceholder(file));
         });
         previewBox.append(thumb);
       } else {
-        const badge = document.createElement("div");
-        badge.className = "file-card-badge";
-        badge.textContent = fileBadgeLabel(file);
-        previewBox.append(badge);
+        previewBox.append(createSheetPlaceholder(file));
       }
 
       const meta = document.createElement("div");

@@ -8,7 +8,7 @@
 ## Execution Plan
 
 ```
-T1 (CSS Design System) ──→ T2 (Home Catalog & Studio HTML) ──→ T3 (Interactive Studio JS & File Cards) ──→ T4 (Unify 18 Dedicated Tool Pages) ──→ T5 (Web Guidelines & Full Verification + PR)
+T1 (CSS Design System) ──→ T2 (Home Catalog & Studio HTML) ──→ T3 (Interactive Studio JS & File Cards) ──→ T4 (Unify 18 Dedicated Tool Pages) ──→ T6 (Bespoke SVG Icons & Instant Search) ──→ T7 (Paper-Sheet Previews & Per-Card Remove) ──→ T8 (Universal Dedicated Dropzone Shell & Full Validation)
 ```
 
 ---
@@ -48,11 +48,35 @@ T1 (CSS Design System) ──→ T2 (Home Catalog & Studio HTML) ──→ T3 (I
 - **Gate**: full
 
 ### T5: Full Test Suite Verification, GitHub Pull Request & Live Service Startup
-- **What**: Run `ruff check`, `pytest` (including Playwright E2E mobile/desktop tests), commit atomic changes, push branch `feat/ui-ilovepdf-experience`, create Pull Request in English, and leave FastAPI web + worker services running for user verification.
-- **Where**: Repository-wide & GitHub PR
-- **Depends on**: T3, T4
+- **What**: Run `ruff check`, `ruff format --check`, `pytest` (including Playwright E2E mobile/desktop tests), commit atomic changes, push branch `feat/ui-ilovepdf-experience`, update Pull Request #64 in English, and leave FastAPI web + worker services running for user verification.
+- **Where**: Repository-wide & GitHub PR #64
+- **Depends on**: T6, T7, T8
 - **Requirement**: UI-01..UI-06
 - **Tests**: full suite
+- **Gate**: build
+
+### T6: Bespoke Vector Icon System, Unclipped Chips & Instant Tool Search
+- **What**: Equip all active PDF and Image catalog cards with custom semantic inline `<svg>` icons, allow category chips to wrap cleanly on desktop without clipping, and add an accessible instant search bar (`[data-catalog-search]`) to filter the 50 tools in real time.
+- **Where**: `src/i_love_open_converter/templates/index.html`, `src/i_love_open_converter/static/css/app.css`, `src/i_love_open_converter/static/js/app.js`
+- **Depends on**: T2, T3
+- **Requirement**: UI-04, UI-06
+- **Tests**: e2e (`tests/test_mobile_ui.py`)
+- **Gate**: quick
+
+### T7: Tactile iLovePDF Document Sheet Thumbnails, Per-File Batch Removal & Dynamic Workspace Icon
+- **What**: Render non-raster selected files as miniature folded-corner paper sheets with format ribbons, add individual file removal (`[data-remove-index]`) in multi-file batches, and mirror the selected tool card's SVG icon inside `.converter-heading-icon`.
+- **Where**: `src/i_love_open_converter/static/js/app.js`, `src/i_love_open_converter/static/css/app.css`
+- **Depends on**: T6
+- **Requirement**: UI-02, UI-03
+- **Tests**: e2e (`tests/test_mobile_ui.py`)
+- **Gate**: quick
+
+### T8: Universal Drag-and-Drop & Brand SVG Across All 18 Dedicated Tool Templates
+- **What**: Unify the SVG `.brand-mark` across all 18 `/tools/*.html` pages, move `pdf-translate.html`'s footer outside `<main>`, and add `/static/js/tool-shell.js` so every `.pdf-upload` drop-zone supports `dragover` visual state and file `drop` assignment.
+- **Where**: `src/i_love_open_converter/static/js/tool-shell.js`, `src/i_love_open_converter/templates/*.html`
+- **Depends on**: T4
+- **Requirement**: UI-05, UI-06
+- **Tests**: e2e (`tests/test_mobile_ui.py`)
 - **Gate**: full
 
 ---
