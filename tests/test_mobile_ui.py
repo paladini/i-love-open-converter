@@ -340,3 +340,37 @@ def test_public_url_conversion_controls_are_usable_at_360px(settings, tool, oper
         finally:
             context.close()
             browser.close()
+
+
+def test_studio_workspace_switches_domain_theme_and_renders_visual_file_cards(
+    settings, pdf_bytes
+):
+    with _serve_app(settings) as base_url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        context = browser.new_context(viewport={"width": 1280, "height": 900})
+        page = context.new_page()
+        try:
+            page.goto(base_url, wait_until="networkidle")
+            panel = page.locator("#converter-panel")
+            expect(panel).to_have_attribute("data-domain", "image")
+            expect(page.locator("#active-domain-pill")).to_have_text("Images")
+
+            page.locator('[data-tool="pdf.merge"]').click()
+            expect(panel).to_have_attribute("data-domain", "pdf")
+            expect(page.locator("#active-domain-pill")).to_have_text("PDF")
+
+            page.locator("#file-input").set_input_files(
+                [
+                    {"name": "alpha.pdf", "mimeType": "application/pdf", "buffer": pdf_bytes},
+                    {"name": "beta.pdf", "mimeType": "application/pdf", "buffer": pdf_bytes},
+                ]
+            )
+            cards = page.locator("#selected-file-name li")
+            expect(cards).to_have_count(2)
+            expect(cards.nth(0).locator(".file-card-badge")).to_have_text("PDF")
+            expect(cards.nth(0)).to_contain_text("alpha.pdf")
+            expect(page.locator("#add-more-files")).to_be_visible()
+        finally:
+            context.close()
+            browser.close()
+

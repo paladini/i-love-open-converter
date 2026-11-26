@@ -9,11 +9,12 @@
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="/">I Love <strong>Open Converter</strong></a>
-    <label class="language-picker"><span class="sr-only">Idioma / Language</span><select id="language"><option value="en">EN</option><option value="pt-BR">PT</option></select></label>
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✓</span><span class="brand-name">I Love <strong>Open Converter</strong></span></a>
+    <nav class="header-nav" aria-label="Tool shortcuts"><a class="header-nav-link" href="/#pdf-tools-heading" data-domain-link="pdf"><span class="nav-dot nav-dot-pdf" aria-hidden="true"></span><span>PDF</span></a><a class="header-nav-link" href="/#image-tools-heading" data-domain-link="image"><span class="nav-dot nav-dot-image" aria-hidden="true"></span><span data-pt="Imagens" data-en="Images">Imagens</span></a><a class="header-nav-link" href="/#tools-title"><span data-pt="Todas" data-en="All">Todas</span></a></nav>
+    <div class="header-actions"><span class="privacy-badge"><span class="status-dot"></span>100% local</span><label class="language-picker"><span class="sr-only">Idioma / Language</span><select id="language"><option value="en">EN</option><option value="pt-BR">PT</option></select></label></div>
   </header>
   <main class="pdf-tool">
-    <nav class="breadcrumbs"><a href="/" data-pt="Todas as ferramentas" data-en="All tools">Todas as ferramentas</a></nav>
+    <nav class="breadcrumbs"><a href="/" data-pt="Todas as ferramentas" data-en="All tools">Todas as ferramentas</a><span aria-hidden="true">›</span><span>PDF</span></nav>
     <section class="pdf-tool-heading">
       <span class="pdf-tool-icon">A↔文</span>
       <h1 data-pt="Traduzir PDF localmente" data-en="Translate PDF locally">Traduzir PDF localmente</h1>
@@ -22,23 +23,27 @@
     <section class="pdf-tool-card">
       <form id="form">
         <label class="pdf-upload" for="file">
+          <span class="large-upload-icon" aria-hidden="true">↑</span>
           <strong data-pt="Selecionar arquivo PDF" data-en="Select PDF file">Selecionar arquivo PDF</strong>
           <input id="file" type="file" accept="application/pdf,.pdf" required>
           <span data-pt="PDF com texto selecionável · até 100 páginas" data-en="PDF with selectable text · up to 100 pages">PDF com texto selecionável · até 100 páginas</span>
         </label>
         <p id="filename" class="picked-file"></p>
-        <label for="direction" data-pt="Direção da tradução" data-en="Translation direction">Direção da tradução</label>
-        <select id="direction" required>
-          <option value="pt-BR|en">Português (Brasil) → English</option>
-          <option value="en|pt-BR">English → Português (Brasil)</option>
-        </select>
+        <div class="option-grid">
+          <label class="wide-field" for="direction"><span data-pt="Direção da tradução" data-en="Translation direction">Direção da tradução</span>
+            <select id="direction" required>
+              <option value="pt-BR|en">Português (Brasil) → English</option>
+              <option value="en|pt-BR">English → Português (Brasil)</option>
+            </select>
+          </label>
+        </div>
         <p class="scan-disclosure" data-pt="Tudo é processado localmente no servidor que você controla. Páginas digitalizadas precisam passar por OCR. O PDF resultante preserva páginas, não o layout original." data-en="Everything is processed locally on the server you control. Scanned pages need OCR first. The output keeps pages, not the original layout.">Tudo é processado localmente no servidor que você controla. Páginas digitalizadas precisam passar por OCR. O PDF resultante preserva páginas, não o layout original.</p>
         <button id="submit" class="primary-button" type="submit" disabled data-pt="Traduzir PDF" data-en="Translate PDF">Traduzir PDF</button>
       </form>
       <p id="message" role="status" aria-live="polite"></p>
       <a id="download" class="download-button" hidden data-pt="Baixar PDF traduzido" data-en="Download translated PDF">Baixar PDF traduzido</a>
     </section>
-    <footer><a href="/third-party-notices" data-pt="Créditos e licenças dos modelos" data-en="Model credits and licenses">Créditos e licenças dos modelos</a></footer>
+    <footer class="site-footer"><a href="/third-party-notices" data-pt="Créditos e licenças dos modelos" data-en="Model credits and licenses">Créditos e licenças dos modelos</a><span class="footer-license">AGPL-3.0</span></footer>
   </main>
 </body>
 </html>

@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f8f8f5">
+    <meta name="theme-color" content="#f9f8f5">
     <meta name="description" content="Conversões de arquivos simples, locais e open-source.">
     <title>I Love Open Converter</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}">
-    <script defer src="{{ url_for('static', path='/js/app.js') }}?v=2"></script>
+    <script defer src="{{ url_for('static', path='/js/app.js') }}?v=3"></script>
   </head>
   <body>
     <header class="site-header">
@@ -17,6 +17,11 @@
         </span>
         <span class="brand-name">I Love <strong>Open Converter</strong></span>
       </a>
+      <nav class="header-nav" aria-label="Atalhos de ferramentas" data-i18n-aria="quickNavLabel">
+        <a class="header-nav-link" href="#pdf-tools-heading" data-domain-link="pdf"><span class="nav-dot nav-dot-pdf" aria-hidden="true"></span><span data-i18n="pdfGroup">PDF</span></a>
+        <a class="header-nav-link" href="#image-tools-heading" data-domain-link="image"><span class="nav-dot nav-dot-image" aria-hidden="true"></span><span data-i18n="imageGroup">Imagens</span></a>
+        <a class="header-nav-link" href="#tools-title"><span data-i18n="categoryAll">Todas</span></a>
+      </nav>
       <div class="header-actions">
         <span class="privacy-badge"><span class="status-dot"></span><span data-i18n="localBadge">100% local</span></span>
         <label class="language-picker">
@@ -37,17 +42,9 @@
           <p class="hero-description" data-i18n="heroDescription">Ferramentas práticas para seus arquivos, executadas no seu próprio servidor. Sem anúncios. Sem enviar seus documentos para a nuvem.</p>
           <div class="hero-meta">
             <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaOpen">Open-source</span></span>
-          <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaPrivate">Arquivos permanecem locais</span></span>
+            <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaPrivate">Arquivos permanecem locais</span></span>
             <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg><span data-i18n="metaFree">Gratuito para self-host</span></span>
           </div>
-        </div>
-        <div class="hero-art" aria-hidden="true">
-          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-          <div class="art-file art-file-back"><span>PDF</span><i></i><i></i><i></i></div>
-          <div class="art-file art-file-front"><span class="photo-sun"></span><span class="photo-mountain"></span><span class="photo-mountain second"></span></div>
-          <div class="art-arrow"><svg viewBox="0 0 44 28"><path d="M2 14h38m-11-11 11 11-11 11"/></svg></div>
-          <div class="art-spark spark-a">✳</div><div class="art-spark spark-b">✦</div>
-          <div class="art-sticker">.png</div>
         </div>
       </section>
 
@@ -58,6 +55,113 @@
           <li><span aria-hidden="true">02</span><p data-i18n="firstUseAdd">Adicione o arquivo que quer transformar.</p></li>
           <li><span aria-hidden="true">03</span><p data-i18n="firstUseDownload">Acompanhe o processamento e baixe o resultado.</p></li>
         </ol>
+      </section>
+
+      <section class="converter-panel" id="converter-panel" data-domain="image" aria-labelledby="converter-title">
+        <div class="converter-topbar">
+          <div class="converter-heading">
+            <div class="converter-heading-icon"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 4.5h10l6 6V24H6z"/><path d="M16 4.5v6h6M9.5 15h9M9.5 18.5h5"/></svg></div>
+            <div><p class="eyebrow muted" data-i18n="selectedTool">FERRAMENTA SELECIONADA</p><h2 id="converter-title" data-i18n="convertTitle">Converter imagem</h2></div>
+          </div>
+          <div class="converter-topbar-actions">
+            <span class="domain-pill" id="active-domain-pill" data-i18n="imageGroup">Imagens</span>
+            <a class="catalog-jump-link" href="#tools-title"><span data-i18n="toolsNote">Escolha uma ferramenta para começar</span><span aria-hidden="true">↓</span></a>
+          </div>
+        </div>
+        <p id="extract-images-link" hidden><a href="/tools/pdf-extract-images" data-pt="Extrair imagens embutidas do PDF" data-en="Extract embedded images from PDF">Extrair imagens embutidas do PDF</a></p>
+        <form id="convert-form">
+          <div class="workspace-grid">
+            <div class="workspace-stage">
+              <label class="drop-zone" id="drop-zone" for="file-input">
+                <input id="file-input" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff">
+                <span class="upload-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 21V5m0 0-6 6m6-6 6 6"/><path d="M7 18v8h18v-8"/></svg></span>
+                <strong id="drop-title" data-i18n="dropTitle">Solte sua imagem aqui</strong>
+                <span class="drop-subtitle"><span data-i18n="dropOr">ou</span> <span class="browse-link" data-i18n="browse">escolha um arquivo</span></span>
+                <span class="file-types" id="file-types" data-max-file-mb="{{ max_file_size_mb }}" data-i18n="fileTypes"></span>
+              </label>
+              <div class="selected-file" id="selected-file" hidden>
+                <div class="selected-file-toolbar">
+                  <div class="selected-file-summary">
+                    <span class="selected-file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/></svg></span>
+                    <span class="selected-file-size" id="selected-file-size"></span>
+                  </div>
+                  <div class="selected-file-actions">
+                    <button class="add-more-files" id="add-more-files" type="button" hidden data-i18n="addMoreFiles">+ Adicionar</button>
+                    <button class="remove-file" id="remove-file" type="button" aria-label="Remover arquivo" data-i18n-aria="removeFile">×</button>
+                  </div>
+                </div>
+                <ol class="selected-file-list" id="selected-file-name"></ol>
+              </div>
+              <section class="blur-region-editor" id="blur-region-editor" hidden aria-label="Seleção de regiões" data-i18n-aria="blurRegionsLabel">
+                <p data-i18n="blurRegionsInstructions">Arraste sobre a imagem para marcar uma região. O máximo é 20 regiões.</p>
+                <canvas id="blur-region-canvas" aria-label="Prévia da imagem para seleção de regiões" data-i18n-aria="blurRegionsPreviewLabel"></canvas>
+                <div class="blur-region-controls"><span id="blur-region-count" aria-live="polite"></span><button id="blur-region-clear" type="button" data-i18n="blurRegionsClear">Limpar regiões</button></div>
+                <ol id="blur-region-list"></ol>
+              </section>
+            </div>
+
+            <div class="workspace-sidebar">
+              <div class="format-row" id="format-row">
+                <label class="format-label" for="output-format"><span data-i18n="outputLabel">Converter para</span><select id="output-format" name="output-format"><option value="PNG" data-format-for="image.convert,image.from_jpg,image.resize,image.compress,image.rotate,image.crop">PNG</option><option value="JPEG" data-format-for="image.convert,image.resize,image.compress,image.rotate,image.crop">JPG</option><option value="WEBP" data-format-for="image.convert,image.resize,image.compress,image.rotate,image.crop">WEBP</option><option value="GIF" data-format-for="image.convert,image.from_jpg" hidden>GIF</option></select></label>
+                <div class="format-arrow" aria-hidden="true"><svg viewBox="0 0 32 24"><path d="M3 12h25m-8-8 8 8-8 8"/></svg></div>
+                <div class="format-target"><span class="format-target-icon" id="format-target-icon">PNG</span><span><small data-i18n="resultFormat">Formato de saída</small><strong id="format-target-label">PNG</strong></span></div>
+              </div>
+              <div class="operation-options">
+                <label data-option="pdf-compression-profile" hidden><span data-i18n="pdfCompressionProfileLabel">Compression profile</span><select id="pdf-compression-profile"><option value="lossless" data-i18n="profileLossless">Lossless</option><option value="recommended" data-i18n="profileRecommended">Recommended</option><option value="extreme" data-i18n="profileExtreme">Extreme</option></select></label>
+                <label data-option="watermark-kind" hidden><span data-i18n="watermarkModeLabel">Tipo de marca d'água</span><select id="watermark-kind"><option value="text" data-i18n="watermarkTextMode">Texto</option><option value="image" data-i18n="watermarkOverlayMode">Imagem</option></select></label>
+                <label data-option="watermark-text" hidden><span data-i18n="watermarkTextLabel">Texto da marca d'água</span><input id="watermark-text" type="text" maxlength="120"></label>
+                <label data-option="watermark-file" hidden><span data-i18n="watermarkFileLabel">Imagem da marca d'água (PNG, JPG ou WebP)</span><input id="watermark-image" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"><small id="watermark-file-name"></small></label>
+                <label data-option="watermark-position" hidden><span data-i18n="watermarkPositionLabel">Posição</span><select id="watermark-position"><option value="top_left" data-i18n="positionTopLeft">Superior esquerda</option><option value="top_center" data-i18n="positionTopCenter">Superior central</option><option value="top_right" data-i18n="positionTopRight">Superior direita</option><option value="center_left" data-i18n="positionCenterLeft">Centro esquerda</option><option value="center" data-i18n="positionCenter">Centro</option><option value="center_right" data-i18n="positionCenterRight">Centro direita</option><option value="bottom_left" data-i18n="positionBottomLeft">Inferior esquerda</option><option value="bottom_center" data-i18n="positionBottomCenter">Inferior central</option><option value="bottom_right" data-i18n="positionBottomRight">Inferior direita</option></select></label>
+                <label data-option="watermark-opacity" hidden><span data-i18n="watermarkOpacityLabel">Transparência (%)</span><input id="watermark-opacity" type="range" min="10" max="100" value="30"><output id="watermark-opacity-value">30%</output></label>
+                <label data-option="width"><span data-i18n="widthLabel">Largura (px)</span><input id="width" type="number" min="1" max="10000" inputmode="numeric"></label>
+                <label data-option="height"><span data-i18n="heightLabel">Altura (px)</span><input id="height" type="number" min="1" max="10000" inputmode="numeric"></label>
+                <label data-option="crop-left" hidden><span data-i18n="cropLeftLabel">Esquerda (px)</span><input id="crop-left" type="number" min="0" max="9999" inputmode="numeric" required></label>
+                <label data-option="crop-top" hidden><span data-i18n="cropTopLabel">Topo (px)</span><input id="crop-top" type="number" min="0" max="9999" inputmode="numeric" required></label>
+                <label data-option="crop-width" hidden><span data-i18n="cropWidthLabel">Largura do recorte (px)</span><input id="crop-width" type="number" min="1" max="10000" inputmode="numeric" required></label>
+                <label data-option="crop-height" hidden><span data-i18n="cropHeightLabel">Altura do recorte (px)</span><input id="crop-height" type="number" min="1" max="10000" inputmode="numeric" required></label>
+                <label data-option="quality"><span data-i18n="qualityLabel">Qualidade</span><input id="quality" type="number" min="1" max="100" value="85"></label>
+                <label data-option="degrees"><span data-i18n="degreesLabel">Rotação</span><select id="degrees"><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+                <label data-option="ranges"><span data-i18n="rangesLabel">Intervalos (ex.: 1-3,5)</span><input id="ranges" type="text" autocomplete="off"></label>
+                <label data-option="meme-top" hidden><span data-i18n="memeTopLabel">Texto superior</span><input id="meme-top-text" type="text" maxlength="300" autocomplete="off" data-i18n-placeholder="memeTextPlaceholder" placeholder="Digite sua legenda (até 300 caracteres)"></label>
+                <label data-option="meme-bottom" hidden><span data-i18n="memeBottomLabel">Texto inferior</span><input id="meme-bottom-text" type="text" maxlength="300" autocomplete="off" data-i18n-placeholder="memeTextPlaceholder" placeholder="Digite sua legenda (até 300 caracteres)"></label>
+                <label data-option="upscale-scale" hidden><span data-i18n="upscaleScaleLabel">Escala</span><select id="upscale-scale"><option value="2">2×</option><option value="4">4×</option></select></label>
+                <label data-option="editor-text" hidden><span data-i18n="editorTextLabel">Texto</span><input id="editor-text" type="text" maxlength="80" placeholder="Digite uma legenda (opcional)" data-i18n-placeholder="editorTextPlaceholder"></label>
+                <label data-option="editor-text-size" hidden><span data-i18n="editorTextSize">Tamanho do texto</span><select id="editor-text-size"><option value="small" data-pt="Pequeno" data-en="Small">Pequeno</option><option value="medium" selected data-pt="Médio" data-en="Medium">Médio</option><option value="large" data-pt="Grande" data-en="Large">Grande</option></select></label>
+                <label data-option="editor-text-position" hidden><span data-i18n="editorPosition">Posição</span><select id="editor-text-position"><option value="top_left" data-i18n="editorTopLeft">Superior esquerda</option><option value="top_center" data-i18n="editorTopCenter">Superior central</option><option value="top_right" data-i18n="editorTopRight">Superior direita</option><option value="center_left" data-i18n="editorCenterLeft">Centro esquerda</option><option value="center" data-i18n="editorCenter">Centro</option><option value="center_right" data-i18n="editorCenterRight">Centro direita</option><option value="bottom_left" data-i18n="editorBottomLeft">Inferior esquerda</option><option value="bottom_center" selected data-i18n="editorBottomCenter">Inferior central</option><option value="bottom_right" data-i18n="editorBottomRight">Inferior direita</option></select></label>
+                <label data-option="editor-text-color" hidden><span data-i18n="editorTextColor">Cor do texto</span><select id="editor-text-color"><option value="white" data-pt="Branco" data-en="White">Branco</option><option value="black" data-pt="Preto" data-en="Black">Preto</option><option value="red" data-pt="Vermelho" data-en="Red">Vermelho</option><option value="orange" data-pt="Laranja" data-en="Orange">Laranja</option><option value="yellow" data-pt="Amarelo" data-en="Yellow">Amarelo</option><option value="green" data-pt="Verde" data-en="Green">Verde</option><option value="blue" data-pt="Azul" data-en="Blue">Azul</option><option value="purple" data-pt="Roxo" data-en="Purple">Roxo</option></select></label>
+                <label data-option="editor-opacity" hidden><span data-i18n="editorOpacity">Opacidade do texto (%)</span><input id="editor-opacity" type="number" min="10" max="100" value="100"></label>
+                <label data-option="editor-filter" hidden><span data-i18n="editorFilter">Efeito</span><select id="editor-filter"><option value="original" data-i18n="editorOriginal">Original</option><option value="grayscale" data-i18n="editorGrayscale">Preto e branco</option><option value="sepia" data-i18n="editorSepia">Sépia</option><option value="invert" data-i18n="editorInvert">Inverter cores</option></select></label>
+                <label data-option="editor-frame" hidden><span data-i18n="editorFrame">Moldura</span><select id="editor-frame"><option value="none" data-i18n="editorNoFrame">Sem moldura</option><option value="solid" data-i18n="editorSolidFrame">Moldura simples</option><option value="double" data-i18n="editorDoubleFrame">Moldura dupla</option></select></label>
+                <label data-option="editor-frame-width" hidden><span data-i18n="editorFrameWidth">Espessura da moldura (%)</span><input id="editor-frame-width" type="number" min="2" max="12" value="5"></label>
+                <label data-option="editor-frame-color" hidden><span data-i18n="editorFrameColor">Cor da moldura</span><select id="editor-frame-color"><option value="black" data-pt="Preto" data-en="Black">Preto</option><option value="white" data-pt="Branco" data-en="White">Branco</option><option value="red" data-pt="Vermelho" data-en="Red">Vermelho</option><option value="orange" data-pt="Laranja" data-en="Orange">Laranja</option><option value="yellow" data-pt="Amarelo" data-en="Yellow">Amarelo</option><option value="green" data-pt="Verde" data-en="Green">Verde</option><option value="blue" data-pt="Azul" data-en="Blue">Azul</option><option value="purple" data-pt="Roxo" data-en="Purple">Roxo</option></select></label>
+                <label data-option="editor-sticker" hidden><span data-i18n="editorSticker">Sticker vetorial</span><select id="editor-sticker"><option value="none" selected data-i18n="editorNoSticker">Sem sticker</option><option value="heart" data-i18n="editorHeart">Coração</option><option value="star" data-i18n="editorStar">Estrela</option><option value="sun" data-i18n="editorSun">Sol</option><option value="check" data-i18n="editorCheck">Marca de seleção</option><option value="arrow" data-i18n="editorArrow">Seta</option><option value="speech" data-i18n="editorSpeech">Balão de fala</option></select></label>
+                <label data-option="editor-sticker-position" hidden><span data-i18n="editorStickerPosition">Posição do sticker</span><select id="editor-sticker-position"><option value="top_left" data-i18n="editorTopLeft">Superior esquerda</option><option value="top_center" data-i18n="editorTopCenter">Superior central</option><option value="top_right" data-i18n="editorTopRight">Superior direita</option><option value="center_left" data-i18n="editorCenterLeft">Centro esquerda</option><option value="center" selected data-i18n="editorCenter">Centro</option><option value="center_right" data-i18n="editorCenterRight">Centro direita</option><option value="bottom_left" data-i18n="editorBottomLeft">Inferior esquerda</option><option value="bottom_center" data-i18n="editorBottomCenter">Inferior central</option><option value="bottom_right" data-i18n="editorBottomRight">Inferior direita</option></select></label>
+                <label data-option="editor-sticker-size" hidden><span data-i18n="editorStickerSize">Tamanho do sticker</span><select id="editor-sticker-size"><option value="small" data-pt="Pequeno" data-en="Small">Pequeno</option><option value="medium" selected data-pt="Médio" data-en="Medium">Médio</option><option value="large" data-pt="Grande" data-en="Large">Grande</option></select></label>
+                <label data-option="editor-sticker-color" hidden><span data-i18n="editorStickerColor">Cor do sticker</span><select id="editor-sticker-color"><option value="yellow" data-pt="Amarelo" data-en="Yellow">Amarelo</option><option value="white" data-pt="Branco" data-en="White">Branco</option><option value="black" data-pt="Preto" data-en="Black">Preto</option><option value="red" data-pt="Vermelho" data-en="Red">Vermelho</option><option value="orange" data-pt="Laranja" data-en="Orange">Laranja</option><option value="green" data-pt="Verde" data-en="Green">Verde</option><option value="blue" data-pt="Azul" data-en="Blue">Azul</option><option value="purple" data-pt="Roxo" data-en="Purple">Roxo</option></select></label>
+              </div>
+              <p class="upscale-note" data-option="upscale-limit" hidden data-i18n="upscaleLimit">Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.</p>
+              <p class="upscale-dimensions" id="upscale-dimensions" data-option="upscale-dimensions" aria-live="polite" hidden></p>
+              <p class="upscale-note" data-option="remove-background-note" hidden data-i18n="removeBackgroundNote">O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.</p>
+              <p class="upscale-note" data-option="blur-faces-note" hidden data-i18n="blurFacesNote">A detecção pode não encontrar todos os rostos. Placas e outros objetos não são detectados; revise a imagem antes de compartilhar.</p>
+              <p class="upscale-note" data-option="blur-plates-note" hidden data-i18n="blurPlatesNote">A detecção automática pode não encontrar todas as placas. Revise a imagem antes de compartilhar.</p>
+              <p class="upscale-note" data-option="blur-regions-note" hidden data-i18n="blurRegionsNote">Marque as áreas que deseja ocultar na prévia. Apenas as regiões selecionadas serão desfocadas.</p>
+              <p class="upscale-note" data-option="svg-note" hidden data-i18n="fromSvgNote">Conversão local de SVG estático. Scripts, animações e recursos externos são recusados.</p>
+              <p class="upscale-note" data-option="psd-note" hidden data-i18n="fromPsdNote">O PSD é achatado localmente em uma imagem. Documentos com objetos inteligentes não são aceitos.</p>
+              <p class="upscale-note" data-option="heic-note" hidden data-i18n="fromHeicNote">Conversão HEIC/HEIF local para JPG. Cada arquivo deve conter uma imagem estática de até 40 MP e 32.768 px por lado.</p>
+              <p class="upscale-note" data-option="raw-note" hidden data-i18n="fromRawNote">Conversão local de RAW para JPG. O suporte depende do modelo da câmera; imagens acima de 40 MP ou 32.768 px por lado são recusadas.</p>
+              <p class="form-error" id="form-error" role="alert" hidden></p>
+              <div class="form-actions">
+                <button class="primary-button" id="submit-button" type="submit"><span data-i18n="convertButton">Converter imagem</span><span class="button-arrow" aria-hidden="true">→</span></button>
+                <p class="local-note"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="9" rx="2"/><path d="M7 9V6a3 3 0 0 1 6 0v3m-3 4v2"/></svg><span data-i18n="localNote">Seu arquivo é processado no servidor que você controla.</span></p>
+              </div>
+              <div class="job-status" id="job-status" role="status" aria-live="polite" hidden>
+                <div class="job-status-main"><span class="job-spinner" id="job-spinner"></span><span class="job-status-text" id="job-status-text"></span></div>
+                <div class="job-result" id="job-result" hidden><span class="result-check">✓</span><span class="result-name" id="result-name"></span><a class="download-button" id="download-button" href="#"><span data-i18n="downloadButton">Baixar arquivo</span><span aria-hidden="true">↓</span></a></div>
+                <button class="reset-button" id="reset-button" type="button" hidden data-i18n="startAgain">Converter outro arquivo</button>
+              </div>
+            </div>
+          </div>
+        </form>
       </section>
 
       <section class="tools-section" aria-labelledby="tools-title">
@@ -84,7 +188,7 @@
         <p id="empty-category" class="empty-category" data-i18n="categoryComingSoon" hidden>Esta categoria será incluída em uma próxima etapa.</p>
 
         <section class="tool-group image-group" aria-labelledby="image-tools-heading">
-          <div class="group-title"><span class="group-icon image-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-4 3.2 2.7 2.3-2 4 3.3"/></svg></span><h3 id="image-tools-heading" data-i18n="imageGroup">Imagens</h3><span class="tool-count" data-i18n="imageCount">16 disponíveis</span></div>
+          <div class="group-title"><span class="group-icon image-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-4 3.2 2.7 2.3-2 4 3.3"/></svg></span><h3 id="image-tools-heading" data-i18n="imageGroup">Imagens</h3><span class="tool-count" data-i18n="imageCount">18 disponíveis</span></div>
           <div class="tool-grid">
             <button class="tool-card active" type="button" data-tool="image.convert" data-catalog-order="4" aria-describedby="convert-hint">
               <span class="tool-icon icon-lilac"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 4.5h9l5 5V23H7z"/><path d="M16 4.5v5h5M10 14h8M10 18h5"/><path d="m18.8 17.4 2.1 2.1 3.5-4" class="icon-check"/></svg></span>
@@ -154,93 +258,6 @@
             {% endfor %}
           </div>
         </section>
-      </section>
-
-      <section class="converter-panel" id="converter-panel" aria-labelledby="converter-title">
-        <div class="converter-heading">
-          <div class="converter-heading-icon"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 4.5h10l6 6V24H6z"/><path d="M16 4.5v6h6M9.5 15h9M9.5 18.5h5"/></svg></div>
-          <div><p class="eyebrow muted" data-i18n="selectedTool">FERRAMENTA SELECIONADA</p><h2 id="converter-title" data-i18n="convertTitle">Converter imagem</h2></div>
-        </div>
-        <p id="extract-images-link" hidden><a href="/tools/pdf-extract-images" data-pt="Extrair imagens embutidas do PDF" data-en="Extract embedded images from PDF">Extrair imagens embutidas do PDF</a></p>
-        <form id="convert-form">
-          <label class="drop-zone" id="drop-zone" for="file-input">
-          <input id="file-input" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff">
-            <span class="upload-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 21V5m0 0-6 6m6-6 6 6"/><path d="M7 18v8h18v-8"/></svg></span>
-            <strong id="drop-title" data-i18n="dropTitle">Solte sua imagem aqui</strong>
-            <span class="drop-subtitle"><span data-i18n="dropOr">ou</span> <span class="browse-link" data-i18n="browse">escolha um arquivo</span></span>
-            <span class="file-types" id="file-types" data-max-file-mb="{{ max_file_size_mb }}" data-i18n="fileTypes"></span>
-          </label>
-          <div class="selected-file" id="selected-file" hidden>
-            <span class="selected-file-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/></svg></span>
-            <ol class="selected-file-list" id="selected-file-name"></ol>
-            <span class="selected-file-size" id="selected-file-size"></span>
-            <button class="remove-file" id="remove-file" type="button" aria-label="Remover arquivo" data-i18n-aria="removeFile">×</button>
-          </div>
-          <section class="blur-region-editor" id="blur-region-editor" hidden aria-label="Seleção de regiões" data-i18n-aria="blurRegionsLabel">
-            <p data-i18n="blurRegionsInstructions">Arraste sobre a imagem para marcar uma região. O máximo é 20 regiões.</p>
-            <canvas id="blur-region-canvas" aria-label="Prévia da imagem para seleção de regiões" data-i18n-aria="blurRegionsPreviewLabel"></canvas>
-            <div class="blur-region-controls"><span id="blur-region-count" aria-live="polite"></span><button id="blur-region-clear" type="button" data-i18n="blurRegionsClear">Limpar regiões</button></div>
-            <ol id="blur-region-list"></ol>
-          </section>
-          <div class="format-row" id="format-row">
-            <label class="format-label" for="output-format"><span data-i18n="outputLabel">Converter para</span><select id="output-format" name="output-format"><option value="PNG" data-format-for="image.convert,image.from_jpg,image.resize,image.compress,image.rotate,image.crop">PNG</option><option value="JPEG" data-format-for="image.convert,image.resize,image.compress,image.rotate,image.crop">JPG</option><option value="WEBP" data-format-for="image.convert,image.resize,image.compress,image.rotate,image.crop">WEBP</option><option value="GIF" data-format-for="image.convert,image.from_jpg" hidden>GIF</option></select></label>
-            <div class="format-arrow" aria-hidden="true"><svg viewBox="0 0 32 24"><path d="M3 12h25m-8-8 8 8-8 8"/></svg></div>
-            <div class="format-target"><span class="format-target-icon" id="format-target-icon">PNG</span><span><small data-i18n="resultFormat">Formato de saída</small><strong id="format-target-label">PNG</strong></span></div>
-          </div>
-          <div class="operation-options">
-            <label data-option="pdf-compression-profile" hidden><span data-i18n="pdfCompressionProfileLabel">Compression profile</span><select id="pdf-compression-profile"><option value="lossless" data-i18n="profileLossless">Lossless</option><option value="recommended" data-i18n="profileRecommended">Recommended</option><option value="extreme" data-i18n="profileExtreme">Extreme</option></select></label>
-            <label data-option="watermark-kind" hidden><span data-i18n="watermarkModeLabel">Tipo de marca d'água</span><select id="watermark-kind"><option value="text" data-i18n="watermarkTextMode">Texto</option><option value="image" data-i18n="watermarkOverlayMode">Imagem</option></select></label>
-            <label data-option="watermark-text" hidden><span data-i18n="watermarkTextLabel">Texto da marca d'água</span><input id="watermark-text" type="text" maxlength="120"></label>
-            <label data-option="watermark-file" hidden><span data-i18n="watermarkFileLabel">Imagem da marca d'água (PNG, JPG ou WebP)</span><input id="watermark-image" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"><small id="watermark-file-name"></small></label>
-            <label data-option="watermark-position" hidden><span data-i18n="watermarkPositionLabel">Posição</span><select id="watermark-position"><option value="top_left" data-i18n="positionTopLeft">Superior esquerda</option><option value="top_center" data-i18n="positionTopCenter">Superior central</option><option value="top_right" data-i18n="positionTopRight">Superior direita</option><option value="center_left" data-i18n="positionCenterLeft">Centro esquerda</option><option value="center" data-i18n="positionCenter">Centro</option><option value="center_right" data-i18n="positionCenterRight">Centro direita</option><option value="bottom_left" data-i18n="positionBottomLeft">Inferior esquerda</option><option value="bottom_center" data-i18n="positionBottomCenter">Inferior central</option><option value="bottom_right" data-i18n="positionBottomRight">Inferior direita</option></select></label>
-            <label data-option="watermark-opacity" hidden><span data-i18n="watermarkOpacityLabel">Transparência (%)</span><input id="watermark-opacity" type="range" min="10" max="100" value="30"><output id="watermark-opacity-value">30%</output></label>
-            <label data-option="width"><span data-i18n="widthLabel">Largura (px)</span><input id="width" type="number" min="1" max="10000" inputmode="numeric"></label>
-            <label data-option="height"><span data-i18n="heightLabel">Altura (px)</span><input id="height" type="number" min="1" max="10000" inputmode="numeric"></label>
-            <label data-option="crop-left" hidden><span data-i18n="cropLeftLabel">Esquerda (px)</span><input id="crop-left" type="number" min="0" max="9999" inputmode="numeric" required></label>
-            <label data-option="crop-top" hidden><span data-i18n="cropTopLabel">Topo (px)</span><input id="crop-top" type="number" min="0" max="9999" inputmode="numeric" required></label>
-            <label data-option="crop-width" hidden><span data-i18n="cropWidthLabel">Largura do recorte (px)</span><input id="crop-width" type="number" min="1" max="10000" inputmode="numeric" required></label>
-            <label data-option="crop-height" hidden><span data-i18n="cropHeightLabel">Altura do recorte (px)</span><input id="crop-height" type="number" min="1" max="10000" inputmode="numeric" required></label>
-            <label data-option="quality"><span data-i18n="qualityLabel">Qualidade</span><input id="quality" type="number" min="1" max="100" value="85"></label>
-            <label data-option="degrees"><span data-i18n="degreesLabel">Rotação</span><select id="degrees"><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
-            <label data-option="ranges"><span data-i18n="rangesLabel">Intervalos (ex.: 1-3,5)</span><input id="ranges" type="text" autocomplete="off"></label>
-            <label data-option="meme-top" hidden><span data-i18n="memeTopLabel">Texto superior</span><input id="meme-top-text" type="text" maxlength="300" autocomplete="off" data-i18n-placeholder="memeTextPlaceholder" placeholder="Digite sua legenda (até 300 caracteres)"></label>
-            <label data-option="meme-bottom" hidden><span data-i18n="memeBottomLabel">Texto inferior</span><input id="meme-bottom-text" type="text" maxlength="300" autocomplete="off" data-i18n-placeholder="memeTextPlaceholder" placeholder="Digite sua legenda (até 300 caracteres)"></label>
-            <label data-option="upscale-scale" hidden><span data-i18n="upscaleScaleLabel">Escala</span><select id="upscale-scale"><option value="2">2×</option><option value="4">4×</option></select></label>
-            <label data-option="editor-text" hidden><span data-i18n="editorTextLabel">Texto</span><input id="editor-text" type="text" maxlength="80" placeholder="Digite uma legenda (opcional)" data-i18n-placeholder="editorTextPlaceholder"></label>
-            <label data-option="editor-text-size" hidden><span data-i18n="editorTextSize">Tamanho do texto</span><select id="editor-text-size"><option value="small" data-pt="Pequeno" data-en="Small">Pequeno</option><option value="medium" selected data-pt="Médio" data-en="Medium">Médio</option><option value="large" data-pt="Grande" data-en="Large">Grande</option></select></label>
-            <label data-option="editor-text-position" hidden><span data-i18n="editorPosition">Posição</span><select id="editor-text-position"><option value="top_left" data-i18n="editorTopLeft">Superior esquerda</option><option value="top_center" data-i18n="editorTopCenter">Superior central</option><option value="top_right" data-i18n="editorTopRight">Superior direita</option><option value="center_left" data-i18n="editorCenterLeft">Centro esquerda</option><option value="center" data-i18n="editorCenter">Centro</option><option value="center_right" data-i18n="editorCenterRight">Centro direita</option><option value="bottom_left" data-i18n="editorBottomLeft">Inferior esquerda</option><option value="bottom_center" selected data-i18n="editorBottomCenter">Inferior central</option><option value="bottom_right" data-i18n="editorBottomRight">Inferior direita</option></select></label>
-            <label data-option="editor-text-color" hidden><span data-i18n="editorTextColor">Cor do texto</span><select id="editor-text-color"><option value="white" data-pt="Branco" data-en="White">Branco</option><option value="black" data-pt="Preto" data-en="Black">Preto</option><option value="red" data-pt="Vermelho" data-en="Red">Vermelho</option><option value="orange" data-pt="Laranja" data-en="Orange">Laranja</option><option value="yellow" data-pt="Amarelo" data-en="Yellow">Amarelo</option><option value="green" data-pt="Verde" data-en="Green">Verde</option><option value="blue" data-pt="Azul" data-en="Blue">Azul</option><option value="purple" data-pt="Roxo" data-en="Purple">Roxo</option></select></label>
-            <label data-option="editor-opacity" hidden><span data-i18n="editorOpacity">Opacidade do texto (%)</span><input id="editor-opacity" type="number" min="10" max="100" value="100"></label>
-            <label data-option="editor-filter" hidden><span data-i18n="editorFilter">Efeito</span><select id="editor-filter"><option value="original" data-i18n="editorOriginal">Original</option><option value="grayscale" data-i18n="editorGrayscale">Preto e branco</option><option value="sepia" data-i18n="editorSepia">Sépia</option><option value="invert" data-i18n="editorInvert">Inverter cores</option></select></label>
-            <label data-option="editor-frame" hidden><span data-i18n="editorFrame">Moldura</span><select id="editor-frame"><option value="none" data-i18n="editorNoFrame">Sem moldura</option><option value="solid" data-i18n="editorSolidFrame">Moldura simples</option><option value="double" data-i18n="editorDoubleFrame">Moldura dupla</option></select></label>
-            <label data-option="editor-frame-width" hidden><span data-i18n="editorFrameWidth">Espessura da moldura (%)</span><input id="editor-frame-width" type="number" min="2" max="12" value="5"></label>
-            <label data-option="editor-frame-color" hidden><span data-i18n="editorFrameColor">Cor da moldura</span><select id="editor-frame-color"><option value="black" data-pt="Preto" data-en="Black">Preto</option><option value="white" data-pt="Branco" data-en="White">Branco</option><option value="red" data-pt="Vermelho" data-en="Red">Vermelho</option><option value="orange" data-pt="Laranja" data-en="Orange">Laranja</option><option value="yellow" data-pt="Amarelo" data-en="Yellow">Amarelo</option><option value="green" data-pt="Verde" data-en="Green">Verde</option><option value="blue" data-pt="Azul" data-en="Blue">Azul</option><option value="purple" data-pt="Roxo" data-en="Purple">Roxo</option></select></label>
-            <label data-option="editor-sticker" hidden><span data-i18n="editorSticker">Sticker vetorial</span><select id="editor-sticker"><option value="none" selected data-i18n="editorNoSticker">Sem sticker</option><option value="heart" data-i18n="editorHeart">Coração</option><option value="star" data-i18n="editorStar">Estrela</option><option value="sun" data-i18n="editorSun">Sol</option><option value="check" data-i18n="editorCheck">Marca de seleção</option><option value="arrow" data-i18n="editorArrow">Seta</option><option value="speech" data-i18n="editorSpeech">Balão de fala</option></select></label>
-            <label data-option="editor-sticker-position" hidden><span data-i18n="editorStickerPosition">Posição do sticker</span><select id="editor-sticker-position"><option value="top_left" data-i18n="editorTopLeft">Superior esquerda</option><option value="top_center" data-i18n="editorTopCenter">Superior central</option><option value="top_right" data-i18n="editorTopRight">Superior direita</option><option value="center_left" data-i18n="editorCenterLeft">Centro esquerda</option><option value="center" selected data-i18n="editorCenter">Centro</option><option value="center_right" data-i18n="editorCenterRight">Centro direita</option><option value="bottom_left" data-i18n="editorBottomLeft">Inferior esquerda</option><option value="bottom_center" data-i18n="editorBottomCenter">Inferior central</option><option value="bottom_right" data-i18n="editorBottomRight">Inferior direita</option></select></label>
-            <label data-option="editor-sticker-size" hidden><span data-i18n="editorStickerSize">Tamanho do sticker</span><select id="editor-sticker-size"><option value="small" data-pt="Pequeno" data-en="Small">Pequeno</option><option value="medium" selected data-pt="Médio" data-en="Medium">Médio</option><option value="large" data-pt="Grande" data-en="Large">Grande</option></select></label>
-            <label data-option="editor-sticker-color" hidden><span data-i18n="editorStickerColor">Cor do sticker</span><select id="editor-sticker-color"><option value="yellow" data-pt="Amarelo" data-en="Yellow">Amarelo</option><option value="white" data-pt="Branco" data-en="White">Branco</option><option value="black" data-pt="Preto" data-en="Black">Preto</option><option value="red" data-pt="Vermelho" data-en="Red">Vermelho</option><option value="orange" data-pt="Laranja" data-en="Orange">Laranja</option><option value="green" data-pt="Verde" data-en="Green">Verde</option><option value="blue" data-pt="Azul" data-en="Blue">Azul</option><option value="purple" data-pt="Roxo" data-en="Purple">Roxo</option></select></label>
-          </div>
-          <p class="upscale-note" data-option="upscale-limit" hidden data-i18n="upscaleLimit">Usamos interpolação Lanczos e nitidez leve. A ampliação não cria detalhes que não existem no original.</p>
-          <p class="upscale-dimensions" id="upscale-dimensions" data-option="upscale-dimensions" aria-live="polite" hidden></p>
-          <p class="upscale-note" data-option="remove-background-note" hidden data-i18n="removeBackgroundNote">O modelo funciona localmente. O resultado depende da imagem e pode não remover todas as bordas com perfeição.</p>
-          <p class="upscale-note" data-option="blur-faces-note" hidden data-i18n="blurFacesNote">A detecção pode não encontrar todos os rostos. Placas e outros objetos não são detectados; revise a imagem antes de compartilhar.</p>
-          <p class="upscale-note" data-option="blur-plates-note" hidden data-i18n="blurPlatesNote">A detecção automática pode não encontrar todas as placas. Revise a imagem antes de compartilhar.</p>
-          <p class="upscale-note" data-option="blur-regions-note" hidden data-i18n="blurRegionsNote">Marque as áreas que deseja ocultar na prévia. Apenas as regiões selecionadas serão desfocadas.</p>
-          <p class="upscale-note" data-option="svg-note" hidden data-i18n="fromSvgNote">Conversão local de SVG estático. Scripts, animações e recursos externos são recusados.</p>
-          <p class="upscale-note" data-option="psd-note" hidden data-i18n="fromPsdNote">O PSD é achatado localmente em uma imagem. Documentos com objetos inteligentes não são aceitos.</p>
-          <p class="upscale-note" data-option="heic-note" hidden data-i18n="fromHeicNote">Conversão HEIC/HEIF local para JPG. Cada arquivo deve conter uma imagem estática de até 40 MP e 32.768 px por lado.</p>
-          <p class="upscale-note" data-option="raw-note" hidden data-i18n="fromRawNote">Conversão local de RAW para JPG. O suporte depende do modelo da câmera; imagens acima de 40 MP ou 32.768 px por lado são recusadas.</p>
-          <p class="form-error" id="form-error" role="alert" hidden></p>
-          <div class="form-actions">
-            <p class="local-note"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="9" rx="2"/><path d="M7 9V6a3 3 0 0 1 6 0v3m-3 4v2"/></svg><span data-i18n="localNote">Seu arquivo é processado no servidor que você controla.</span></p>
-            <button class="primary-button" id="submit-button" type="submit"><span data-i18n="convertButton">Converter imagem</span><span class="button-arrow" aria-hidden="true">→</span></button>
-          </div>
-          <div class="job-status" id="job-status" role="status" aria-live="polite" hidden>
-            <div class="job-status-main"><span class="job-spinner" id="job-spinner"></span><span class="job-status-text" id="job-status-text"></span></div>
-            <div class="job-result" id="job-result" hidden><span class="result-check">✓</span><span class="result-name" id="result-name"></span><a class="download-button" id="download-button" href="#"><span data-i18n="downloadButton">Baixar arquivo</span><span aria-hidden="true">↓</span></a></div>
-            <button class="reset-button" id="reset-button" type="button" hidden data-i18n="startAgain">Converter outro arquivo</button>
-          </div>
-        </form>
       </section>
 
       <section class="trust-strip" aria-label="Privacidade e software livre" data-i18n-aria="privacyLabel">
