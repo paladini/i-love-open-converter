@@ -2,7 +2,7 @@
 
 This changelog records user-facing changes included in each release.
 
-## [Unreleased]
+## [1.2.0] - 2026-11-26
 
 ### Added
 
